@@ -120,7 +120,7 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 - **Latency budget**: <10ms p99 overhead in the kernel (target <5ms). Audit pipeline must be fully asynchronous — zero impact on AI response latency.
 - **Resource limits**: Kernel sidecar must stay under 128MB RAM steady state, <100m CPU idle, <500m burst. DevOps teams will uninstall governance tools that consume excessive resources.
 - **No LLM in enforcement path**: 99% of policy enforcement through fast deterministic methods. LLMs only as async fallback for the most ambiguous edge cases.
-- **VPC-native**: All data stays inside customer perimeter. No "phone home" to Interdict.io servers.
+- **VPC-native**: All data stays inside customer perimeter. No "phone home" to Interdict.io servers. No external dependencies post-deploy.
 - **Monorepo**: Both Data Plane and Control Plane live in this repository.
 
 ## Key Decisions
@@ -132,6 +132,7 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Next.js + React for dashboard | SSR-capable, most popular for enterprise dashboards, strong ecosystem | — Pending |
 | Postgres + ClickHouse split | Postgres for config/users (appropriate), ClickHouse for high-volume audit logs (10k+ events/sec query performance) | — Pending |
 | Wasmtime for policy execution | CNCF-backed, Rust-native, near-native speed, sandboxed, hot-reloadable | — Pending |
+| Regorus over OPA | 10x faster (4.6ms vs 45ms), embedded Rust library (no sidecar latency), full Rego compatibility | — Pending |
 | Ed25519 for evidence signing | Fast, small signatures, battle-tested via libsodium | — Pending |
 | Streaming-first inspection | Skip non-streaming code entirely; sliding window buffer from day one since non-streaming would be throwaway | — Pending |
 | Docker Compose + Helm chart | Both deployment patterns needed — Compose for small pilots, Helm for K8s enterprises | — Pending |
