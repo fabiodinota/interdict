@@ -4,6 +4,11 @@
 //! queue writes) and busy_timeout for transient write contention handling.
 //! All queue items are persisted for audit trail and dashboard integration
 //! in Phase 8/9.
+//!
+//! The `Connection` is wrapped in `std::sync::Mutex` to make `ReviewQueueStore`
+//! `Send + Sync`, enabling safe sharing across async tasks via `Arc`.
+
+use std::sync::Mutex;
 
 use rusqlite::{params, Connection, Result as SqlResult};
 
@@ -40,8 +45,11 @@ pub struct QueueItem {
 ///
 /// Uses WAL mode for concurrent reads and busy_timeout for write contention.
 /// All operations use parameterized queries to prevent SQL injection.
+///
+/// Thread-safe via `Mutex<Connection>` — enables sharing across async tasks
+/// with `Arc<ReviewQueueStore>`.
 pub struct ReviewQueueStore {
-    conn: Connection,
+    conn: Mutex<Connection>,
 }
 
 impl ReviewQueueStore {
@@ -86,14 +94,20 @@ impl ReviewQueueStore {
                 ON review_queue(request_id);",
         )?;
 
-        Ok(Self { conn })
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
     }
 
     /// Insert a new queue item into the review queue.
     ///
     /// Fails with UNIQUE constraint violation if `request_id` already exists.
     pub fn enqueue(&self, item: &QueueItem) -> anyhow::Result<()> {
-        self.conn.execute(
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
+        conn.execute(
             "INSERT INTO review_queue
              (id, request_id, pipeline_trace, content_hash, fail_mode,
               status, created_at, timeout_at)
@@ -114,7 +128,11 @@ impl ReviewQueueStore {
 
     /// Get all pending review items, ordered by creation time (oldest first).
     pub fn get_pending(&self) -> anyhow::Result<Vec<QueueItem>> {
-        let mut stmt = self.conn.prepare(
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
+        let mut stmt = conn.prepare(
             "SELECT id, request_id, pipeline_trace, content_hash, fail_mode,
                     status, created_at, timeout_at, verdict, reviewer_id,
                     reviewer_reason, reviewed_at
@@ -147,7 +165,11 @@ impl ReviewQueueStore {
 
     /// Look up a queue item by its request_id.
     pub fn get_by_request_id(&self, request_id: &str) -> anyhow::Result<Option<QueueItem>> {
-        let mut stmt = self.conn.prepare(
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
+        let mut stmt = conn.prepare(
             "SELECT id, request_id, pipeline_trace, content_hash, fail_mode,
                     status, created_at, timeout_at, verdict, reviewer_id,
                     reviewer_reason, reviewed_at
@@ -188,7 +210,11 @@ impl ReviewQueueStore {
         reviewer_id: &str,
         reason: &str,
     ) -> anyhow::Result<bool> {
-        let updated = self.conn.execute(
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
+        let updated = conn.execute(
             "UPDATE review_queue
              SET status = 'reviewed',
                  verdict = ?1,
@@ -206,7 +232,11 @@ impl ReviewQueueStore {
     /// Called periodically by the queue manager. Returns the number
     /// of items that were expired.
     pub fn expire_timed_out(&self) -> anyhow::Result<usize> {
-        let updated = self.conn.execute(
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
+        let updated = conn.execute(
             "UPDATE review_queue
              SET status = 'expired'
              WHERE status = 'pending' AND timeout_at < datetime('now')",
@@ -220,7 +250,11 @@ impl ReviewQueueStore {
     /// Only deletes items with status 'reviewed' or 'expired' that are
     /// older than `older_than_days` days.
     pub fn cleanup_old(&self, older_than_days: i64) -> anyhow::Result<usize> {
-        let deleted = self.conn.execute(
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
+        let deleted = conn.execute(
             "DELETE FROM review_queue
              WHERE status IN ('reviewed', 'expired')
                AND created_at < datetime('now', ?1)",
