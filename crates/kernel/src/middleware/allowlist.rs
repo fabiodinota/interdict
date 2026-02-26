@@ -6,6 +6,13 @@
 //!
 //! Domain matching is exact O(1) string match via `HashSet` -- no regex,
 //! no glob, no DNS resolution in the hot path (per CONTEXT.md decisions).
+//!
+//! **Dual-check design:** This middleware runs as a fast-path BEFORE the TLS
+//! tunnel is established, avoiding the cost of TLS termination for blocked
+//! vendors. The same allowlist is also checked inside the policy pipeline
+//! (via `policy::layer1::allowlist::VendorAllowlistPolicy`) so that the
+//! vendor blocking verdict appears in the audit trail. Both paths share
+//! the same `VendorAllowlist` domain type.
 
 use crate::config::AllowlistConfig;
 use crate::error::{self, ProxyBody};

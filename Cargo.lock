@@ -1521,6 +1521,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "rcgen",
+ "regex",
  "regorus",
  "rusqlite",
  "rustls",
