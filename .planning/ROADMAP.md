@@ -52,12 +52,13 @@ Plans:
   3. Layer 2 NLP classifier (tract + ONNX) classifies ambiguous requests for intent/risk in under 10ms and routes genuinely ambiguous cases to the Layer 3 queue
   4. A policy configured as fail-closed blocks requests when the policy engine encounters an error; a policy configured as fail-open allows them through
   5. The vendor allowlist check (from Phase 1) integrates with the policy pipeline so that vendor blocking is a policy verdict, not a separate code path
-**Plans**: TBD
+**Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md — Core types, verdict merge, Regorus engine pool, Wasmtime pooling allocator (Wave 1)
+- [ ] 02-02-PLAN.md — Vendor allowlist as L1 policy, L2 NLP classifier, redaction engine (Wave 2)
+- [ ] 02-03-PLAN.md — Layer 3 human review queue with SQLite persistence and connection hold (Wave 2)
+- [ ] 02-04-PLAN.md — Pipeline orchestrator, proxy integration, integration tests (Wave 3)
 
 ### Phase 3: PII Detection & Content Inspection
 **Goal**: The kernel detects and redacts PII, financial data, secrets, and custom enterprise patterns in both outbound prompts and inbound streaming responses, replacing detected content with category-tagged placeholders
@@ -201,7 +202,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Kernel Proxy Foundation | 3/3 | Complete | 2026-02-26 |
-| 2. Policy Engine | 0/3 | Not started | - |
+| 2. Policy Engine | 0/4 | Not started | - |
 | 3. PII Detection & Content Inspection | 0/3 | Not started | - |
 | 4. Evidence Collector | 0/3 | Not started | - |
 | 5. Control Plane API Core | 0/3 | Not started | - |
