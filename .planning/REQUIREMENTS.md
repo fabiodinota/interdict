@@ -42,15 +42,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Policy Engine
 
-- [ ] **PLCY-01**: Kernel embeds Wasmtime runtime with pooling allocator and pre-warmed worker pool for policy module execution
-- [ ] **PLCY-02**: Policy modules are compiled Wasm binaries loaded and executed in sandboxed isolation (<2ms per evaluation)
-- [ ] **PLCY-03**: Layer 1 deterministic rules use Regorus (Rust-native Rego interpreter) for policy evaluation without external OPA dependency
+- [x] **PLCY-01**: Kernel embeds Wasmtime runtime with pooling allocator and pre-warmed worker pool for policy module execution
+- [x] **PLCY-02**: Policy modules are compiled Wasm binaries loaded and executed in sandboxed isolation (<2ms per evaluation)
+- [x] **PLCY-03**: Layer 1 deterministic rules use Regorus (Rust-native Rego interpreter) for policy evaluation without external OPA dependency
 - [ ] **PLCY-04**: Layer 2 lightweight NLP classifier (quantized ONNX model via tract) handles intent classification and ambiguous cases (<10ms)
 - [ ] **PLCY-05**: Layer 3 async human review queue routes genuinely ambiguous high-stakes decisions to compliance officers with configurable SLA
 - [ ] **PLCY-06**: Policy modules can be hot-reloaded at runtime without restarting the kernel binary
-- [ ] **PLCY-07**: Policies support three enforcement actions: block (reject request), allow (pass through), redact (modify and pass)
+- [x] **PLCY-07**: Policies support three enforcement actions: block (reject request), allow (pass through), redact (modify and pass)
 - [ ] **PLCY-08**: Policies are configurable per department, per user, and per AI vendor
-- [ ] **PLCY-09**: Fail-closed / fail-open is a per-policy configuration flag controlling behavior when the kernel encounters errors
+- [x] **PLCY-09**: Fail-closed / fail-open is a per-policy configuration flag controlling behavior when the kernel encounters errors
 - [ ] **PLCY-10**: Department-level policy segmentation with inheritance model: organization defaults -> department overrides -> team overrides
 - [ ] **PLCY-11**: Prompt injection and jailbreak detection via Layer 2 NLP classifier identifies direct/indirect injection attacks and prompt leaking attempts
 
@@ -173,15 +173,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PII-04 | Phase 3 | Pending |
 | PII-05 | Phase 3 | Pending |
 | PII-06 | Phase 3 | Pending |
-| PLCY-01 | Phase 2 | Pending |
-| PLCY-02 | Phase 2 | Pending |
-| PLCY-03 | Phase 2 | Pending |
+| PLCY-01 | Phase 2 | Complete |
+| PLCY-02 | Phase 2 | Complete |
+| PLCY-03 | Phase 2 | Complete |
 | PLCY-04 | Phase 2 | Pending |
 | PLCY-05 | Phase 9 | Pending |
 | PLCY-06 | Phase 6 | Pending |
-| PLCY-07 | Phase 2 | Pending |
+| PLCY-07 | Phase 2 | Complete |
 | PLCY-08 | Phase 6 | Pending |
-| PLCY-09 | Phase 2 | Pending |
+| PLCY-09 | Phase 2 | Complete |
 | PLCY-10 | Phase 6 | Pending |
 | PLCY-11 | Phase 3 | Pending |
 | EVID-01 | Phase 4 | Pending |
