@@ -13,7 +13,7 @@ Interdict.io is built in 10 phases that progress from a working streaming proxy 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Kernel Proxy Foundation** - Streaming-first Rust proxy intercepting AI traffic over HTTP/1.1, HTTP/2, SSE, gRPC, and WebSockets with proper connection pooling
-- [ ] **Phase 2: Policy Engine** - Wasmtime pooling allocator, Regorus evaluation, and 3-layer enforcement pipeline executing block/allow/redact verdicts
+- [x] **Phase 2: Policy Engine** - Wasmtime pooling allocator, Regorus evaluation, and 3-layer enforcement pipeline executing block/allow/redact verdicts
 - [ ] **Phase 3: PII Detection & Content Inspection** - PII, financial data, and secrets detection with category-tagged redaction in both prompts and streaming responses
 - [ ] **Phase 4: Evidence Collector** - Separate Rust binary producing SHA-256 hash chains, Ed25519 signatures, Merkle trees, and S3 WORM anchoring with correct ClickHouse batching
 - [ ] **Phase 5: Control Plane API Core** - Bun + Elysia API with policy CRUD, Rego-to-Wasm compiler, vendor registry, regulatory framework mappings, and database schemas
@@ -55,10 +55,10 @@ Plans:
 **Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 02-01-PLAN.md — Core types, verdict merge, Regorus engine pool, Wasmtime pooling allocator (Wave 1)
-- [ ] 02-02-PLAN.md — Vendor allowlist as L1 policy, L2 NLP classifier, redaction engine (Wave 2)
-- [ ] 02-03-PLAN.md — Layer 3 human review queue with SQLite persistence and connection hold (Wave 2)
-- [ ] 02-04-PLAN.md — Pipeline orchestrator, proxy integration, integration tests (Wave 3)
+- [x] 02-01-PLAN.md — Core types, verdict merge, Regorus engine pool, Wasmtime pooling allocator (Wave 1)
+- [x] 02-02-PLAN.md — Vendor allowlist as L1 policy, L2 NLP classifier, redaction engine (Wave 2)
+- [x] 02-03-PLAN.md — Layer 3 human review queue with SQLite persistence and connection hold (Wave 2)
+- [x] 02-04-PLAN.md — Pipeline orchestrator, proxy integration, integration tests (Wave 3)
 
 ### Phase 3: PII Detection & Content Inspection
 **Goal**: The kernel detects and redacts PII, financial data, secrets, and custom enterprise patterns in both outbound prompts and inbound streaming responses, replacing detected content with category-tagged placeholders

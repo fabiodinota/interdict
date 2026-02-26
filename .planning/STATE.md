@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-02-26T23:01:12Z"
+last_updated: "2026-02-26T23:13:34Z"
 progress:
   total_phases: 10
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -22,30 +22,30 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 
 ## Current Position
 
-Phase: 2 of 10 (Policy Engine)
-Plan: 3 of 4 in current phase (02-03 complete)
-Status: Executing Phase 2
-Last activity: 2026-02-26 -- Plan 02-03 complete (Layer 3 review queue with SQLite persistence and connection hold)
+Phase: 2 of 10 (Policy Engine) -- COMPLETE
+Plan: 4 of 4 in current phase (02-04 complete)
+Status: Phase 2 Complete, ready for Phase 3
+Last activity: 2026-02-26 -- Plan 02-04 complete (Policy pipeline & proxy integration with all Phase 2 success criteria proven)
 
-Progress: [██████░░░░░░░░░░░░░░] ~10%
+Progress: [████████░░░░░░░░░░░░] ~20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: ~44min
-- Total execution time: ~4.3 hours
+- Total plans completed: 7
+- Average duration: ~38min
+- Total execution time: ~4.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 3/3 | ~72min | ~24min |
-| 02 | 3/4 | ~188min | ~63min |
+| 02 | 4/4 | ~196min | ~49min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (~21min), 02-01 (~103min), 02-02 (~7min), 02-03 (~78min)
-- Trend: 02-03 required thread-safety fixes (Mutex wrapping) and module declaration collision with concurrent plan 02-02
+- Last 5 plans: 02-01 (~103min), 02-02 (~7min), 02-03 (~78min), 02-04 (~8min)
+- Trend: 02-04 executed cleanly with no deviations — well-designed plan with all building blocks already in place
 
 *Updated after each plan completion*
 
@@ -81,6 +81,11 @@ Recent decisions affecting current work:
 - [02-03]: Semaphore try_acquire (non-blocking) for L3 limit — immediate fail-mode at capacity
 - [02-03]: DashMap for pending request tracking — lock-free concurrent access
 - [02-03]: Store expire_timed_out called on individual timeout — batch expiry for cleanup
+- [02-04]: Pipeline evaluates all matching policies without short-circuit for complete audit trail
+- [02-04]: Proxy CONNECT evaluates pipeline on metadata only; content-level inspection deferred to Phase 3
+- [02-04]: ProxyService::with_pipeline for backwards-compatible pipeline injection
+- [02-04]: L1 "no match" = Allow + no reason → triggers L2 escalation
+- [02-04]: Background L2 fire-and-forget dispatch when L1 gives explicit verdict
 
 ### Pending Todos
 
@@ -93,5 +98,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Completed 02-03-PLAN.md (Layer 3 review queue with SQLite persistence and connection hold)
+Stopped at: Completed 02-04-PLAN.md (Policy pipeline & proxy integration — Phase 2 complete)
 Resume file: None
