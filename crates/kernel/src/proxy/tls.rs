@@ -134,6 +134,12 @@ impl CertCache {
     pub fn len(&self) -> usize {
         self.cache.len()
     }
+
+    /// Check if the cache is empty.
+    #[cfg(test)]
+    pub fn is_empty(&self) -> bool {
+        self.cache.is_empty()
+    }
 }
 
 /// Generate a rustls `ServerConfig` for a domain, signed by the CA.

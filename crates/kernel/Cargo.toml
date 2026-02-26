@@ -8,7 +8,7 @@ tokio = { version = "1.47", features = ["full"] }
 hyper = { version = "1.7", features = ["http1", "http2", "server", "client"] }
 hyper-util = { version = "0.1", features = ["tokio", "http1", "http2", "server-auto", "client-legacy"] }
 http-body-util = "0.1"
-tower = { version = "0.4", features = ["timeout", "limit", "load-shed"] }
+tower = { version = "0.4", features = ["timeout", "limit", "load-shed", "util"] }
 tower-http = { version = "0.6", features = ["trace", "request-id"] }
 rustls = { version = "0.23", features = ["aws_lc_rs"] }
 tokio-rustls = "0.26"
