@@ -6,6 +6,7 @@
 //! - SSE streaming relay
 //! - Connection pool under concurrent load
 //! - Backpressure behavior
+//! - Policy pipeline (Phase 2 success criteria)
 //!
 //! Each test creates its own isolated proxy instance with a test CA.
 
@@ -15,4 +16,5 @@ mod allowlist;
 mod backpressure;
 mod connect_tunnel;
 mod connection_pool;
+mod policy_pipeline;
 mod streaming;
