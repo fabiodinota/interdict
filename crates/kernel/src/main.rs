@@ -8,11 +8,10 @@
 
 use std::sync::Arc;
 
-mod config;
-mod error;
-mod logging;
-mod middleware;
-mod proxy;
+use kernel::config;
+use kernel::logging;
+use kernel::middleware;
+use kernel::proxy;
 
 /// Use jemalloc for predictable memory behavior required for the
 /// 128MB steady-state target (KERN-09).
