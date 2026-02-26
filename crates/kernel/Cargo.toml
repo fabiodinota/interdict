@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 tokio = { version = "1.47", features = ["full"] }
 hyper = { version = "1.7", features = ["http1", "http2", "server", "client"] }
-hyper-util = { version = "0.1", features = ["tokio", "http1", "http2", "server-auto", "client-legacy"] }
+hyper-util = { version = "0.1", features = ["tokio", "http1", "http2", "server-auto", "client-legacy", "service"] }
 http-body-util = "0.1"
 tower = { version = "0.4", features = ["timeout", "limit", "load-shed", "util"] }
 tower-http = { version = "0.6", features = ["trace", "request-id"] }
@@ -21,6 +21,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 dashmap = "6"
 tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
+webpki-roots = "0.26"
+futures-util = "0.3"
 http = "1"
 uuid = { version = "1", features = ["v4"] }
 thiserror = "2"
