@@ -26,7 +26,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **KERN-08**: Kernel handles >10,000 requests/second per instance under sustained load
 - [x] **KERN-09**: Kernel steady-state RAM usage stays under 128MB with <100m CPU idle, <500m burst
 - [ ] **KERN-10**: Kernel maintains session context across multi-turn conversations per user/session, detecting policy violations that emerge across multiple exchanges
-- [ ] **KERN-11**: Kernel checks vendor allowlist before forwarding any outbound AI request, blocking non-approved vendors
+- [x] **KERN-11**: Kernel checks vendor allowlist before forwarding any outbound AI request, blocking non-approved vendors
 - [x] **KERN-12**: Kernel manages multiple HTTP/2 connections per AI vendor backend to avoid single-connection stream saturation
 - [x] **KERN-13**: Kernel uses bounded tokio channels (no unbounded channels) with explicit capacity limits on all internal communication
 - [ ] **KERN-14**: Evidence bundle creation is fully asynchronous -- binary logs compressed and pushed to local memory buffer, background flush every 500ms via gRPC to Evidence Collector
@@ -45,7 +45,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PLCY-01**: Kernel embeds Wasmtime runtime with pooling allocator and pre-warmed worker pool for policy module execution
 - [x] **PLCY-02**: Policy modules are compiled Wasm binaries loaded and executed in sandboxed isolation (<2ms per evaluation)
 - [x] **PLCY-03**: Layer 1 deterministic rules use Regorus (Rust-native Rego interpreter) for policy evaluation without external OPA dependency
-- [ ] **PLCY-04**: Layer 2 lightweight NLP classifier (quantized ONNX model via tract) handles intent classification and ambiguous cases (<10ms)
+- [x] **PLCY-04**: Layer 2 lightweight NLP classifier (quantized ONNX model via tract) handles intent classification and ambiguous cases (<10ms)
 - [ ] **PLCY-05**: Layer 3 async human review queue routes genuinely ambiguous high-stakes decisions to compliance officers with configurable SLA
 - [ ] **PLCY-06**: Policy modules can be hot-reloaded at runtime without restarting the kernel binary
 - [x] **PLCY-07**: Policies support three enforcement actions: block (reject request), allow (pass through), redact (modify and pass)
@@ -163,7 +163,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KERN-08 | Phase 1 | Complete |
 | KERN-09 | Phase 1 | Complete |
 | KERN-10 | Phase 6 | Pending |
-| KERN-11 | Phase 2 | Pending |
+| KERN-11 | Phase 2 | Complete |
 | KERN-12 | Phase 1 | Complete |
 | KERN-13 | Phase 1 | Complete |
 | KERN-14 | Phase 4 | Pending |
@@ -176,7 +176,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLCY-01 | Phase 2 | Complete |
 | PLCY-02 | Phase 2 | Complete |
 | PLCY-03 | Phase 2 | Complete |
-| PLCY-04 | Phase 2 | Pending |
+| PLCY-04 | Phase 2 | Complete |
 | PLCY-05 | Phase 9 | Pending |
 | PLCY-06 | Phase 6 | Pending |
 | PLCY-07 | Phase 2 | Complete |

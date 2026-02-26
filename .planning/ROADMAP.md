@@ -202,7 +202,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Kernel Proxy Foundation | 3/3 | Complete | 2026-02-26 |
-| 2. Policy Engine | 0/4 | Not started | - |
+| 2. Policy Engine | 2/4 | In Progress | - |
 | 3. PII Detection & Content Inspection | 0/3 | Not started | - |
 | 4. Evidence Collector | 0/3 | Not started | - |
 | 5. Control Plane API Core | 0/3 | Not started | - |

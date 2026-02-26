@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-02-26T21:38:51Z"
+last_updated: "2026-02-26T21:49:56Z"
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -23,29 +23,29 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 ## Current Position
 
 Phase: 2 of 10 (Policy Engine)
-Plan: 1 of 4 in current phase (02-01 complete)
+Plan: 2 of 4 in current phase (02-02 complete)
 Status: Executing Phase 2
-Last activity: 2026-02-26 -- Plan 02-01 complete (verdict types, Regorus pool, Wasmtime engine)
+Last activity: 2026-02-26 -- Plan 02-02 complete (allowlist as L1 policy, redaction engine, L2 classifier)
 
-Progress: [████░░░░░░░░░░░░░░░░] ~6%
+Progress: [█████░░░░░░░░░░░░░░░] ~8%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: ~44min
-- Total execution time: ~2.9 hours
+- Total plans completed: 5
+- Average duration: ~39min
+- Total execution time: ~3.0 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 3/3 | ~72min | ~24min |
-| 02 | 1/4 | ~103min | ~103min |
+| 02 | 2/4 | ~110min | ~55min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (~45min), 01-02 (~6min), 01-03 (~21min), 02-01 (~103min)
-- Trend: 02-01 was heavier due to new dependencies (regorus, wasmtime build time) and API adaptation
+- Last 5 plans: 01-02 (~6min), 01-03 (~21min), 02-01 (~103min), 02-02 (~7min)
+- Trend: 02-02 fast — policy primitives were well-specified, no new build dependencies needed
 
 *Updated after each plan completion*
 
@@ -74,6 +74,9 @@ Recent decisions affecting current work:
 - [02-01]: Rego verdict parsed from JSON object with action/reason/redactions fields
 - [02-01]: PoolingAllocationConfig uses 1MB max_memory_size per slot to avoid 4GB virtual memory
 - [02-01]: WasmEngine wraps wasmtime::Engine — Store creation deferred to evaluation time
+- [02-02]: Dual-check allowlist design: middleware fast-path before TLS + policy pipeline for audit trail
+- [02-02]: Classifier::stub() for testing since no real ONNX model exists yet
+- [02-02]: BackgroundL2 drops items when queue full (best-effort analytics, not blocking)
 
 ### Pending Todos
 
@@ -86,5 +89,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Completed 02-01-PLAN.md (verdict types, Regorus pool, Wasmtime engine)
+Stopped at: Completed 02-02-PLAN.md (allowlist as L1 policy, redaction engine, L2 classifier)
 Resume file: None
