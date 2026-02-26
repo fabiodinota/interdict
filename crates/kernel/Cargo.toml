@@ -1,0 +1,39 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.47", features = ["full"] }
+hyper = { version = "1.7", features = ["http1", "http2", "server", "client"] }
+hyper-util = { version = "0.1", features = ["tokio", "http1", "http2", "server-auto", "client-legacy"] }
+http-body-util = "0.1"
+tower = { version = "0.4", features = ["timeout", "limit", "load-shed"] }
+tower-http = { version = "0.6", features = ["trace", "request-id"] }
+rustls = { version = "0.23", features = ["aws_lc_rs"] }
+tokio-rustls = "0.26"
+rcgen = { version = "0.13", features = ["pem", "x509-parser"] }
+bytes = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+dashmap = "6"
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
+http = "1"
+uuid = { version = "1", features = ["v4"] }
+thiserror = "2"
+anyhow = "1"
+
+[dependencies.tikv-jemallocator]
+version = "0.6"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }
+wiremock = "0.6"
+tokio-test = "0.4"
+
+[[bench]]
+name = "proxy_latency"
+harness = false

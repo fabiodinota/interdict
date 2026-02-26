@@ -1,0 +1,49 @@
+# interdict.toml -- Interdict Kernel Proxy Configuration
+#
+# This is the main configuration file for the Interdict AI governance proxy.
+# All sections are required unless defaults are acceptable.
+
+[proxy]
+# Address and port to listen on for incoming proxy connections.
+listen_addr = "0.0.0.0:8443"
+
+# Timeouts are generous by default for AI workloads where
+# streaming responses (SSE, gRPC) can last several minutes.
+connect_timeout_ms = 10_000       # 10s to establish upstream connection
+first_byte_timeout_ms = 30_000    # 30s to receive first byte from AI vendor
+stream_timeout_ms = 300_000       # 5min for streaming responses (SSE, gRPC)
+
+# Backpressure: return 503 Service Unavailable when queue exceeds this limit.
+max_request_queue = 1024
+
+[tls]
+# Deployment-unique CA certificate and key used for TLS interception.
+# The CA must be installed on client machines for HTTPS inspection to work.
+ca_cert_path = "/etc/interdict/ca.crt"
+ca_key_path = "/etc/interdict/ca.key"
+
+[pool]
+# HTTP/2 connection pool settings per vendor backend.
+# Multiple connections avoid single-connection stream saturation (KERN-12).
+max_connections_per_vendor = 4      # TCP connections per vendor
+max_streams_per_connection = 100    # Concurrent HTTP/2 streams per connection
+idle_timeout_ms = 60_000            # Close idle connections after 60s
+
+[allowlist]
+# Deny-by-default vendor allowlist.
+# Only these domains can be reached through the proxy.
+# All other domains are blocked with 403 Forbidden.
+vendors = [
+    "api.openai.com",
+    "api.anthropic.com",
+    "api.cohere.ai",
+    "generativelanguage.googleapis.com",
+]
+
+[logging]
+# Log level: debug, info, warn, error
+# Can be overridden via RUST_LOG environment variable.
+level = "info"
+
+# Output format: "json" for production (container-friendly), "pretty" for development.
+format = "json"
