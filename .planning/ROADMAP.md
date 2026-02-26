@@ -35,12 +35,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The proxy handles gRPC streaming and WebSocket connections for AI services without dropping frames or breaking the connection
   4. The proxy maintains multiple HTTP/2 connections per AI vendor backend, verified by sustaining 200+ concurrent streams without stream exhaustion
   5. A request to a vendor not on the allowlist is blocked and the client receives a rejection response indicating the vendor is not approved
-**Plans**: TBD
+**Plans**: 3 plans in 3 waves
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01: Project scaffold, config, TLS cert cache, vendor allowlist middleware, logging (Wave 1)
+- [ ] 01-02: CONNECT tunnel, bidirectional relay, HTTP/2 connection pool, WebSocket support (Wave 2)
+- [ ] 01-03: Integration tests and criterion benchmarks for latency, throughput, memory (Wave 3)
 
 ### Phase 2: Policy Engine
 **Goal**: The kernel evaluates policies against intercepted traffic using a 3-layer pipeline (Wasm/Regorus deterministic rules, NLP classifier structure, human review queue structure) and enforces block/allow/redact verdicts on requests and responses
@@ -200,7 +200,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Kernel Proxy Foundation | 0/3 | Not started | - |
+| 1. Kernel Proxy Foundation | 0/3 | Planned (3 plans, 3 waves) | - |
 | 2. Policy Engine | 0/3 | Not started | - |
 | 3. PII Detection & Content Inspection | 0/3 | Not started | - |
 | 4. Evidence Collector | 0/3 | Not started | - |
