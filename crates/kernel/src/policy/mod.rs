@@ -11,6 +11,7 @@
 
 pub mod config;
 pub mod layer1;
+pub mod redaction;
 pub mod verdict;
 pub mod wasm_engine;
 
