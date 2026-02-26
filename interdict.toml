@@ -47,3 +47,44 @@ level = "info"
 
 # Output format: "json" for production (container-friendly), "pretty" for development.
 format = "json"
+
+[policy]
+# Policy engine configuration for the 3-layer evaluation pipeline.
+
+# Number of pre-created Regorus engine instances in the pool.
+# Each instance has policies pre-loaded for fast evaluation.
+# regorus_pool_size = 8
+
+# Maximum concurrent Wasmtime instances (pooling allocator slots).
+# Each slot is pre-allocated for fast Wasm module instantiation.
+# wasm_max_instances = 64
+
+# Maximum linear memory per Wasm instance in bytes.
+# Policy modules are small; 1MB is generous. Keeps total memory bounded.
+# wasm_max_memory_bytes = 1048576  # 1MB
+
+# Number of background worker threads for Layer 2 NLP classification.
+# Background L2 runs after Layer 1 gives an explicit verdict, for analytics.
+# l2_background_workers = 2
+
+# Maximum queued Layer 2 background classification jobs.
+# Jobs beyond this limit are dropped (background L2 is best-effort).
+# l2_queue_depth = 256
+
+# Maximum pending Layer 3 human reviews before applying fail-mode.
+# Prevents connection exhaustion from too many held connections.
+# l3_max_pending_reviews = 50
+
+# Layer 3 review timeout in seconds. If no human decides within this
+# time, the policy's fail-mode (fail-closed/fail-open) applies.
+# l3_timeout_seconds = 30
+
+# Path to the SQLite database for human review queue persistence.
+# review_db_path = "data/review_queue.db"
+
+# Directory containing Rego policy source files.
+# policies_dir = "policies/"
+
+# Optional path to the ONNX model for Layer 2 NLP classification.
+# If not set, Layer 2 classification is disabled.
+# l2_model_path = "models/classifier.onnx"

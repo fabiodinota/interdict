@@ -497,6 +497,7 @@ mod tests {
                 level: "info".to_string(),
                 format: "json".to_string(),
             },
+            policy: crate::config::PolicyEngineConfig::default(),
         }
     }
 }

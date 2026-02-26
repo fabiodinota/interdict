@@ -10,6 +10,8 @@ use http_body_util::BodyExt;
 use http_body_util::Full;
 use serde::Serialize;
 
+use crate::policy::config::BlockResponseDetail;
+
 /// Type alias for boxed HTTP response body used throughout the proxy.
 pub type ProxyBody = BoxBody<Bytes, hyper::Error>;
 
@@ -59,6 +61,21 @@ pub enum ProxyError {
     /// Configuration error (fail-closed).
     #[error("config error: {0}")]
     Config(String),
+
+    /// Policy evaluation failed (Rego error, Wasm panic, etc.).
+    #[error("policy evaluation error: {0}")]
+    PolicyEvaluation(String),
+
+    /// Request blocked by policy enforcement.
+    #[error("request blocked by policy '{policy_id}'")]
+    PolicyBlocked {
+        /// ID of the policy that triggered the block.
+        policy_id: String,
+        /// Optional reason for blocking.
+        reason: Option<String>,
+        /// Whether to include details in the response.
+        detail: BlockResponseDetail,
+    },
 }
 
 /// Structured JSON error response body.
@@ -117,6 +134,57 @@ pub fn vendor_unreachable_response(vendor: &str, timeout_ms: u64) -> Response<Pr
         .header("content-type", "application/json")
         .body(full_body(body))
         .expect("Response builder with valid status should never fail")
+}
+
+/// Build a 403 Forbidden response when a policy blocks a request.
+///
+/// Response body varies based on `BlockResponseDetail`:
+/// - `Detailed`: Includes policy_id, reason, and a human-readable message.
+/// - `Opaque`: Just "Request blocked by policy" with no additional context.
+pub fn policy_blocked_response(
+    policy_id: &str,
+    reason: Option<&str>,
+    detail: BlockResponseDetail,
+) -> Response<ProxyBody> {
+    let body = match detail {
+        BlockResponseDetail::Detailed => serde_json::to_vec(&PolicyBlockedResponse {
+            error: "policy_blocked",
+            policy_id: Some(policy_id.to_string()),
+            reason: reason.map(|r| r.to_string()),
+            message: Some(format!(
+                "Request blocked by policy '{}'{}",
+                policy_id,
+                reason
+                    .map(|r| format!(": {}", r))
+                    .unwrap_or_default()
+            )),
+        }),
+        BlockResponseDetail::Opaque => serde_json::to_vec(&PolicyBlockedResponse {
+            error: "policy_blocked",
+            policy_id: None,
+            reason: None,
+            message: Some("Request blocked by policy".to_string()),
+        }),
+    }
+    .expect("PolicyBlockedResponse serialization should never fail");
+
+    Response::builder()
+        .status(http::StatusCode::FORBIDDEN)
+        .header("content-type", "application/json")
+        .body(full_body(body))
+        .expect("Response builder with valid status should never fail")
+}
+
+/// Structured JSON body for policy-blocked responses.
+#[derive(Serialize)]
+struct PolicyBlockedResponse {
+    error: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    policy_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
 }
 
 /// Build a 503 Service Unavailable response for backpressure.

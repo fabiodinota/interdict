@@ -24,9 +24,17 @@ tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
 webpki-roots = "0.26"
 futures-util = "0.3"
 http = "1"
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "serde"] }
 thiserror = "2"
 anyhow = "1"
+regorus = { version = "0.9.1", default-features = false, features = ["arc", "regex", "glob", "semver", "time", "uuid", "std"] }
+wasmtime = { version = "42", features = ["pooling-allocator", "cranelift", "runtime"] }
+tract-onnx = "0.22.1"
+rusqlite = { version = "0.38", features = ["bundled"] }
+sha2 = "0.10"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
 
 [dependencies.tikv-jemallocator]
 version = "0.6"

@@ -26,6 +26,61 @@ pub struct Config {
     pub allowlist: AllowlistConfig,
     /// Structured logging configuration.
     pub logging: LoggingConfig,
+    /// Policy engine configuration (optional — defaults apply if omitted).
+    #[serde(default)]
+    pub policy: PolicyEngineConfig,
+}
+
+/// Policy engine configuration controlling pool sizes, queue depths,
+/// and resource limits for the 3-layer evaluation pipeline.
+#[derive(Debug, Deserialize)]
+pub struct PolicyEngineConfig {
+    /// Number of pre-created Regorus engine instances in the pool.
+    #[serde(default = "default_regorus_pool_size")]
+    pub regorus_pool_size: usize,
+    /// Maximum concurrent Wasmtime instances (pooling allocator slots).
+    #[serde(default = "default_wasm_max_instances")]
+    pub wasm_max_instances: usize,
+    /// Maximum linear memory per Wasm instance in bytes (default 1MB).
+    #[serde(default = "default_wasm_max_memory_bytes")]
+    pub wasm_max_memory_bytes: usize,
+    /// Number of background worker threads for Layer 2 NLP classification.
+    #[serde(default = "default_l2_background_workers")]
+    pub l2_background_workers: usize,
+    /// Maximum queued Layer 2 background classification jobs.
+    #[serde(default = "default_l2_queue_depth")]
+    pub l2_queue_depth: usize,
+    /// Maximum pending Layer 3 human reviews before applying fail-mode.
+    #[serde(default = "default_l3_max_pending_reviews")]
+    pub l3_max_pending_reviews: usize,
+    /// Layer 3 review timeout in seconds before fail-mode applies.
+    #[serde(default = "default_l3_timeout_seconds")]
+    pub l3_timeout_seconds: u64,
+    /// Path to the SQLite database for the human review queue.
+    #[serde(default = "default_review_db_path")]
+    pub review_db_path: String,
+    /// Directory containing Rego policy source files.
+    #[serde(default = "default_policies_dir")]
+    pub policies_dir: String,
+    /// Optional path to the ONNX model for Layer 2 NLP classification.
+    pub l2_model_path: Option<String>,
+}
+
+impl Default for PolicyEngineConfig {
+    fn default() -> Self {
+        Self {
+            regorus_pool_size: default_regorus_pool_size(),
+            wasm_max_instances: default_wasm_max_instances(),
+            wasm_max_memory_bytes: default_wasm_max_memory_bytes(),
+            l2_background_workers: default_l2_background_workers(),
+            l2_queue_depth: default_l2_queue_depth(),
+            l3_max_pending_reviews: default_l3_max_pending_reviews(),
+            l3_timeout_seconds: default_l3_timeout_seconds(),
+            review_db_path: default_review_db_path(),
+            policies_dir: default_policies_dir(),
+            l2_model_path: None,
+        }
+    }
 }
 
 /// Proxy listener and timeout configuration.
@@ -139,6 +194,33 @@ fn default_log_level() -> String {
 fn default_log_format() -> String {
     "json".to_string()
 }
+fn default_regorus_pool_size() -> usize {
+    8
+}
+fn default_wasm_max_instances() -> usize {
+    64
+}
+fn default_wasm_max_memory_bytes() -> usize {
+    1 << 20 // 1MB
+}
+fn default_l2_background_workers() -> usize {
+    2
+}
+fn default_l2_queue_depth() -> usize {
+    256
+}
+fn default_l3_max_pending_reviews() -> usize {
+    50
+}
+fn default_l3_timeout_seconds() -> u64 {
+    30
+}
+fn default_review_db_path() -> String {
+    "data/review_queue.db".to_string()
+}
+fn default_policies_dir() -> String {
+    "policies/".to_string()
+}
 
 /// Load and validate configuration from a TOML file.
 ///
@@ -182,10 +264,7 @@ fn validate(config: &Config) -> anyhow::Result<()> {
 
     // CA key file must exist
     if !std::path::Path::new(&config.tls.ca_key_path).exists() {
-        anyhow::bail!(
-            "TLS CA key file not found: {}",
-            config.tls.ca_key_path
-        );
+        anyhow::bail!("TLS CA key file not found: {}", config.tls.ca_key_path);
     }
 
     // Warn if vendors list is empty (deny-by-default means nothing works)
@@ -227,6 +306,17 @@ vendors = ["api.openai.com", "api.anthropic.com"]
 [logging]
 level = "debug"
 format = "pretty"
+
+[policy]
+regorus_pool_size = 16
+wasm_max_instances = 32
+wasm_max_memory_bytes = 2097152
+l2_background_workers = 4
+l2_queue_depth = 512
+l3_max_pending_reviews = 100
+l3_timeout_seconds = 60
+review_db_path = "/tmp/review.db"
+policies_dir = "/etc/policies/"
 "#;
         let config: Config = toml::from_str(toml_str).unwrap();
         assert_eq!(config.proxy.listen_addr, "0.0.0.0:8443");
@@ -240,6 +330,12 @@ format = "pretty"
         assert_eq!(config.allowlist.vendors.len(), 2);
         assert_eq!(config.logging.level, "debug");
         assert_eq!(config.logging.format, "pretty");
+        assert_eq!(config.policy.regorus_pool_size, 16);
+        assert_eq!(config.policy.wasm_max_instances, 32);
+        assert_eq!(config.policy.wasm_max_memory_bytes, 2_097_152);
+        assert_eq!(config.policy.l2_background_workers, 4);
+        assert_eq!(config.policy.l3_timeout_seconds, 60);
+        assert_eq!(config.policy.review_db_path, "/tmp/review.db");
     }
 
     #[test]
@@ -269,6 +365,36 @@ vendors = ["api.openai.com"]
         assert_eq!(config.pool.idle_timeout_ms, 60_000);
         assert_eq!(config.logging.level, "info");
         assert_eq!(config.logging.format, "json");
+    }
+
+    #[test]
+    fn test_policy_defaults_when_section_omitted() {
+        let toml_str = r#"
+[proxy]
+listen_addr = "0.0.0.0:8443"
+
+[tls]
+ca_cert_path = "/tmp/ca.crt"
+ca_key_path = "/tmp/ca.key"
+
+[pool]
+
+[allowlist]
+vendors = ["api.openai.com"]
+
+[logging]
+"#;
+        let config: Config = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.policy.regorus_pool_size, 8);
+        assert_eq!(config.policy.wasm_max_instances, 64);
+        assert_eq!(config.policy.wasm_max_memory_bytes, 1 << 20);
+        assert_eq!(config.policy.l2_background_workers, 2);
+        assert_eq!(config.policy.l2_queue_depth, 256);
+        assert_eq!(config.policy.l3_max_pending_reviews, 50);
+        assert_eq!(config.policy.l3_timeout_seconds, 30);
+        assert_eq!(config.policy.review_db_path, "data/review_queue.db");
+        assert_eq!(config.policy.policies_dir, "policies/");
+        assert!(config.policy.l2_model_path.is_none());
     }
 
     #[test]
