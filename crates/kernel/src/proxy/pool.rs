@@ -201,6 +201,29 @@ impl ConnectionPool {
     pub fn max_conns_per_vendor(&self) -> usize {
         self.max_conns_per_vendor
     }
+
+    /// Create a connection pool with a custom TLS root certificate store.
+    ///
+    /// Used by integration tests to trust a test CA for mock backends.
+    pub fn new_with_roots(
+        config: &PoolConfig,
+        connect_timeout: Duration,
+        root_store: rustls::RootCertStore,
+    ) -> Self {
+        let client_config = rustls::ClientConfig::builder()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
+
+        let tls_connector = tokio_rustls::TlsConnector::from(Arc::new(client_config));
+
+        Self {
+            tls_connector,
+            max_conns_per_vendor: config.max_connections_per_vendor,
+            max_streams_per_conn: config.max_streams_per_connection,
+            connect_timeout,
+            connections: DashMap::new(),
+        }
+    }
 }
 
 #[cfg(test)]
