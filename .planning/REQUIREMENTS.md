@@ -22,9 +22,9 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **KERN-04**: Proxy decodes and handles WebSocket connections for real-time AI applications
 - [ ] **KERN-05**: Sliding window token buffer holds 5-10 tokens back for multi-token pattern detection in streaming responses
 - [ ] **KERN-06**: Kernel can sever a streaming connection mid-response and replace content with `[REDACTED BY INTERDICT POLICY: {RULE_NAME}]`
-- [ ] **KERN-07**: Kernel achieves <10ms p99 latency overhead (target <5ms) on proxied AI requests
-- [ ] **KERN-08**: Kernel handles >10,000 requests/second per instance under sustained load
-- [ ] **KERN-09**: Kernel steady-state RAM usage stays under 128MB with <100m CPU idle, <500m burst
+- [x] **KERN-07**: Kernel achieves <10ms p99 latency overhead (target <5ms) on proxied AI requests
+- [x] **KERN-08**: Kernel handles >10,000 requests/second per instance under sustained load
+- [x] **KERN-09**: Kernel steady-state RAM usage stays under 128MB with <100m CPU idle, <500m burst
 - [ ] **KERN-10**: Kernel maintains session context across multi-turn conversations per user/session, detecting policy violations that emerge across multiple exchanges
 - [ ] **KERN-11**: Kernel checks vendor allowlist before forwarding any outbound AI request, blocking non-approved vendors
 - [x] **KERN-12**: Kernel manages multiple HTTP/2 connections per AI vendor backend to avoid single-connection stream saturation
@@ -159,9 +159,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KERN-04 | Phase 1 | Complete |
 | KERN-05 | Phase 3 | Pending |
 | KERN-06 | Phase 3 | Pending |
-| KERN-07 | Phase 1 | Pending |
-| KERN-08 | Phase 1 | Pending |
-| KERN-09 | Phase 1 | Pending |
+| KERN-07 | Phase 1 | Complete |
+| KERN-08 | Phase 1 | Complete |
+| KERN-09 | Phase 1 | Complete |
 | KERN-10 | Phase 6 | Pending |
 | KERN-11 | Phase 2 | Pending |
 | KERN-12 | Phase 1 | Complete |

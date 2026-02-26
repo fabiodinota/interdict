@@ -9,29 +9,29 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 
 ## Current Position
 
-Phase: 1 of 10 (Kernel Proxy Foundation)
-Plan: 2 of 3 in current phase
-Status: Executing
-Last activity: 2026-02-26 -- Plan 01-02 complete (CONNECT tunnel, relay, pool, WebSocket)
+Phase: 1 of 10 (Kernel Proxy Foundation) -- COMPLETE
+Plan: 3 of 3 in current phase (all plans complete)
+Status: Phase Complete
+Last activity: 2026-02-26 -- Plan 01-03 complete (integration tests and benchmarks)
 
-Progress: [████░░░░░░] 6%
+Progress: [██████████] 10%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~25min
-- Total execution time: ~0.85 hours
+- Total plans completed: 3
+- Average duration: ~24min
+- Total execution time: ~1.2 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 | 2/3 | ~51min | ~25min |
+| 01 | 3/3 | ~72min | ~24min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (~45min), 01-02 (~6min)
-- Trend: Accelerating (scaffolded code from 01-01 reduced 01-02 effort)
+- Last 5 plans: 01-01 (~45min), 01-02 (~6min), 01-03 (~21min)
+- Trend: Accelerating (scaffolded code from 01-01 reduced subsequent effort)
 
 *Updated after each plan completion*
 
@@ -51,6 +51,11 @@ Recent decisions affecting current work:
 - [01-02]: TowerToHyperService bridges tower::Service to hyper::Service for serve_connection_with_upgrades
 - [01-02]: Phase 1 uses raw byte relay for ALL protocols; WebSocket frame-level relay deferred to Phase 3
 - [01-02]: connect_tls for direct TLS connections in Phase 1; full HTTP/2 pooled SendRequest deferred
+- [01-03]: ConnectionPool::new_with_roots added for test CA trust -- enables mock backends with CA-signed certs
+- [01-03]: TestProxy spawns full server stack with per-test CA to ensure complete isolation
+- [01-03]: MockBackend uses StreamBody + mpsc channel for SSE streaming (hyper 1.x removed Body::channel)
+- [01-03]: CONNECT tunnel test client built with raw hyper HTTP/1.1 for full CONNECT+upgrade+TLS control
+- [01-03]: Allowlist tests send CONNECT directly (not through tunnel) for faster 403 verification
 
 ### Pending Todos
 
@@ -63,5 +68,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Phase 1 execution, Plan 01-02 complete, proceeding to Plan 01-03
+Stopped at: Phase 1 COMPLETE -- all 3 plans delivered, all success criteria verified. Ready for Phase 2.
 Resume file: None

@@ -12,7 +12,7 @@ Interdict.io is built in 10 phases that progress from a working streaming proxy 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Kernel Proxy Foundation** - Streaming-first Rust proxy intercepting AI traffic over HTTP/1.1, HTTP/2, SSE, gRPC, and WebSockets with proper connection pooling
+- [x] **Phase 1: Kernel Proxy Foundation** - Streaming-first Rust proxy intercepting AI traffic over HTTP/1.1, HTTP/2, SSE, gRPC, and WebSockets with proper connection pooling
 - [ ] **Phase 2: Policy Engine** - Wasmtime pooling allocator, Regorus evaluation, and 3-layer enforcement pipeline executing block/allow/redact verdicts
 - [ ] **Phase 3: PII Detection & Content Inspection** - PII, financial data, and secrets detection with category-tagged redaction in both prompts and streaming responses
 - [ ] **Phase 4: Evidence Collector** - Separate Rust binary producing SHA-256 hash chains, Ed25519 signatures, Merkle trees, and S3 WORM anchoring with correct ClickHouse batching
@@ -38,9 +38,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans in 3 waves
 
 Plans:
-- [ ] 01-01: Project scaffold, config, TLS cert cache, vendor allowlist middleware, logging (Wave 1)
-- [ ] 01-02: CONNECT tunnel, bidirectional relay, HTTP/2 connection pool, WebSocket support (Wave 2)
-- [ ] 01-03: Integration tests and criterion benchmarks for latency, throughput, memory (Wave 3)
+- [x] 01-01: Project scaffold, config, TLS cert cache, vendor allowlist middleware, logging (Wave 1)
+- [x] 01-02: CONNECT tunnel, bidirectional relay, HTTP/2 connection pool, WebSocket support (Wave 2)
+- [x] 01-03: Integration tests and criterion benchmarks for latency, throughput, memory (Wave 3)
 
 ### Phase 2: Policy Engine
 **Goal**: The kernel evaluates policies against intercepted traffic using a 3-layer pipeline (Wasm/Regorus deterministic rules, NLP classifier structure, human review queue structure) and enforces block/allow/redact verdicts on requests and responses
@@ -200,7 +200,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Kernel Proxy Foundation | 0/3 | Planned (3 plans, 3 waves) | - |
+| 1. Kernel Proxy Foundation | 3/3 | Complete | 2026-02-26 |
 | 2. Policy Engine | 0/3 | Not started | - |
 | 3. PII Detection & Content Inspection | 0/3 | Not started | - |
 | 4. Evidence Collector | 0/3 | Not started | - |
