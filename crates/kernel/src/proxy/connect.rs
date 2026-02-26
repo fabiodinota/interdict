@@ -14,6 +14,8 @@
 
 use crate::config::Config;
 use crate::error::{ProxyBody, ProxyError};
+use crate::policy::{Direction, PolicyPipeline, RequestContext};
+use crate::policy::verdict::VerdictAction;
 use crate::proxy::pool::ConnectionPool;
 use crate::proxy::relay;
 use crate::proxy::tls::CertCache;
@@ -57,6 +59,7 @@ pub async fn handle_connect(
     cert_cache: Arc<CertCache>,
     pool: Arc<ConnectionPool>,
     config: Arc<Config>,
+    pipeline: Option<Arc<PolicyPipeline>>,
 ) -> Result<Response<ProxyBody>, ProxyError> {
     // 1. Extract host and port from CONNECT authority
     let authority = req
@@ -72,6 +75,73 @@ pub async fn handle_connect(
         port = port,
         "CONNECT tunnel requested"
     );
+
+    // 1b. Policy pipeline evaluation (Phase 2 integration)
+    // Evaluate policies based on CONNECT metadata before establishing tunnel.
+    if let Some(ref pipeline) = pipeline {
+        let ctx = RequestContext {
+            request_id: uuid::Uuid::new_v4(),
+            vendor: host.clone(),
+            method: "CONNECT".to_string(),
+            path: format!("{}:{}", host, port),
+            content_type: None,
+            content: None,
+            direction: Direction::Outbound,
+        };
+
+        match pipeline.evaluate(&ctx).await {
+            Ok(result) => {
+                match result.merged_verdict.final_action {
+                    VerdictAction::Block => {
+                        tracing::info!(
+                            vendor = %host,
+                            action = "block",
+                            "policy pipeline blocked CONNECT request"
+                        );
+                        return Ok(Response::builder()
+                            .status(StatusCode::FORBIDDEN)
+                            .header("content-type", "application/json")
+                            .body(full_body(
+                                serde_json::to_vec(&serde_json::json!({
+                                    "error": "policy_blocked",
+                                    "message": "Request blocked by policy"
+                                }))
+                                .expect("JSON serialization should never fail"),
+                            ))
+                            .expect("Response builder with valid status should never fail"));
+                    }
+                    VerdictAction::Allow | VerdictAction::Redact => {
+                        // Allow: proceed with tunnel
+                        // Redact: proceed with tunnel (content-level redaction
+                        // happens in Phase 3 with sliding window buffer)
+                        tracing::debug!(
+                            vendor = %host,
+                            action = ?result.merged_verdict.final_action,
+                            "policy pipeline allows CONNECT request"
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!(
+                    vendor = %host,
+                    error = %e,
+                    "policy pipeline evaluation error, fail-closed"
+                );
+                return Ok(Response::builder()
+                    .status(StatusCode::FORBIDDEN)
+                    .header("content-type", "application/json")
+                    .body(full_body(
+                        serde_json::to_vec(&serde_json::json!({
+                            "error": "policy_error",
+                            "message": "Policy evaluation failed, request blocked (fail-closed)"
+                        }))
+                        .expect("JSON serialization should never fail"),
+                    ))
+                    .expect("Response builder with valid status should never fail"));
+            }
+        }
+    }
 
     let connect_timeout = Duration::from_millis(config.proxy.connect_timeout_ms);
     let stream_timeout = Duration::from_millis(config.proxy.stream_timeout_ms);
@@ -211,6 +281,7 @@ pub struct ProxyService {
     cert_cache: Arc<CertCache>,
     pool: Arc<ConnectionPool>,
     config: Arc<Config>,
+    pipeline: Option<Arc<PolicyPipeline>>,
 }
 
 impl ProxyService {
@@ -224,6 +295,22 @@ impl ProxyService {
             cert_cache,
             pool,
             config,
+            pipeline: None,
+        }
+    }
+
+    /// Create a new ProxyService with a policy pipeline.
+    pub fn with_pipeline(
+        cert_cache: Arc<CertCache>,
+        pool: Arc<ConnectionPool>,
+        config: Arc<Config>,
+        pipeline: Arc<PolicyPipeline>,
+    ) -> Self {
+        Self {
+            cert_cache,
+            pool,
+            config,
+            pipeline: Some(pipeline),
         }
     }
 }
@@ -241,10 +328,11 @@ impl Service<Request<Incoming>> for ProxyService {
         let cert_cache = self.cert_cache.clone();
         let pool = self.pool.clone();
         let config = self.config.clone();
+        let pipeline = self.pipeline.clone();
 
         Box::pin(async move {
             if req.method() == Method::CONNECT {
-                match handle_connect(req, cert_cache, pool, config).await {
+                match handle_connect(req, cert_cache, pool, config, pipeline).await {
                     Ok(response) => Ok(response),
                     Err(e) => {
                         tracing::error!(error = %e, "CONNECT handler error");

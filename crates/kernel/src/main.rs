@@ -18,6 +18,7 @@ use tower::ServiceBuilder;
 use kernel::config;
 use kernel::logging;
 use kernel::middleware;
+use kernel::policy;
 use kernel::proxy;
 
 /// Use jemalloc for predictable memory behavior required for the
@@ -74,10 +75,102 @@ async fn main() -> anyhow::Result<()> {
     // 8. Store config in Arc for sharing
     let config = Arc::new(config);
 
+    // 8b. Initialize Policy Pipeline (Phase 2)
+    let pipeline = {
+        // Create WasmEngine with pooling allocator (proves PLCY-01)
+        let wasm_engine = Arc::new(
+            policy::wasm_engine::WasmEngine::new(&config.policy)
+                .expect("WasmEngine creation should succeed"),
+        );
+        tracing::info!("Wasmtime engine with pooling allocator initialized");
+
+        // Create Regorus engine template and pool
+        // Load policies from the configured directory (if any exist)
+        let regorus_template = regorus::Engine::new();
+        let regorus_pool = Arc::new(policy::layer1::regorus::RegorusPool::new(
+            &regorus_template,
+            config.policy.regorus_pool_size,
+        ));
+        tracing::info!(
+            pool_size = config.policy.regorus_pool_size,
+            "Regorus engine pool initialized"
+        );
+
+        // Create VendorAllowlistPolicy from the existing allowlist
+        let allowlist_policy = Arc::new(policy::layer1::allowlist::VendorAllowlistPolicy::new(
+            allowlist.clone(),
+        ));
+
+        // Create Classifier (stub if no model path, real if model path configured)
+        let labels = vec![
+            "allow".to_string(),
+            "block".to_string(),
+            "redact".to_string(),
+            "uncertain".to_string(),
+        ];
+        let classifier = Arc::new(match &config.policy.l2_model_path {
+            Some(model_path) => {
+                policy::layer2::classifier::Classifier::load(model_path, labels.clone())
+                    .expect("L2 ONNX model should load")
+            }
+            None => {
+                tracing::info!("No L2 ONNX model configured, using stub classifier");
+                policy::layer2::classifier::Classifier::stub(labels.clone(), "uncertain".to_string())
+            }
+        });
+
+        // Create BackgroundL2 for analytics enrichment
+        let background_l2 = Some(policy::layer2::classifier::BackgroundL2::new(
+            classifier.clone(),
+            config.policy.l2_background_workers,
+            config.policy.l2_queue_depth,
+        ));
+        tracing::info!(
+            workers = config.policy.l2_background_workers,
+            queue_depth = config.policy.l2_queue_depth,
+            "Background L2 classifier initialized"
+        );
+
+        // Create ReviewQueueStore and ReviewQueue (L3)
+        let review_store = Arc::new(
+            policy::layer3::store::ReviewQueueStore::new(&config.policy.review_db_path)
+                .expect("ReviewQueueStore should open"),
+        );
+        let review_queue = Arc::new(policy::layer3::queue::ReviewQueue::new(
+            review_store,
+            config.policy.l3_max_pending_reviews,
+            Duration::from_secs(config.policy.l3_timeout_seconds),
+        ));
+        tracing::info!(
+            max_pending = config.policy.l3_max_pending_reviews,
+            timeout_secs = config.policy.l3_timeout_seconds,
+            "L3 human review queue initialized"
+        );
+
+        // Create RedactionEngine (with default patterns for Phase 2)
+        let redaction_engine = Arc::new(policy::redaction::RedactionEngine::empty());
+
+        // No configured Rego policies yet (policies_dir may not exist)
+        let policies: Vec<policy::config::PolicyConfig> = vec![];
+
+        Arc::new(policy::PolicyPipeline::new(
+            regorus_pool,
+            allowlist_policy,
+            classifier,
+            background_l2,
+            review_queue,
+            redaction_engine,
+            wasm_engine,
+            policies,
+        ))
+    };
+
+    tracing::info!("Policy pipeline initialized");
+
     // 9. Build the Tower service stack
     //    Request flow: RequestIdLayer -> AllowlistLayer -> ProxyService
     let proxy_service =
-        proxy::ProxyService::new(cert_cache.clone(), pool.clone(), config.clone());
+        proxy::ProxyService::with_pipeline(cert_cache.clone(), pool.clone(), config.clone(), pipeline);
 
     // 10. Bind TCP listener
     let listener = tokio::net::TcpListener::bind(&config.proxy.listen_addr).await?;
