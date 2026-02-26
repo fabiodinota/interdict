@@ -16,10 +16,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Kernel / Data Plane
 
-- [ ] **KERN-01**: Rust transparent proxy intercepts all outbound AI traffic over HTTP/1.1 and HTTP/2
-- [ ] **KERN-02**: Proxy decodes and handles Server-Sent Events (SSE) streaming responses from AI vendors
-- [ ] **KERN-03**: Proxy decodes and handles gRPC streaming for enterprise AI services
-- [ ] **KERN-04**: Proxy decodes and handles WebSocket connections for real-time AI applications
+- [x] **KERN-01**: Rust transparent proxy intercepts all outbound AI traffic over HTTP/1.1 and HTTP/2
+- [x] **KERN-02**: Proxy decodes and handles Server-Sent Events (SSE) streaming responses from AI vendors
+- [x] **KERN-03**: Proxy decodes and handles gRPC streaming for enterprise AI services
+- [x] **KERN-04**: Proxy decodes and handles WebSocket connections for real-time AI applications
 - [ ] **KERN-05**: Sliding window token buffer holds 5-10 tokens back for multi-token pattern detection in streaming responses
 - [ ] **KERN-06**: Kernel can sever a streaming connection mid-response and replace content with `[REDACTED BY INTERDICT POLICY: {RULE_NAME}]`
 - [ ] **KERN-07**: Kernel achieves <10ms p99 latency overhead (target <5ms) on proxied AI requests
@@ -27,8 +27,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **KERN-09**: Kernel steady-state RAM usage stays under 128MB with <100m CPU idle, <500m burst
 - [ ] **KERN-10**: Kernel maintains session context across multi-turn conversations per user/session, detecting policy violations that emerge across multiple exchanges
 - [ ] **KERN-11**: Kernel checks vendor allowlist before forwarding any outbound AI request, blocking non-approved vendors
-- [ ] **KERN-12**: Kernel manages multiple HTTP/2 connections per AI vendor backend to avoid single-connection stream saturation
-- [ ] **KERN-13**: Kernel uses bounded tokio channels (no unbounded channels) with explicit capacity limits on all internal communication
+- [x] **KERN-12**: Kernel manages multiple HTTP/2 connections per AI vendor backend to avoid single-connection stream saturation
+- [x] **KERN-13**: Kernel uses bounded tokio channels (no unbounded channels) with explicit capacity limits on all internal communication
 - [ ] **KERN-14**: Evidence bundle creation is fully asynchronous -- binary logs compressed and pushed to local memory buffer, background flush every 500ms via gRPC to Evidence Collector
 
 ### PII & Sensitive Data
@@ -153,10 +153,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PILOT-02 | Phase 7 | Pending |
 | PILOT-03 | Phase 10 | Pending |
 | PILOT-04 | Phase 10 | Pending |
-| KERN-01 | Phase 1 | Pending |
-| KERN-02 | Phase 1 | Pending |
-| KERN-03 | Phase 1 | Pending |
-| KERN-04 | Phase 1 | Pending |
+| KERN-01 | Phase 1 | Complete |
+| KERN-02 | Phase 1 | Complete |
+| KERN-03 | Phase 1 | Complete |
+| KERN-04 | Phase 1 | Complete |
 | KERN-05 | Phase 3 | Pending |
 | KERN-06 | Phase 3 | Pending |
 | KERN-07 | Phase 1 | Pending |
@@ -164,8 +164,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KERN-09 | Phase 1 | Pending |
 | KERN-10 | Phase 6 | Pending |
 | KERN-11 | Phase 2 | Pending |
-| KERN-12 | Phase 1 | Pending |
-| KERN-13 | Phase 1 | Pending |
+| KERN-12 | Phase 1 | Complete |
+| KERN-13 | Phase 1 | Complete |
 | KERN-14 | Phase 4 | Pending |
 | PII-01 | Phase 3 | Pending |
 | PII-02 | Phase 3 | Pending |
