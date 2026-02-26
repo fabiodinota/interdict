@@ -1543,6 +1543,7 @@ dependencies = [
  "tract-onnx",
  "uuid",
  "wasmtime",
+ "wat",
  "webpki-roots 0.26.11",
  "wiremock",
 ]
