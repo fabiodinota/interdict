@@ -1,7 +1,7 @@
 # Requirements: Interdict.io
 
 **Defined:** 2026-02-26
-**Core Value:** Every AI action an employee takes is routed through a policy-enforcing kernel — logged, signed, and regulatorily mapped — before it reaches any model
+**Core Value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
 
 ## Pilot Requirements (Law Firm ~80 Users, March 2026)
 
@@ -29,7 +29,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **KERN-11**: Kernel checks vendor allowlist before forwarding any outbound AI request, blocking non-approved vendors
 - [ ] **KERN-12**: Kernel manages multiple HTTP/2 connections per AI vendor backend to avoid single-connection stream saturation
 - [ ] **KERN-13**: Kernel uses bounded tokio channels (no unbounded channels) with explicit capacity limits on all internal communication
-- [ ] **KERN-14**: Evidence bundle creation is fully asynchronous — binary logs compressed and pushed to local memory buffer, background flush every 500ms via gRPC to Evidence Collector
+- [ ] **KERN-14**: Evidence bundle creation is fully asynchronous -- binary logs compressed and pushed to local memory buffer, background flush every 500ms via gRPC to Evidence Collector
 
 ### PII & Sensitive Data
 
@@ -51,7 +51,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **PLCY-07**: Policies support three enforcement actions: block (reject request), allow (pass through), redact (modify and pass)
 - [ ] **PLCY-08**: Policies are configurable per department, per user, and per AI vendor
 - [ ] **PLCY-09**: Fail-closed / fail-open is a per-policy configuration flag controlling behavior when the kernel encounters errors
-- [ ] **PLCY-10**: Department-level policy segmentation with inheritance model: organization defaults → department overrides → team overrides
+- [ ] **PLCY-10**: Department-level policy segmentation with inheritance model: organization defaults -> department overrides -> team overrides
 - [ ] **PLCY-11**: Prompt injection and jailbreak detection via Layer 2 NLP classifier identifies direct/indirect injection attacks and prompt leaking attempts
 
 ### Cryptographic Audit Pipeline
@@ -69,31 +69,31 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Control Plane API
 
-- [ ] **CTRL-01**: Policy CRUD API — create, read, update, delete policies with Rego/YAML source
+- [ ] **CTRL-01**: Policy CRUD API -- create, read, update, delete policies with Rego/YAML source
 - [ ] **CTRL-02**: Policy compiler transforms human-readable Rego/YAML rules into compiled Wasm modules
 - [ ] **CTRL-03**: Policy distribution pushes compiled Wasm modules to kernel fleet via gRPC server-streaming (Envoy xDS-style pattern, not polling)
-- [ ] **CTRL-04**: Vendor registry API — CRUD for approved/blocked AI vendors with per-vendor model version allowlists
-- [ ] **CTRL-05**: Regulatory framework mapping engine — selecting a jurisdiction auto-enables corresponding policy configurations
+- [ ] **CTRL-04**: Vendor registry API -- CRUD for approved/blocked AI vendors with per-vendor model version allowlists
+- [ ] **CTRL-05**: Regulatory framework mapping engine -- selecting a jurisdiction auto-enables corresponding policy configurations
 - [ ] **CTRL-06**: Pre-built regulatory policy packs for EU AI Act, GDPR, NIST AI RMF, Singapore PDPA, India DPDP, China AI Regs, Canada AIDA/PIPEDA, GCC frameworks
-- [ ] **CTRL-07**: Audit trail query API — searchable, filterable execution history by user, department, vendor, policy decision, time range, violation type
+- [ ] **CTRL-07**: Audit trail query API -- searchable, filterable execution history by user, department, vendor, policy decision, time range, violation type
 - [ ] **CTRL-08**: Master key management API for cryptographic signing key rotation across kernel fleet
 - [ ] **CTRL-09**: RBAC with five roles: Super Admin, Compliance Officer, Policy Admin, Department Manager, Read-Only Auditor
 - [ ] **CTRL-10**: PostgreSQL for configuration, policies (Rego source + compiled Wasm blobs), users, RBAC, vendor registry, regulatory mappings
 - [ ] **CTRL-11**: ClickHouse for high-volume audit log analytics, anomaly detection queries, and compliance reporting data
-- [ ] **CTRL-12**: SAML 2.0 integration for enterprise IdPs (Okta, Azure AD) — verify SAML assertions at API boundary, pass verified identity claims downstream
+- [ ] **CTRL-12**: SAML 2.0 integration for enterprise IdPs (Okta, Azure AD) -- verify SAML assertions at API boundary, pass verified identity claims downstream
 
 ### Dashboard
 
-- [ ] **DASH-01**: Policy Builder UI — compliance officers can create, edit, enable/disable policies without writing Rego directly
-- [ ] **DASH-02**: Regulatory framework selector — pick jurisdiction, see corresponding technical configurations enabled, toggle individual policy mappings
-- [ ] **DASH-03**: Audit trail view — searchable, filterable view of all AI interactions with policy decisions, identity attribution, and evidence bundle references
-- [ ] **DASH-04**: Vendor management UI — approve/block AI vendors, set model version allowlists, view vendor risk status
-- [ ] **DASH-05**: Real-time policy violation statistics — violations by type, department, vendor, time period with trend analysis
-- [ ] **DASH-06**: Compliance reporting — automated PDF/CSV reports for regulators, legal teams, risk departments
-- [ ] **DASH-07**: Department-level policy management — configure per-department overrides with visual inheritance display
-- [ ] **DASH-08**: Evidence bundle verification UI — verify hash chain integrity, check Ed25519 signatures, view Merkle tree structure, verify S3 anchor hashes
-- [ ] **DASH-09**: Human review queue UI — compliance officers review Layer 3 escalations, approve/reject with reasoning that feeds back into policy refinement
-- [ ] **DASH-10**: Anomaly detection views — volume anomalies (unusual request counts), time-based anomalies (off-hours access), pattern anomalies (unusual AI usage)
+- [ ] **DASH-01**: Policy Builder UI -- compliance officers can create, edit, enable/disable policies without writing Rego directly
+- [ ] **DASH-02**: Regulatory framework selector -- pick jurisdiction, see corresponding technical configurations enabled, toggle individual policy mappings
+- [ ] **DASH-03**: Audit trail view -- searchable, filterable view of all AI interactions with policy decisions, identity attribution, and evidence bundle references
+- [ ] **DASH-04**: Vendor management UI -- approve/block AI vendors, set model version allowlists, view vendor risk status
+- [ ] **DASH-05**: Real-time policy violation statistics -- violations by type, department, vendor, time period with trend analysis
+- [ ] **DASH-06**: Compliance reporting -- automated PDF/CSV reports for regulators, legal teams, risk departments
+- [ ] **DASH-07**: Department-level policy management -- configure per-department overrides with visual inheritance display
+- [ ] **DASH-08**: Evidence bundle verification UI -- verify hash chain integrity, check Ed25519 signatures, view Merkle tree structure, verify S3 anchor hashes
+- [ ] **DASH-09**: Human review queue UI -- compliance officers review Layer 3 escalations, approve/reject with reasoning that feeds back into policy refinement
+- [ ] **DASH-10**: Anomaly detection views -- volume anomalies (unusual request counts), time-based anomalies (off-hours access), pattern anomalies (unusual AI usage)
 
 ### Infrastructure & Deployment
 
@@ -101,9 +101,9 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **INFR-02**: Kubernetes Helm chart for enterprise K8s deployments with configurable resource limits
 - [ ] **INFR-03**: Kernel runs as K8s sidecar container in same pod as company's AI application, intercepting outbound traffic on configurable port
 - [ ] **INFR-04**: Container images for all services (kernel, evidence collector, control plane API, dashboard) published to container registry
-- [ ] **INFR-05**: mTLS between all internal components — kernel ↔ control plane, kernel ↔ evidence collector, API ↔ PostgreSQL, API ↔ ClickHouse
+- [ ] **INFR-05**: mTLS between all internal components -- kernel to control plane, kernel to evidence collector, API to PostgreSQL, API to ClickHouse
 - [ ] **INFR-06**: TLS termination for AI vendor connections with deployment-unique CA keypair generation (never ship pre-generated keys)
-- [ ] **INFR-07**: All data stays inside customer network perimeter — no phone-home telemetry, no external dependencies after initial deployment
+- [ ] **INFR-07**: All data stays inside customer network perimeter -- no phone-home telemetry, no external dependencies after initial deployment
 
 ## v2 Requirements
 
@@ -111,18 +111,18 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ### Identity & Integration
 
-- **IDENT-01**: OIDC integration (Okta, Azure AD, Google Workspace) — read identity from enterprise SSO JWT tokens
+- **IDENT-01**: OIDC integration (Okta, Azure AD, Google Workspace) -- read identity from enterprise SSO JWT tokens
 - **INTG-01**: SIEM integration via webhook/syslog output to Splunk, Sentinel, QRadar
 - **INTG-02**: SOAR integration for automated incident response workflows
 
 ### Advanced Capabilities
 
-- **ADV-01**: Agentic AI / MCP Gateway governance — intercept and govern AI agent tool calls
+- **ADV-01**: Agentic AI / MCP Gateway governance -- intercept and govern AI agent tool calls
 - **ADV-02**: Shadow AI discovery via network-level detection of unapproved AI services
 - **ADV-03**: Transparent TLS interception mode (vs. explicit proxy configuration in v1)
-- **ADV-04**: Air-gapped deployment mode — fully functional without internet after initial setup
+- **ADV-04**: Air-gapped deployment mode -- fully functional without internet after initial setup
 - **ADV-05**: Multi-instance kernel state synchronization for high availability
-- **ADV-06**: TEE integration — evidence signing inside AWS Nitro Enclaves
+- **ADV-06**: TEE integration -- evidence signing inside AWS Nitro Enclaves
 - **ADV-07**: eBPF-based syscall interception for agent container sandboxing
 
 ## Out of Scope
@@ -149,88 +149,88 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PILOT-01 | TBD | Pending |
-| PILOT-02 | TBD | Pending |
-| PILOT-03 | TBD | Pending |
-| PILOT-04 | TBD | Pending |
-| KERN-01 | TBD | Pending |
-| KERN-02 | TBD | Pending |
-| KERN-03 | TBD | Pending |
-| KERN-04 | TBD | Pending |
-| KERN-05 | TBD | Pending |
-| KERN-06 | TBD | Pending |
-| KERN-07 | TBD | Pending |
-| KERN-08 | TBD | Pending |
-| KERN-09 | TBD | Pending |
-| KERN-10 | TBD | Pending |
-| KERN-11 | TBD | Pending |
-| KERN-12 | TBD | Pending |
-| KERN-13 | TBD | Pending |
-| KERN-14 | TBD | Pending |
-| PII-01 | TBD | Pending |
-| PII-02 | TBD | Pending |
-| PII-03 | TBD | Pending |
-| PII-04 | TBD | Pending |
-| PII-05 | TBD | Pending |
-| PII-06 | TBD | Pending |
-| PLCY-01 | TBD | Pending |
-| PLCY-02 | TBD | Pending |
-| PLCY-03 | TBD | Pending |
-| PLCY-04 | TBD | Pending |
-| PLCY-05 | TBD | Pending |
-| PLCY-06 | TBD | Pending |
-| PLCY-07 | TBD | Pending |
-| PLCY-08 | TBD | Pending |
-| PLCY-09 | TBD | Pending |
-| PLCY-10 | TBD | Pending |
-| PLCY-11 | TBD | Pending |
-| EVID-01 | TBD | Pending |
-| EVID-02 | TBD | Pending |
-| EVID-03 | TBD | Pending |
-| EVID-04 | TBD | Pending |
-| EVID-05 | TBD | Pending |
-| EVID-06 | TBD | Pending |
-| EVID-07 | TBD | Pending |
-| EVID-08 | TBD | Pending |
-| EVID-09 | TBD | Pending |
-| EVID-10 | TBD | Pending |
-| CTRL-01 | TBD | Pending |
-| CTRL-02 | TBD | Pending |
-| CTRL-03 | TBD | Pending |
-| CTRL-04 | TBD | Pending |
-| CTRL-05 | TBD | Pending |
-| CTRL-06 | TBD | Pending |
-| CTRL-07 | TBD | Pending |
-| CTRL-08 | TBD | Pending |
-| CTRL-09 | TBD | Pending |
-| CTRL-10 | TBD | Pending |
-| CTRL-11 | TBD | Pending |
-| CTRL-12 | TBD | Pending |
-| DASH-01 | TBD | Pending |
-| DASH-02 | TBD | Pending |
-| DASH-03 | TBD | Pending |
-| DASH-04 | TBD | Pending |
-| DASH-05 | TBD | Pending |
-| DASH-06 | TBD | Pending |
-| DASH-07 | TBD | Pending |
-| DASH-08 | TBD | Pending |
-| DASH-09 | TBD | Pending |
-| DASH-10 | TBD | Pending |
-| INFR-01 | TBD | Pending |
-| INFR-02 | TBD | Pending |
-| INFR-03 | TBD | Pending |
-| INFR-04 | TBD | Pending |
-| INFR-05 | TBD | Pending |
-| INFR-06 | TBD | Pending |
-| INFR-07 | TBD | Pending |
+| PILOT-01 | Phase 10 | Pending |
+| PILOT-02 | Phase 7 | Pending |
+| PILOT-03 | Phase 10 | Pending |
+| PILOT-04 | Phase 10 | Pending |
+| KERN-01 | Phase 1 | Pending |
+| KERN-02 | Phase 1 | Pending |
+| KERN-03 | Phase 1 | Pending |
+| KERN-04 | Phase 1 | Pending |
+| KERN-05 | Phase 3 | Pending |
+| KERN-06 | Phase 3 | Pending |
+| KERN-07 | Phase 1 | Pending |
+| KERN-08 | Phase 1 | Pending |
+| KERN-09 | Phase 1 | Pending |
+| KERN-10 | Phase 6 | Pending |
+| KERN-11 | Phase 2 | Pending |
+| KERN-12 | Phase 1 | Pending |
+| KERN-13 | Phase 1 | Pending |
+| KERN-14 | Phase 4 | Pending |
+| PII-01 | Phase 3 | Pending |
+| PII-02 | Phase 3 | Pending |
+| PII-03 | Phase 3 | Pending |
+| PII-04 | Phase 3 | Pending |
+| PII-05 | Phase 3 | Pending |
+| PII-06 | Phase 3 | Pending |
+| PLCY-01 | Phase 2 | Pending |
+| PLCY-02 | Phase 2 | Pending |
+| PLCY-03 | Phase 2 | Pending |
+| PLCY-04 | Phase 2 | Pending |
+| PLCY-05 | Phase 9 | Pending |
+| PLCY-06 | Phase 6 | Pending |
+| PLCY-07 | Phase 2 | Pending |
+| PLCY-08 | Phase 6 | Pending |
+| PLCY-09 | Phase 2 | Pending |
+| PLCY-10 | Phase 6 | Pending |
+| PLCY-11 | Phase 3 | Pending |
+| EVID-01 | Phase 4 | Pending |
+| EVID-02 | Phase 4 | Pending |
+| EVID-03 | Phase 4 | Pending |
+| EVID-04 | Phase 4 | Pending |
+| EVID-05 | Phase 4 | Pending |
+| EVID-06 | Phase 4 | Pending |
+| EVID-07 | Phase 4 | Pending |
+| EVID-08 | Phase 4 | Pending |
+| EVID-09 | Phase 4 | Pending |
+| EVID-10 | Phase 4 | Pending |
+| CTRL-01 | Phase 5 | Pending |
+| CTRL-02 | Phase 5 | Pending |
+| CTRL-03 | Phase 6 | Pending |
+| CTRL-04 | Phase 5 | Pending |
+| CTRL-05 | Phase 5 | Pending |
+| CTRL-06 | Phase 5 | Pending |
+| CTRL-07 | Phase 5 | Pending |
+| CTRL-08 | Phase 7 | Pending |
+| CTRL-09 | Phase 7 | Pending |
+| CTRL-10 | Phase 5 | Pending |
+| CTRL-11 | Phase 5 | Pending |
+| CTRL-12 | Phase 7 | Pending |
+| DASH-01 | Phase 8 | Pending |
+| DASH-02 | Phase 8 | Pending |
+| DASH-03 | Phase 8 | Pending |
+| DASH-04 | Phase 8 | Pending |
+| DASH-05 | Phase 8 | Pending |
+| DASH-06 | Phase 9 | Pending |
+| DASH-07 | Phase 9 | Pending |
+| DASH-08 | Phase 9 | Pending |
+| DASH-09 | Phase 9 | Pending |
+| DASH-10 | Phase 9 | Pending |
+| INFR-01 | Phase 10 | Pending |
+| INFR-02 | Phase 10 | Pending |
+| INFR-03 | Phase 10 | Pending |
+| INFR-04 | Phase 10 | Pending |
+| INFR-05 | Phase 7 | Pending |
+| INFR-06 | Phase 7 | Pending |
+| INFR-07 | Phase 10 | Pending |
 
 **Coverage:**
 - Pilot requirements: 4 total
-- v1 requirements: 67 total
-- Total: 71
-- Mapped to phases: 0
-- Unmapped: 71 ⚠️
+- v1 requirements: 70 total
+- Total: 74
+- Mapped to phases: 74
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-26*
-*Last updated: 2026-02-26 after initial definition*
+*Last updated: 2026-02-26 after roadmap creation*
