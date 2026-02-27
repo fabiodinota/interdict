@@ -51,3 +51,8 @@ wat = "1"
 [[bench]]
 name = "proxy_latency"
 harness = false
+
+
+[[bench]]
+name = "pattern_matching"
+harness = false
