@@ -18,7 +18,7 @@ use std::time::Duration;
 
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{oneshot, Semaphore, TryAcquireError};
+use tokio::sync::{Semaphore, TryAcquireError, oneshot};
 
 use super::store::{QueueItem, ReviewQueueStore};
 use crate::policy::config::FailMode;
@@ -193,11 +193,7 @@ impl ReviewQueue {
     /// Called by the management API when a human reviewer decides.
     /// Returns `true` if the verdict was delivered to the waiting connection,
     /// `false` if the request already timed out.
-    pub fn submit_verdict(
-        &self,
-        request_id: &str,
-        verdict: HumanVerdict,
-    ) -> anyhow::Result<bool> {
+    pub fn submit_verdict(&self, request_id: &str, verdict: HumanVerdict) -> anyhow::Result<bool> {
         // Update SQLite store first.
         let action_str = match verdict.action {
             VerdictAction::Allow => "allow",
@@ -419,9 +415,7 @@ mod tests {
             .await;
 
         // Verify the item was persisted to the store.
-        let item = store
-            .get_by_request_id(&request_id.to_string())
-            .unwrap();
+        let item = store.get_by_request_id(&request_id.to_string()).unwrap();
         assert!(item.is_some());
         let item = item.unwrap();
         assert_eq!(item.content_hash, "hash-persist");

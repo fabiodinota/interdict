@@ -137,23 +137,18 @@ where
 fn extract_host<B>(req: &Request<B>) -> Option<String> {
     if req.method() == Method::CONNECT {
         // CONNECT requests have authority in the URI
-        req.uri()
-            .authority()
-            .map(|auth| auth.host().to_string())
+        req.uri().authority().map(|auth| auth.host().to_string())
     } else {
         // Direct HTTP: try URI host first, then Host header
-        req.uri()
-            .host()
-            .map(|h| h.to_string())
-            .or_else(|| {
-                req.headers()
-                    .get(http::header::HOST)
-                    .and_then(|v| v.to_str().ok())
-                    .map(|h| {
-                        // Strip port if present
-                        h.split(':').next().unwrap_or(h).to_string()
-                    })
-            })
+        req.uri().host().map(|h| h.to_string()).or_else(|| {
+            req.headers()
+                .get(http::header::HOST)
+                .and_then(|v| v.to_str().ok())
+                .map(|h| {
+                    // Strip port if present
+                    h.split(':').next().unwrap_or(h).to_string()
+                })
+        })
     }
 }
 

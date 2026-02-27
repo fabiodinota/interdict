@@ -195,7 +195,10 @@ mod tests {
         let (output_tx, mut output_rx) = mpsc::channel(10);
 
         input_tx.send(Bytes::from("Contact ")).await.unwrap();
-        input_tx.send(Bytes::from("user@example.com ")).await.unwrap();
+        input_tx
+            .send(Bytes::from("user@example.com "))
+            .await
+            .unwrap();
         input_tx.send(Bytes::from("today")).await.unwrap();
         drop(input_tx);
 
@@ -263,11 +266,8 @@ mod tests {
 
         // Collect all output — may include passthrough chunks before sever message
         let mut all_output = String::new();
-        while let Ok(Some(msg)) = tokio::time::timeout(
-            std::time::Duration::from_millis(100),
-            output_rx.recv(),
-        )
-        .await
+        while let Ok(Some(msg)) =
+            tokio::time::timeout(std::time::Duration::from_millis(100), output_rx.recv()).await
         {
             all_output.push_str(&String::from_utf8_lossy(&msg));
         }

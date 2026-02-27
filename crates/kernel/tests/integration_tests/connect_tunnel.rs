@@ -28,11 +28,7 @@ async fn test_connect_tunnel_basic() {
 
     // Create mock backend using the proxy's CA
     let backend = proxy
-        .create_mock_backend(
-            StatusCode::OK,
-            "application/json",
-            body_bytes.clone(),
-        )
+        .create_mock_backend(StatusCode::OK, "application/json", body_bytes.clone())
         .await;
 
     // Send HTTPS request through the CONNECT tunnel
@@ -66,11 +62,7 @@ async fn test_connect_tunnel_preserves_headers() {
     // We'll use a mock that just returns 200 -- header preservation is verified
     // by the fact that the request reaches the backend at all through TLS.
     let backend = proxy
-        .create_mock_backend(
-            StatusCode::OK,
-            "application/json",
-            b"{}".to_vec(),
-        )
+        .create_mock_backend(StatusCode::OK, "application/json", b"{}".to_vec())
         .await;
 
     let req = Request::builder()
@@ -123,7 +115,11 @@ async fn test_connect_tunnel_large_response() {
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body.len(), 1_000_000, "full 1MB body should be received");
-    assert_eq!(&body[..], &large_body[..], "body content should match exactly");
+    assert_eq!(
+        &body[..],
+        &large_body[..],
+        "body content should match exactly"
+    );
 }
 
 /// Test that non-CONNECT requests are rejected with 400 Bad Request.

@@ -132,10 +132,7 @@ impl RegorusPool {
     ///
     /// Creates a new Engine, loads the given Rego source, and returns it.
     /// Use this to build the template engine passed to `RegorusPool::new`.
-    pub fn load_policy(
-        policy_id: &str,
-        rego_source: &str,
-    ) -> anyhow::Result<regorus::Engine> {
+    pub fn load_policy(policy_id: &str, rego_source: &str) -> anyhow::Result<regorus::Engine> {
         let mut engine = regorus::Engine::new();
         engine.add_policy(policy_id.to_string(), rego_source.to_string())?;
         Ok(engine)
@@ -153,7 +150,10 @@ impl RegorusPool {
 }
 
 /// Helper to get a string value from a regorus::Value object by key name.
-fn get_str_field(obj: &std::collections::BTreeMap<regorus::Value, regorus::Value>, key: &str) -> Option<String> {
+fn get_str_field(
+    obj: &std::collections::BTreeMap<regorus::Value, regorus::Value>,
+    key: &str,
+) -> Option<String> {
     let key_val = regorus::Value::from(key);
     obj.get(&key_val)
         .and_then(|v| v.as_string().ok())
@@ -202,7 +202,9 @@ fn parse_rego_verdict(policy_id: &str, value: &regorus::Value) -> PolicyVerdict 
 }
 
 /// Parse redactions array from a Rego verdict object.
-fn parse_redactions(obj: &std::collections::BTreeMap<regorus::Value, regorus::Value>) -> Vec<Redaction> {
+fn parse_redactions(
+    obj: &std::collections::BTreeMap<regorus::Value, regorus::Value>,
+) -> Vec<Redaction> {
     let key_val = regorus::Value::from("redactions");
     let Some(redactions_val) = obj.get(&key_val) else {
         return vec![];
@@ -445,10 +447,7 @@ mod tests {
 
     #[test]
     fn test_load_policy_invalid_rego_returns_error() {
-        let engine = RegorusPool::load_policy(
-            "bad.rego",
-            "this is not valid rego at all!!!",
-        );
+        let engine = RegorusPool::load_policy("bad.rego", "this is not valid rego at all!!!");
         assert!(engine.is_err());
     }
 }

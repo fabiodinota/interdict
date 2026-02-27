@@ -10,7 +10,7 @@
 
 use std::sync::Mutex;
 
-use rusqlite::{params, Connection, Result as SqlResult};
+use rusqlite::{Connection, Result as SqlResult, params};
 
 /// A single item in the review queue, as persisted in SQLite.
 #[derive(Debug, Clone)]

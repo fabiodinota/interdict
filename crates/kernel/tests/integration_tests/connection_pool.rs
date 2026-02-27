@@ -173,7 +173,9 @@ async fn send_through_tunnel_raw(
     use hyper_util::rt::TokioIo;
 
     let mut root_store = rustls::RootCertStore::empty();
-    root_store.add(rustls::pki_types::CertificateDer::from(ca_cert_der.to_vec()))?;
+    root_store.add(rustls::pki_types::CertificateDer::from(
+        ca_cert_der.to_vec(),
+    ))?;
 
     let client_config = Arc::new(
         rustls::ClientConfig::builder()

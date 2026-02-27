@@ -173,8 +173,7 @@ fn generate_server_config(
 
     // Build rustls ServerConfig
     let cert_chain = vec![ee_cert.into()];
-    let private_key =
-        rustls::pki_types::PrivatePkcs8KeyDer::from(ee_key.serialized_der().to_vec());
+    let private_key = rustls::pki_types::PrivatePkcs8KeyDer::from(ee_key.serialized_der().to_vec());
 
     let server_config = rustls::ServerConfig::builder()
         .with_no_client_auth()
@@ -258,7 +257,10 @@ mod tests {
             "api.cohere.ai".to_string(),
         ];
 
-        cache.pre_warm(&domains).await.expect("pre-warm should succeed");
+        cache
+            .pre_warm(&domains)
+            .await
+            .expect("pre-warm should succeed");
         assert_eq!(cache.len(), 3);
     }
 

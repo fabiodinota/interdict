@@ -21,9 +21,7 @@ use std::time::{Duration, Instant};
 async fn test_sse_streaming_incremental_delivery() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
 
-    let chunks: Vec<String> = (0..5)
-        .map(|i| format!("data: token_{}\n\n", i))
-        .collect();
+    let chunks: Vec<String> = (0..5).map(|i| format!("data: token_{}\n\n", i)).collect();
 
     let backend = proxy.create_sse_backend(chunks.clone(), 50).await;
 
@@ -33,10 +31,9 @@ async fn test_sse_streaming_incremental_delivery() {
         .expect("tunnel should establish");
 
     let io = TokioIo::new(tls_stream);
-    let (mut sender, conn) =
-        hyper::client::conn::http1::handshake::<_, Empty<Bytes>>(io)
-            .await
-            .unwrap();
+    let (mut sender, conn) = hyper::client::conn::http1::handshake::<_, Empty<Bytes>>(io)
+        .await
+        .unwrap();
     tokio::spawn(conn);
 
     let req = Request::builder()
@@ -122,10 +119,9 @@ async fn test_large_streaming_response() {
         .expect("tunnel should establish");
 
     let io = TokioIo::new(tls_stream);
-    let (mut sender, conn) =
-        hyper::client::conn::http1::handshake::<_, Empty<Bytes>>(io)
-            .await
-            .unwrap();
+    let (mut sender, conn) = hyper::client::conn::http1::handshake::<_, Empty<Bytes>>(io)
+        .await
+        .unwrap();
     tokio::spawn(conn);
 
     let req = Request::builder()

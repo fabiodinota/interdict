@@ -137,7 +137,7 @@ impl StreamingDetector {
         {
             return true;
         }
-        
+
         false
     }
 

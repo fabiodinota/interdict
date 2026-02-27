@@ -115,7 +115,10 @@ async fn main() -> anyhow::Result<()> {
             }
             None => {
                 tracing::info!("No L2 ONNX model configured, using stub classifier");
-                policy::layer2::classifier::Classifier::stub(labels.clone(), "uncertain".to_string())
+                policy::layer2::classifier::Classifier::stub(
+                    labels.clone(),
+                    "uncertain".to_string(),
+                )
             }
         });
 
@@ -169,8 +172,12 @@ async fn main() -> anyhow::Result<()> {
 
     // 9. Build the Tower service stack
     //    Request flow: RequestIdLayer -> AllowlistLayer -> ProxyService
-    let proxy_service =
-        proxy::ProxyService::with_pipeline(cert_cache.clone(), pool.clone(), config.clone(), pipeline);
+    let proxy_service = proxy::ProxyService::with_pipeline(
+        cert_cache.clone(),
+        pool.clone(),
+        config.clone(),
+        pipeline,
+    );
 
     // 10. Bind TCP listener
     let listener = tokio::net::TcpListener::bind(&config.proxy.listen_addr).await?;

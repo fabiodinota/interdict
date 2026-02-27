@@ -11,10 +11,10 @@ use crate::error::ProxyError;
 use futures_util::{SinkExt, StreamExt};
 use http::Request;
 use tokio::io::{AsyncRead, AsyncWrite};
+use tokio_tungstenite::WebSocketStream;
+use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
-use tokio_tungstenite::tungstenite::Message;
-use tokio_tungstenite::WebSocketStream;
 
 /// Detect whether an HTTP request is a WebSocket upgrade request.
 ///
@@ -72,10 +72,7 @@ pub fn is_websocket_upgrade<B>(req: &Request<B>) -> bool {
 ///
 /// - If upstream disconnects: sends Close frame with code 1011 (Internal Error) to client
 /// - If client disconnects: closes upstream cleanly
-pub async fn relay_websocket<C, U>(
-    client_stream: C,
-    upstream_stream: U,
-) -> Result<(), ProxyError>
+pub async fn relay_websocket<C, U>(client_stream: C, upstream_stream: U) -> Result<(), ProxyError>
 where
     C: AsyncRead + AsyncWrite + Unpin,
     U: AsyncRead + AsyncWrite + Unpin,
@@ -288,9 +285,10 @@ mod tests {
         let (proxy_upstream_side, upstream_side) = tokio::io::duplex(4096);
 
         // Spawn the relay
-        let relay_handle = tokio::spawn(async move {
-            relay_websocket(proxy_client_side, proxy_upstream_side).await
-        });
+        let relay_handle =
+            tokio::spawn(
+                async move { relay_websocket(proxy_client_side, proxy_upstream_side).await },
+            );
 
         // Wrap the external ends as WebSocket streams
         let mut client_ws = WebSocketStream::from_raw_socket(
@@ -331,11 +329,7 @@ mod tests {
         client_ws.close(None).await.unwrap();
 
         // Relay should complete
-        let result = tokio::time::timeout(
-            std::time::Duration::from_secs(2),
-            relay_handle,
-        )
-        .await;
+        let result = tokio::time::timeout(std::time::Duration::from_secs(2), relay_handle).await;
         assert!(result.is_ok(), "relay should complete after close");
     }
 
@@ -344,9 +338,10 @@ mod tests {
         let (client_side, proxy_client_side) = tokio::io::duplex(4096);
         let (proxy_upstream_side, upstream_side) = tokio::io::duplex(4096);
 
-        let relay_handle = tokio::spawn(async move {
-            relay_websocket(proxy_client_side, proxy_upstream_side).await
-        });
+        let relay_handle =
+            tokio::spawn(
+                async move { relay_websocket(proxy_client_side, proxy_upstream_side).await },
+            );
 
         let mut client_ws = WebSocketStream::from_raw_socket(
             client_side,
@@ -359,12 +354,11 @@ mod tests {
         drop(upstream_side);
 
         // Relay should detect upstream disconnect and close client with 1011
-        let result = tokio::time::timeout(
-            std::time::Duration::from_secs(2),
-            relay_handle,
-        )
-        .await;
-        assert!(result.is_ok(), "relay should complete after upstream disconnect");
+        let result = tokio::time::timeout(std::time::Duration::from_secs(2), relay_handle).await;
+        assert!(
+            result.is_ok(),
+            "relay should complete after upstream disconnect"
+        );
 
         // Client should receive a close (or stream end)
         // The exact behavior depends on timing, but the relay should not hang

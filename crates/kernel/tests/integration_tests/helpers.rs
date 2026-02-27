@@ -13,13 +13,11 @@ use hyper::body::Frame;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto;
 use hyper_util::service::TowerToHyperService;
-use kernel::config::{
-    AllowlistConfig, Config, LoggingConfig, PoolConfig, ProxyConfig, TlsConfig,
-};
+use kernel::config::{AllowlistConfig, Config, LoggingConfig, PoolConfig, ProxyConfig, TlsConfig};
 use kernel::middleware;
+use kernel::proxy::ProxyService;
 use kernel::proxy::pool::ConnectionPool;
 use kernel::proxy::tls::CertCache;
-use kernel::proxy::ProxyService;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -310,7 +308,11 @@ impl TestProxy {
             .body(Empty::<Bytes>::new())?;
 
         let connect_resp = sender.send_request(connect_req).await?;
-        assert_eq!(connect_resp.status(), StatusCode::OK, "CONNECT should succeed");
+        assert_eq!(
+            connect_resp.status(),
+            StatusCode::OK,
+            "CONNECT should succeed"
+        );
 
         let upgraded = hyper::upgrade::on(connect_resp).await?;
         let tls_connector = tokio_rustls::TlsConnector::from(self.client_tls_config());
@@ -329,8 +331,14 @@ impl TestProxy {
         content_type: &str,
         body: Vec<u8>,
     ) -> MockBackend {
-        MockBackend::fixed_response(&self.ca_cert_pem, &self.ca_key_pem, status, content_type, body)
-            .await
+        MockBackend::fixed_response(
+            &self.ca_cert_pem,
+            &self.ca_key_pem,
+            status,
+            content_type,
+            body,
+        )
+        .await
     }
 
     /// Create a streaming SSE mock backend signed by this proxy's test CA.
@@ -339,17 +347,18 @@ impl TestProxy {
         chunks: Vec<String>,
         delay_between_ms: u64,
     ) -> MockBackend {
-        MockBackend::sse_streaming(&self.ca_cert_pem, &self.ca_key_pem, chunks, delay_between_ms)
-            .await
+        MockBackend::sse_streaming(
+            &self.ca_cert_pem,
+            &self.ca_key_pem,
+            chunks,
+            delay_between_ms,
+        )
+        .await
     }
 
     /// Create a delayed-response mock backend signed by this proxy's test CA.
     #[allow(dead_code)]
-    pub async fn create_delayed_backend(
-        &self,
-        delay: Duration,
-        status: StatusCode,
-    ) -> MockBackend {
+    pub async fn create_delayed_backend(&self, delay: Duration, status: StatusCode) -> MockBackend {
         MockBackend::delayed_response(&self.ca_cert_pem, &self.ca_key_pem, delay, status).await
     }
 }
@@ -428,7 +437,11 @@ impl MockBackend {
         });
 
         wait_for_ready(addr).await;
-        MockBackend { addr, _server_handle: server_handle, shutdown_tx }
+        MockBackend {
+            addr,
+            _server_handle: server_handle,
+            shutdown_tx,
+        }
     }
 
     /// Create a mock backend that sends SSE-style chunked responses with delays.
@@ -505,7 +518,11 @@ impl MockBackend {
         });
 
         wait_for_ready(addr).await;
-        MockBackend { addr, _server_handle: server_handle, shutdown_tx }
+        MockBackend {
+            addr,
+            _server_handle: server_handle,
+            shutdown_tx,
+        }
     }
 
     /// Create a mock backend that delays each response by the given duration.
@@ -561,7 +578,11 @@ impl MockBackend {
         });
 
         wait_for_ready(addr).await;
-        MockBackend { addr, _server_handle: server_handle, shutdown_tx }
+        MockBackend {
+            addr,
+            _server_handle: server_handle,
+            shutdown_tx,
+        }
     }
 
     /// Get the backend's port.
@@ -579,8 +600,7 @@ impl Drop for MockBackend {
 // --- Internal helpers ---
 
 fn generate_test_ca() -> (rcgen::Certificate, rcgen::KeyPair, String, String, Vec<u8>) {
-    let mut params =
-        rcgen::CertificateParams::new(Vec::<String>::new()).expect("empty SAN list");
+    let mut params = rcgen::CertificateParams::new(Vec::<String>::new()).expect("empty SAN list");
     params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
     params
         .distinguished_name
@@ -605,8 +625,7 @@ async fn create_tls_server_with_ca(
     hostname: &str,
 ) -> (rustls::ServerConfig, SocketAddr, TcpListener) {
     let ca_key = rcgen::KeyPair::from_pem(ca_key_pem).expect("parse CA key");
-    let ca_params =
-        rcgen::CertificateParams::from_ca_cert_pem(ca_cert_pem).expect("parse CA cert");
+    let ca_params = rcgen::CertificateParams::from_ca_cert_pem(ca_cert_pem).expect("parse CA cert");
     let ca_cert = ca_params.self_signed(&ca_key).expect("reconstruct CA cert");
 
     let san = rcgen::SanType::IpAddress(
@@ -625,8 +644,7 @@ async fn create_tls_server_with_ca(
         .expect("sign server cert");
 
     let cert_chain = vec![ee_cert.into()];
-    let private_key =
-        rustls::pki_types::PrivatePkcs8KeyDer::from(ee_key.serialized_der().to_vec());
+    let private_key = rustls::pki_types::PrivatePkcs8KeyDer::from(ee_key.serialized_der().to_vec());
 
     let server_config = rustls::ServerConfig::builder()
         .with_no_client_auth()

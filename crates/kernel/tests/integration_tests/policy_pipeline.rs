@@ -14,9 +14,7 @@ use std::time::{Duration, Instant};
 
 use kernel::config::PolicyEngineConfig;
 use kernel::middleware::allowlist::VendorAllowlist;
-use kernel::policy::config::{
-    BlockResponseDetail, FailMode, PolicyConfig, RedactionDirection,
-};
+use kernel::policy::config::{BlockResponseDetail, FailMode, PolicyConfig, RedactionDirection};
 use kernel::policy::layer1::allowlist::VendorAllowlistPolicy;
 use kernel::policy::layer1::regorus::RegorusPool;
 use kernel::policy::layer2::classifier::Classifier;
@@ -60,9 +58,7 @@ fn make_pipeline(
     let regorus_pool = Arc::new(RegorusPool::new(template_engine, 4));
     let allowlist = Arc::new(VendorAllowlist::new(allowlist_vendors));
     let allowlist_policy = Arc::new(VendorAllowlistPolicy::new(allowlist));
-    let store = Arc::new(
-        ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"),
-    );
+    let store = Arc::new(ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"));
     let review_queue = Arc::new(ReviewQueue::new(store, 10, Duration::from_millis(200)));
     let redaction_engine = Arc::new(RedactionEngine::empty());
     let wasm_engine = Arc::new(
@@ -234,7 +230,11 @@ async fn test_wasmtime_pooling_allocator_memory_bound() {
     }
 
     // Verify pool is still healthy after 10,000+ evaluations
-    assert_eq!(pool.available(), 4, "All engines should be returned to pool");
+    assert_eq!(
+        pool.available(),
+        4,
+        "All engines should be returned to pool"
+    );
     println!("10,001 evaluations completed. Pool fully healthy.");
 }
 
@@ -306,9 +306,7 @@ async fn test_l2_uncertain_routes_to_l3() {
     let regorus_pool = Arc::new(RegorusPool::new(&engine, 2));
     let allowlist = Arc::new(VendorAllowlist::new(&["api.openai.com"]));
     let allowlist_policy = Arc::new(VendorAllowlistPolicy::new(allowlist));
-    let store = Arc::new(
-        ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"),
-    );
+    let store = Arc::new(ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"));
     let review_queue = Arc::new(ReviewQueue::new(
         store.clone(),
         10,
@@ -344,9 +342,7 @@ async fn test_l2_uncertain_routes_to_l3() {
     assert_eq!(result.merged_verdict.final_action, VerdictAction::Block);
 
     // Verify the queue item was persisted in SQLite
-    let item = store
-        .get_by_request_id(&request_id.to_string())
-        .unwrap();
+    let item = store.get_by_request_id(&request_id.to_string()).unwrap();
     assert!(
         item.is_some(),
         "L3 queue item should be persisted in SQLite"

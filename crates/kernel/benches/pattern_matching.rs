@@ -9,9 +9,9 @@
 //! - `redaction_apply`     — Apply redaction to pre-detected content
 //! - `buffer_push_emit`    — Buffer push+emit throughput
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use kernel::policy::patterns::default::default_patterns;
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use kernel::policy::patterns::PatternRegistry;
+use kernel::policy::patterns::default::default_patterns;
 use kernel::policy::redaction::RedactionEngine;
 use kernel::policy::streaming::StreamingDetector;
 use std::sync::Arc;

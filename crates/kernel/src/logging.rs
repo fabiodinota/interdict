@@ -40,10 +40,7 @@ pub fn init(config: &LoggingConfig) {
         }
         other => {
             // Fall back to JSON for unknown formats (fail-closed: use most structured format)
-            tracing::warn!(
-                format = other,
-                "unknown log format, falling back to JSON"
-            );
+            tracing::warn!(format = other, "unknown log format, falling back to JSON");
             tracing_subscriber::fmt()
                 .json()
                 .with_env_filter(env_filter)

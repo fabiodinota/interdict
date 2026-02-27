@@ -13,8 +13,8 @@
 use regex::Regex;
 use std::sync::Arc;
 
-use super::validators::{luhn_check, validate_iban};
 use super::PatternRule;
+use super::validators::{luhn_check, validate_iban};
 
 /// Build the comprehensive default pattern library.
 ///
@@ -300,12 +300,16 @@ mod tests {
     #[test]
     fn test_address_pattern() {
         let pattern = address_pattern();
-        assert!(pattern
-            .pattern
-            .is_match("123 Main Street, Springfield, IL 62701"));
-        assert!(pattern
-            .pattern
-            .is_match("456 Oak Ave, Los Angeles, CA 90001-1234"));
+        assert!(
+            pattern
+                .pattern
+                .is_match("123 Main Street, Springfield, IL 62701")
+        );
+        assert!(
+            pattern
+                .pattern
+                .is_match("456 Oak Ave, Los Angeles, CA 90001-1234")
+        );
     }
 
     #[test]
@@ -354,21 +358,27 @@ mod tests {
     #[test]
     fn test_openai_key_pattern() {
         let pattern = openai_key_pattern();
-        assert!(pattern
-            .pattern
-            .is_match("sk-1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKL"));
+        assert!(
+            pattern
+                .pattern
+                .is_match("sk-1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKL")
+        );
         assert!(!pattern.pattern.is_match("sk-short")); // Too short
     }
 
     #[test]
     fn test_github_token_pattern() {
         let pattern = github_token_pattern();
-        assert!(pattern
-            .pattern
-            .is_match("ghp_1234567890abcdefghijklmnopqrstuvwxyz"));
-        assert!(pattern
-            .pattern
-            .is_match("ghs_1234567890abcdefghijklmnopqrstuvwxyz"));
+        assert!(
+            pattern
+                .pattern
+                .is_match("ghp_1234567890abcdefghijklmnopqrstuvwxyz")
+        );
+        assert!(
+            pattern
+                .pattern
+                .is_match("ghs_1234567890abcdefghijklmnopqrstuvwxyz")
+        );
         assert!(!pattern.pattern.is_match("github_token_123")); // Wrong format
     }
 
@@ -378,9 +388,11 @@ mod tests {
         assert!(pattern.pattern.is_match("-----BEGIN PRIVATE KEY-----"));
         assert!(pattern.pattern.is_match("-----BEGIN RSA PRIVATE KEY-----"));
         assert!(pattern.pattern.is_match("-----BEGIN EC PRIVATE KEY-----"));
-        assert!(pattern
-            .pattern
-            .is_match("-----BEGIN OPENSSH PRIVATE KEY-----"));
+        assert!(
+            pattern
+                .pattern
+                .is_match("-----BEGIN OPENSSH PRIVATE KEY-----")
+        );
     }
 
     #[test]

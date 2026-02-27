@@ -9,19 +9,17 @@
 //! The overhead includes: CONNECT handling, TLS interception, byte relay.
 
 use bytes::Bytes;
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use http::{Method, Request, StatusCode};
 use http_body_util::{BodyExt, Empty, Full};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto;
 use hyper_util::service::TowerToHyperService;
-use kernel::config::{
-    AllowlistConfig, Config, LoggingConfig, PoolConfig, ProxyConfig, TlsConfig,
-};
+use kernel::config::{AllowlistConfig, Config, LoggingConfig, PoolConfig, ProxyConfig, TlsConfig};
 use kernel::middleware;
+use kernel::proxy::ProxyService;
 use kernel::proxy::pool::ConnectionPool;
 use kernel::proxy::tls::CertCache;
-use kernel::proxy::ProxyService;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -137,18 +135,19 @@ fn setup_bench_env(rt: &Runtime) -> BenchState {
                         Err(_) => return,
                     };
                     let io = TokioIo::new(tls_stream);
-                    let svc = hyper::service::service_fn(move |_req: Request<hyper::body::Incoming>| {
-                        let body = body.clone();
-                        async move {
-                            Ok::<_, std::convert::Infallible>(
-                                hyper::Response::builder()
-                                    .status(200u16)
-                                    .header("content-type", "application/json")
-                                    .body(Full::new(body))
-                                    .unwrap()
-                            )
-                        }
-                    });
+                    let svc =
+                        hyper::service::service_fn(move |_req: Request<hyper::body::Incoming>| {
+                            let body = body.clone();
+                            async move {
+                                Ok::<_, std::convert::Infallible>(
+                                    hyper::Response::builder()
+                                        .status(200u16)
+                                        .header("content-type", "application/json")
+                                        .body(Full::new(body))
+                                        .unwrap(),
+                                )
+                            }
+                        });
                     let _ = auto::Builder::new(TokioExecutor::new())
                         .serve_connection(io, svc)
                         .await;
@@ -225,8 +224,7 @@ fn bench_proxy_throughput(c: &mut Criterion) {
                         let cfg = client_config.clone();
                         let port = state.backend_port;
                         handles.push(tokio::spawn(async move {
-                            send_proxied_request(addr, &cfg, "127.0.0.1", port, "/v1/bench")
-                                .await
+                            send_proxied_request(addr, &cfg, "127.0.0.1", port, "/v1/bench").await
                         }));
                     }
                     for h in handles {
@@ -276,8 +274,7 @@ fn bench_proxy_memory(c: &mut Criterion) {
 // --- Helpers ---
 
 fn generate_test_ca() -> (rcgen::Certificate, rcgen::KeyPair, String, String, Vec<u8>) {
-    let mut params =
-        rcgen::CertificateParams::new(Vec::<String>::new()).expect("empty SAN list");
+    let mut params = rcgen::CertificateParams::new(Vec::<String>::new()).expect("empty SAN list");
     params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
     params
         .distinguished_name
@@ -311,8 +308,7 @@ async fn create_tls_server_with_ca(
     let ee_cert = ee_params.signed_by(&ee_key, &ca_cert, &ca_key).unwrap();
 
     let cert_chain = vec![ee_cert.into()];
-    let private_key =
-        rustls::pki_types::PrivatePkcs8KeyDer::from(ee_key.serialized_der().to_vec());
+    let private_key = rustls::pki_types::PrivatePkcs8KeyDer::from(ee_key.serialized_der().to_vec());
 
     let server_config = rustls::ServerConfig::builder()
         .with_no_client_auth()
@@ -327,7 +323,9 @@ async fn create_tls_server_with_ca(
 fn build_client_config(ca_cert_der: &[u8]) -> Arc<rustls::ClientConfig> {
     let mut root_store = rustls::RootCertStore::empty();
     root_store
-        .add(rustls::pki_types::CertificateDer::from(ca_cert_der.to_vec()))
+        .add(rustls::pki_types::CertificateDer::from(
+            ca_cert_der.to_vec(),
+        ))
         .unwrap();
 
     Arc::new(
@@ -396,5 +394,10 @@ async fn wait_for_ready(addr: SocketAddr) {
     panic!("server at {} not ready", addr);
 }
 
-criterion_group!(benches, bench_proxy_latency, bench_proxy_throughput, bench_proxy_memory);
+criterion_group!(
+    benches,
+    bench_proxy_latency,
+    bench_proxy_throughput,
+    bench_proxy_memory
+);
 criterion_main!(benches);

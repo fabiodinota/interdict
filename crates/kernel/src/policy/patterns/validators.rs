@@ -133,7 +133,7 @@ mod tests {
     fn test_luhn_check_invalid_cards() {
         assert!(!luhn_check("4532015112830367")); // Last digit wrong
         assert!(!luhn_check("1234567812345678")); // Random digits
-                                                  // Note: "0000000000000000" actually passes Luhn check (mathematically valid)
+        // Note: "0000000000000000" actually passes Luhn check (mathematically valid)
     }
 
     #[test]

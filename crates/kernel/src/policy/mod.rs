@@ -214,9 +214,10 @@ impl PolicyPipeline {
         // Check if any Rego policy returned "no match" (Allow with no reason,
         // indicating the rule didn't match rather than explicitly allowing).
         // The allowlist verdict always has a reason, so we skip it.
-        let has_no_match = l1_verdicts.iter().skip(1).any(|v| {
-            v.action == VerdictAction::Allow && v.reason.is_none()
-        });
+        let has_no_match = l1_verdicts
+            .iter()
+            .skip(1)
+            .any(|v| v.action == VerdictAction::Allow && v.reason.is_none());
 
         // Explicit verdict: Block, Redact, or all explicit Allows (no "no match")
         let has_explicit_verdict = l1_merged.final_action == VerdictAction::Block
@@ -227,9 +228,7 @@ impl PolicyPipeline {
             // Enforce L1 verdict immediately.
             // Dispatch background L2 for analytics if configured.
             let should_dispatch = self.policies.iter().any(|p| p.background_l2 && p.enabled);
-            if should_dispatch
-                && let Some(ref bg) = self.background_l2
-            {
+            if should_dispatch && let Some(ref bg) = self.background_l2 {
                 bg.submit(L2WorkItem {
                     request_id: ctx.request_id,
                     input_features: extract_features(ctx),
@@ -323,7 +322,13 @@ impl PolicyPipeline {
         // Final merge with all verdicts (L1 + L2 and/or L3)
         let final_merged = MergedVerdict::merge(all_verdicts.clone());
 
-        self.build_result(ctx, final_merged, &l1_verdicts, l2_classification, l3_decision)
+        self.build_result(
+            ctx,
+            final_merged,
+            &l1_verdicts,
+            l2_classification,
+            l3_decision,
+        )
     }
 
     /// Build the final PipelineResult, applying redaction if needed.
@@ -450,9 +455,8 @@ mod tests {
         let regorus_pool = Arc::new(RegorusPool::new(template_engine, 2));
         let allowlist = Arc::new(VendorAllowlist::new(allowlist_vendors));
         let allowlist_policy = Arc::new(VendorAllowlistPolicy::new(allowlist));
-        let store = Arc::new(
-            ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"),
-        );
+        let store =
+            Arc::new(ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"));
         let review_queue = Arc::new(ReviewQueue::new(store, 10, Duration::from_millis(200)));
         let redaction_engine = Arc::new(RedactionEngine::empty());
         let wasm_engine = Arc::new(
@@ -527,9 +531,8 @@ mod tests {
         let regorus_pool = Arc::new(RegorusPool::new(&engine, 2));
         let allowlist = Arc::new(VendorAllowlist::new(&["api.openai.com"]));
         let allowlist_policy = Arc::new(VendorAllowlistPolicy::new(allowlist));
-        let store = Arc::new(
-            ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"),
-        );
+        let store =
+            Arc::new(ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"));
         let review_queue = Arc::new(ReviewQueue::new(store, 10, Duration::from_millis(200)));
         let redaction_engine = Arc::new(RedactionEngine::empty());
         let wasm_engine = Arc::new(
@@ -663,9 +666,8 @@ mod tests {
         let regorus_pool = Arc::new(RegorusPool::new(&empty_engine, 2));
         let allowlist = Arc::new(VendorAllowlist::new(&["api.openai.com"]));
         let allowlist_policy = Arc::new(VendorAllowlistPolicy::new(allowlist));
-        let store = Arc::new(
-            ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"),
-        );
+        let store =
+            Arc::new(ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"));
         let review_queue = Arc::new(ReviewQueue::new(store, 10, Duration::from_millis(200)));
         let redaction_engine = Arc::new(RedactionEngine::empty());
         let wasm_engine = Arc::new(
@@ -718,9 +720,8 @@ mod tests {
         let regorus_pool = Arc::new(RegorusPool::new(&empty_engine, 2));
         let allowlist = Arc::new(VendorAllowlist::new(&["api.openai.com"]));
         let allowlist_policy = Arc::new(VendorAllowlistPolicy::new(allowlist));
-        let store = Arc::new(
-            ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"),
-        );
+        let store =
+            Arc::new(ReviewQueueStore::new(":memory:").expect("in-memory SQLite should work"));
         let review_queue = Arc::new(ReviewQueue::new(store, 10, Duration::from_millis(200)));
         let redaction_engine = Arc::new(RedactionEngine::empty());
         let wasm_engine = Arc::new(

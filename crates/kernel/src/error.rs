@@ -5,9 +5,9 @@
 
 use bytes::Bytes;
 use http::Response;
-use http_body_util::combinators::BoxBody;
 use http_body_util::BodyExt;
 use http_body_util::Full;
+use http_body_util::combinators::BoxBody;
 use serde::Serialize;
 
 use crate::policy::config::BlockResponseDetail;
@@ -154,9 +154,7 @@ pub fn policy_blocked_response(
             message: Some(format!(
                 "Request blocked by policy '{}'{}",
                 policy_id,
-                reason
-                    .map(|r| format!(": {}", r))
-                    .unwrap_or_default()
+                reason.map(|r| format!(": {}", r)).unwrap_or_default()
             )),
         }),
         BlockResponseDetail::Opaque => serde_json::to_vec(&PolicyBlockedResponse {

@@ -12,8 +12,8 @@
 //! domain type.
 
 use crate::middleware::allowlist::VendorAllowlist;
-use crate::policy::verdict::{PolicyVerdict, VerdictAction};
 use crate::policy::RequestContext;
+use crate::policy::verdict::{PolicyVerdict, VerdictAction};
 use std::sync::Arc;
 
 /// Vendor allowlist as a Layer 1 policy.

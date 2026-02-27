@@ -11,8 +11,8 @@
 use crate::config::PoolConfig;
 use crate::error::ProxyError;
 use dashmap::DashMap;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio::net::TcpStream;
 
