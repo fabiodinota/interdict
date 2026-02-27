@@ -14,3 +14,4 @@
 //! is logged alongside the verdict for analytics).
 
 pub mod classifier;
+pub mod injection;
