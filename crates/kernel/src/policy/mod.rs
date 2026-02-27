@@ -14,6 +14,7 @@
 //! `PipelineResult` with the merged verdict, full trace, and optional redaction.
 
 pub mod config;
+pub mod content_inspection;
 pub mod layer1;
 pub mod layer2;
 pub mod layer3;
