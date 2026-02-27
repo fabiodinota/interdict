@@ -70,12 +70,13 @@ Plans:
   3. A streaming AI response containing PII is inspected via the sliding window token buffer (5-10 tokens held back) and sensitive content is redacted before reaching the client
   4. The kernel can sever a streaming connection mid-response and inject `[REDACTED BY INTERDICT POLICY: {RULE_NAME}]` when a severe policy violation is detected in the response stream
   5. Custom enterprise patterns (client names, matter numbers, case codes) loaded from policy configuration are detected and redacted alongside built-in patterns
-**Plans**: TBD
+**Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
-- [ ] 03-03: TBD
+- [ ] 03-01-PLAN.md — Default pattern library with validators (PII, financial, secrets) (Wave 1)
+- [ ] 03-02-PLAN.md — Adaptive streaming buffer and pattern detector (Wave 1)
+- [ ] 03-03-PLAN.md — Content inspection integration with streaming relay and stream severing (Wave 2)
+- [ ] 03-04-PLAN.md — Integration tests and performance benchmarks (Wave 3)
 
 ### Phase 4: Evidence Collector
 **Goal**: A separate Rust binary service receives evidence events from the kernel via gRPC, builds a cryptographically linked hash chain with Ed25519 signatures, constructs hourly Merkle trees, anchors root hashes to S3 Object Lock, and batch-inserts to ClickHouse without triggering "too many parts" failures
@@ -202,8 +203,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Kernel Proxy Foundation | 3/3 | Complete | 2026-02-26 |
-| 2. Policy Engine | 3/4 | In Progress | - |
-| 3. PII Detection & Content Inspection | 0/3 | Not started | - |
+| 2. Policy Engine | 4/4 | Complete | 2026-02-26 |
+| 3. PII Detection & Content Inspection | 0/4 | Not started | - |
 | 4. Evidence Collector | 0/3 | Not started | - |
 | 5. Control Plane API Core | 0/3 | Not started | - |
 | 6. Policy Distribution & Kernel Integration | 0/2 | Not started | - |
