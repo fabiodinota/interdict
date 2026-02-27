@@ -7,6 +7,7 @@
 //! 4. Determine verdict based on detected categories (Block for severe, Redact for PII)
 
 use crate::policy::config::PolicyConfig;
+use crate::policy::layer2::injection::InjectionDetector;
 use crate::policy::patterns::PatternRegistry;
 use crate::policy::redaction::RedactionEngine;
 use crate::policy::streaming::StreamingDetector;
@@ -22,6 +23,7 @@ pub struct ContentInspector {
     redactor: Arc<RedactionEngine>,
     #[allow(dead_code)]
     policy_config: Arc<PolicyConfig>,
+    injection_detector: Arc<InjectionDetector>,
 }
 
 /// Result of inspecting content.
@@ -51,6 +53,7 @@ impl ContentInspector {
             detector,
             redactor,
             policy_config,
+            injection_detector: Arc::new(InjectionDetector::new()),
         }
     }
 
@@ -66,6 +69,23 @@ impl ContentInspector {
         let mut hasher = Sha256::new();
         hasher.update(content);
         let original_hash = format!("{:x}", hasher.finalize());
+
+        // PLCY-11: prompt injection/jailbreak detection has priority.
+        let injections = self.injection_detector.detect(&text);
+        if !injections.is_empty() {
+            let categories: Vec<String> = injections
+                .iter()
+                .map(|d| format!("INJECTION:{:?}", d.kind))
+                .collect();
+
+            return InspectionResult {
+                action: VerdictAction::Block,
+                redacted_content: None,
+                detections: categories,
+                original_hash,
+                reason: "prompt injection or jailbreak attempt detected".to_string(),
+            };
+        }
 
         // Scan for patterns
         let scan_result = self.detector.scan(&text);
