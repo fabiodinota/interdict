@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package interdict.evidence.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service EvidenceCollector {
+  rpc SubmitEvidence(stream EvidenceBatch) returns (SubmitResponse);
+}
+
+message EvidenceBatch {
+  bytes compressed_payload = 1;
+  string kernel_id = 2;
+  uint64 batch_sequence = 3;
+}
+
+message SubmitResponse {
+  uint64 accepted_count = 1;
+  uint64 rejected_count = 2;
+  string error_message = 3;
+}
+
+message EvidenceBundle {
+  string bundle_id = 1;
+  string kernel_id = 2;
+  google.protobuf.Timestamp timestamp = 3;
+
+  string actor_identity = 4;
+  string department = 5;
+  string vendor = 6;
+  string model = 7;
+
+  string prompt_hash = 8;
+  string response_hash = 9;
+  string prompt_text = 10;
+  string response_text = 11;
+
+  string policy_action = 12;
+  string policy_rules_json = 13;
+  uint32 token_count = 14;
+  uint64 enforcement_latency_us = 15;
+
+  bytes chain_hash = 16;
+  bytes previous_hash = 17;
+  uint64 sequence_number = 18;
+
+  bytes signature = 19;
+  string signing_key_id = 20;
+  bool dev_signed = 21;
+
+  uint32 schema_version = 22;
+}
