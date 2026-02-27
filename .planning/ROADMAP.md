@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Kernel Proxy Foundation** - Streaming-first Rust proxy intercepting AI traffic over HTTP/1.1, HTTP/2, SSE, gRPC, and WebSockets with proper connection pooling
 - [x] **Phase 2: Policy Engine** - Wasmtime pooling allocator, Regorus evaluation, and 3-layer enforcement pipeline executing block/allow/redact verdicts
-- [x] **Phase 3: PII Detection & Content Inspection** - PII, financial data, and secrets detection with category-tagged redaction in both prompts and streaming responses (completed 2026-02-27)
+- [ ] **Phase 3: PII Detection & Content Inspection** - PII, financial data, and secrets detection with category-tagged redaction in both prompts and streaming responses (gap closure in progress: 03-06 pending)
 - [ ] **Phase 4: Evidence Collector** - Separate Rust binary producing SHA-256 hash chains, Ed25519 signatures, Merkle trees, and S3 WORM anchoring with correct ClickHouse batching
 - [ ] **Phase 5: Control Plane API Core** - Bun + Elysia API with policy CRUD, Rego-to-Wasm compiler, vendor registry, regulatory framework mappings, and database schemas
 - [ ] **Phase 6: Policy Distribution & Kernel Integration** - gRPC xDS-style push from control plane to kernel fleet with hot-reload, session context tracking, and fail-closed/open behavior
@@ -73,11 +73,11 @@ Plans:
 **Plans**: 6 plans in 3 waves
 
 Plans:
-- [ ] 03-01-PLAN.md — Default pattern library with validators (PII, financial, secrets) (Wave 1)
-- [ ] 03-02-PLAN.md — Adaptive streaming buffer and pattern detector (Wave 1)
-- [ ] 03-03-PLAN.md — Content inspection integration with streaming relay and stream severing (Wave 2)
-- [ ] 03-04-PLAN.md — Integration tests and performance benchmarks (Wave 3)
-- [ ] 03-05-PLAN.md — Gap closure: PLCY-11 prompt injection / jailbreak heuristic detector (Wave 1)
+- [x] 03-01-PLAN.md — Default pattern library with validators (PII, financial, secrets) (Wave 1)
+- [x] 03-02-PLAN.md — Adaptive streaming buffer and pattern detector (Wave 1)
+- [x] 03-03-PLAN.md — Content inspection integration with streaming relay and stream severing (Wave 2)
+- [x] 03-04-PLAN.md — Integration tests and performance benchmarks (Wave 3)
+- [x] 03-05-PLAN.md — Gap closure: PLCY-11 prompt injection / jailbreak heuristic detector (Wave 1)
 - [ ] 03-06-PLAN.md — Gap closure: Wire ContentInspector into CONNECT tunnel outbound relay (Wave 1)
 
 ### Phase 4: Evidence Collector
@@ -206,7 +206,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 |-------|----------------|--------|-----------|
 | 1. Kernel Proxy Foundation | 3/3 | Complete | 2026-02-26 |
 | 2. Policy Engine | 4/4 | Complete | 2026-02-26 |
-| 3. PII Detection & Content Inspection | 4/4 | Complete   | 2026-02-27 |
+| 3. PII Detection & Content Inspection | 5/6 | In Progress | - |
 | 4. Evidence Collector | 0/3 | Not started | - |
 | 5. Control Plane API Core | 0/3 | Not started | - |
 | 6. Policy Distribution & Kernel Integration | 0/2 | Not started | - |
@@ -217,4 +217,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-02-26*
+*Last updated: 2026-02-27*

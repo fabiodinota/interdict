@@ -52,7 +52,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **PLCY-08**: Policies are configurable per department, per user, and per AI vendor
 - [x] **PLCY-09**: Fail-closed / fail-open is a per-policy configuration flag controlling behavior when the kernel encounters errors
 - [ ] **PLCY-10**: Department-level policy segmentation with inheritance model: organization defaults -> department overrides -> team overrides
-- [ ] **PLCY-11**: Prompt injection and jailbreak detection via Layer 2 NLP classifier identifies direct/indirect injection attacks and prompt leaking attempts
+- [x] **PLCY-11**: Prompt injection and jailbreak detection via Layer 2 NLP classifier identifies direct/indirect injection attacks and prompt leaking attempts
 
 ### Cryptographic Audit Pipeline
 
@@ -183,7 +183,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLCY-08 | Phase 6 | Pending |
 | PLCY-09 | Phase 2 | Complete |
 | PLCY-10 | Phase 6 | Pending |
-| PLCY-11 | Phase 3 | Pending |
+| PLCY-11 | Phase 3 | Complete |
 | EVID-01 | Phase 4 | Pending |
 | EVID-02 | Phase 4 | Pending |
 | EVID-03 | Phase 4 | Pending |
