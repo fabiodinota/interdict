@@ -67,6 +67,13 @@ impl RedactionEngine {
         Self { rules: vec![] }
     }
 
+    /// Create a redaction placeholder for a category.
+    ///
+    /// Used by StreamingDetector to generate placeholders for detected patterns.
+    pub fn create_placeholder(&self, category: &str, _original: &str) -> String {
+        format!("[REDACTED:{}]", category)
+    }
+
     /// Apply all redaction rules to the given content.
     ///
     /// **IMPORTANT:** The SHA-256 hash is computed FIRST, before any
