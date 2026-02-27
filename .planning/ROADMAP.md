@@ -70,13 +70,15 @@ Plans:
   3. A streaming AI response containing PII is inspected via the sliding window token buffer (5-10 tokens held back) and sensitive content is redacted before reaching the client
   4. The kernel can sever a streaming connection mid-response and inject `[REDACTED BY INTERDICT POLICY: {RULE_NAME}]` when a severe policy violation is detected in the response stream
   5. Custom enterprise patterns (client names, matter numbers, case codes) loaded from policy configuration are detected and redacted alongside built-in patterns
-**Plans**: 4 plans in 3 waves
+**Plans**: 6 plans in 3 waves
 
 Plans:
 - [ ] 03-01-PLAN.md — Default pattern library with validators (PII, financial, secrets) (Wave 1)
 - [ ] 03-02-PLAN.md — Adaptive streaming buffer and pattern detector (Wave 1)
 - [ ] 03-03-PLAN.md — Content inspection integration with streaming relay and stream severing (Wave 2)
 - [ ] 03-04-PLAN.md — Integration tests and performance benchmarks (Wave 3)
+- [ ] 03-05-PLAN.md — Gap closure: PLCY-11 prompt injection / jailbreak heuristic detector (Wave 1)
+- [ ] 03-06-PLAN.md — Gap closure: Wire ContentInspector into CONNECT tunnel outbound relay (Wave 1)
 
 ### Phase 4: Evidence Collector
 **Goal**: A separate Rust binary service receives evidence events from the kernel via gRPC, builds a cryptographically linked hash chain with Ed25519 signatures, constructs hourly Merkle trees, anchors root hashes to S3 Object Lock, and batch-inserts to ClickHouse without triggering "too many parts" failures
