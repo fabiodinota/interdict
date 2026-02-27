@@ -6,6 +6,7 @@
 pub mod connect;
 pub mod pool;
 pub mod relay;
+pub mod streaming_relay;
 pub mod tls;
 pub mod websocket;
 
