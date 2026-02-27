@@ -15,6 +15,7 @@
 use crate::config::Config;
 use crate::error::{ProxyBody, ProxyError};
 use crate::policy::{Direction, PolicyPipeline, RequestContext};
+use crate::policy::content_inspection::ContentInspector;
 use crate::policy::verdict::VerdictAction;
 use crate::proxy::pool::ConnectionPool;
 use crate::proxy::relay;
@@ -78,6 +79,11 @@ pub async fn handle_connect(
 
     // 1b. Policy pipeline evaluation (Phase 2 integration)
     // Evaluate policies based on CONNECT metadata before establishing tunnel.
+    //
+    // Note: Request body inspection via ContentInspector will be integrated
+    // in a future phase when HTTP request body parsing is added to the proxy.
+    // Phase 3 focuses on streaming response inspection via InspectingRelay.
+    // The content_inspector field in ProxyService is plumbing for future use.
     if let Some(ref pipeline) = pipeline {
         let ctx = RequestContext {
             request_id: uuid::Uuid::new_v4(),
@@ -282,6 +288,8 @@ pub struct ProxyService {
     pool: Arc<ConnectionPool>,
     config: Arc<Config>,
     pipeline: Option<Arc<PolicyPipeline>>,
+    #[allow(dead_code)]
+    content_inspector: Option<Arc<ContentInspector>>,
 }
 
 impl ProxyService {
@@ -296,6 +304,7 @@ impl ProxyService {
             pool,
             config,
             pipeline: None,
+            content_inspector: None,
         }
     }
 
@@ -311,7 +320,18 @@ impl ProxyService {
             pool,
             config,
             pipeline: Some(pipeline),
+            content_inspector: None,
         }
+    }
+
+    /// Add a content inspector to this ProxyService (builder pattern).
+    ///
+    /// The content inspector will be used for request body inspection
+    /// when application protocol parsing is added in a future phase.
+    /// Phase 3 focuses on streaming response inspection via InspectingRelay.
+    pub fn with_content_inspector(mut self, inspector: Arc<ContentInspector>) -> Self {
+        self.content_inspector = Some(inspector);
+        self
     }
 }
 
