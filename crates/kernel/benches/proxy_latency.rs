@@ -85,6 +85,7 @@ fn setup_bench_env(rt: &Runtime) -> BenchState {
                 level: "error".to_string(),
                 format: "pretty".to_string(),
             },
+            policy: kernel::config::PolicyEngineConfig::default(),
         });
 
         let allowlist = Arc::new(middleware::allowlist::VendorAllowlist::from_config(
