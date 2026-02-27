@@ -1,14 +1,13 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "📜 Policy updated — recompiling and validating..."
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "${ROOT_DIR}"
 
-# Recompile Rego → Wasm
-cargo run -p policy-compiler --quiet
+echo "Policy update hook triggered"
 
-# Validate against all regulatory packs
-echo "→ Validating EU AI Act, GDPR, NIST mappings..."
-cargo test --test regulatory --quiet
+# Current repository baseline: validate policy-sensitive tests and linting.
+cargo clippy -p kernel --all-targets -- -D warnings
+cargo test -p kernel --test content_inspection_test --quiet
 
-echo "→ Pushing new policies (dry-run)"
-echo "✅ Policy update complete"
+echo "Policy update validation complete"

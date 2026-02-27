@@ -1,12 +1,26 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "🔐 Running security audit..."
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "${ROOT_DIR}"
 
-cargo audit
-cargo deny check
+echo "Running security audit checks"
 
-echo "→ Checking for plaintext keys or env vars..."
-grep -r "env::var" crates/ --include="*.rs" || echo "No env vars found"
+if cargo audit --version >/dev/null 2>&1; then
+  cargo audit
+else
+  echo "Skipping cargo audit (not installed)"
+fi
 
-echo "✅ Security audit passed"
+if cargo deny --version >/dev/null 2>&1; then
+  cargo deny check
+else
+  echo "Skipping cargo deny (not installed)"
+fi
+
+if command -v rg >/dev/null 2>&1; then
+  echo "Scanning for direct env::var hot-path usage"
+  rg --line-number --glob '*.rs' 'env::var' crates/ || true
+fi
+
+echo "Security audit checks completed"

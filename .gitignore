@@ -23,6 +23,11 @@ dist/
 .env.*
 !.env.example
 
+# Local AI tool config
+.claude/mcp/servers.local.json
+.claude/mcp/*.key
+.claude/mcp/*.pem
+
 # Secrets
 *.pem
 *.key

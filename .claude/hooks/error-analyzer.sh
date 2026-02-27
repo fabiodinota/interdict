@@ -1,5 +1,5 @@
-#!/bin/bash
-# Usage: ./hooks/error-analyzer.sh "error message here"
+#!/usr/bin/env bash
+# Usage: .claude/hooks/error-analyzer.sh "error message here"
 
 ERROR="$1"
 

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    ":prHourlyLimitNone"
+  ],
+  "labels": ["dependencies", "automated"],
+  "rangeStrategy": "pin",
+  "rebaseWhen": "behind-base-branch",
+  "schedule": ["before 5am on monday"],
+  "packageRules": [
+    {
+      "matchManagers": ["cargo"],
+      "groupName": "rust workspace dependencies",
+      "separateMinorPatch": true
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "matchPackageNames": ["wasmtime"],
+      "allowedVersions": "<43"
+    },
+    {
+      "matchPackageNames": ["tokio", "hyper", "hyper-util", "tower", "tower-http"],
+      "groupName": "rust networking stack"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "major-upgrade"]
+    }
+  ]
+}

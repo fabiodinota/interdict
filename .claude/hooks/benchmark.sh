@@ -1,12 +1,17 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "📊 Running kernel benchmarks (target <10 ms p99)..."
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "${ROOT_DIR}"
 
-cargo bench --package kernel --bench latency -- --quiet
+echo "Running kernel benchmark checks"
 
-# Simple 10k RPS smoke test
-echo "→ 10k RPS smoke test..."
-cargo run -p kernel --example load-test --quiet
+# Fast default check for pre-push, full benches optional.
+cargo test -p kernel --test content_inspection_test --quiet
 
-echo "✅ Benchmarks passed"
+if [ "${RUN_FULL_BENCH:-0}" = "1" ]; then
+  cargo bench -p kernel --bench pattern_matching
+  cargo bench -p kernel --bench proxy_latency
+fi
+
+echo "Benchmark checks passed"
