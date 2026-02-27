@@ -104,10 +104,7 @@ where
             }
             VerdictAction::Redact => {
                 // Forward redacted content if available, otherwise forward original
-                let to_write = result
-                    .redacted_content
-                    .as_deref()
-                    .unwrap_or(chunk);
+                let to_write = result.redacted_content.as_deref().unwrap_or(chunk);
                 writer
                     .write_all(to_write)
                     .await
@@ -149,9 +146,10 @@ mod tests {
         let (proxy_upstream_side, upstream_stream) = duplex(1024);
 
         // Write data from the "client" end and "upstream" end simultaneously
-        let relay_handle = tokio::spawn(async move {
-            bidirectional(proxy_client_side, proxy_upstream_side).await
-        });
+        let relay_handle =
+            tokio::spawn(
+                async move { bidirectional(proxy_client_side, proxy_upstream_side).await },
+            );
 
         // Write from client side to upstream side
         tokio::io::AsyncWriteExt::write_all(

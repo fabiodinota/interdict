@@ -14,9 +14,9 @@
 
 use crate::config::Config;
 use crate::error::{ProxyBody, ProxyError};
-use crate::policy::{Direction, PolicyPipeline, RequestContext};
 use crate::policy::content_inspection::ContentInspector;
 use crate::policy::verdict::VerdictAction;
+use crate::policy::{Direction, PolicyPipeline, RequestContext};
 use crate::proxy::pool::ConnectionPool;
 use crate::proxy::relay;
 use crate::proxy::tls::CertCache;
@@ -61,12 +61,10 @@ pub async fn handle_connect(
     pool: Arc<ConnectionPool>,
     config: Arc<Config>,
     pipeline: Option<Arc<PolicyPipeline>>,
+    content_inspector: Option<Arc<ContentInspector>>,
 ) -> Result<Response<ProxyBody>, ProxyError> {
     // 1. Extract host and port from CONNECT authority
-    let authority = req
-        .uri()
-        .authority()
-        .ok_or(ProxyError::MissingAuthority)?;
+    let authority = req.uri().authority().ok_or(ProxyError::MissingAuthority)?;
 
     let host = authority.host().to_string();
     let port = authority.port_u16().unwrap_or(443);
@@ -80,10 +78,9 @@ pub async fn handle_connect(
     // 1b. Policy pipeline evaluation (Phase 2 integration)
     // Evaluate policies based on CONNECT metadata before establishing tunnel.
     //
-    // Note: Request body inspection via ContentInspector will be integrated
-    // in a future phase when HTTP request body parsing is added to the proxy.
-    // Phase 3 focuses on streaming response inspection via InspectingRelay.
-    // The content_inspector field in ProxyService is plumbing for future use.
+    // Note: ContentInspector is now wired in the tunnel relay (step 3d below).
+    // Phase 3 inspects outbound data at the byte-chunk level.
+    // Full HTTP body parsing for structured JSON inspection is a Phase 6 concern.
     if let Some(ref pipeline) = pipeline {
         let ctx = RequestContext {
             request_id: uuid::Uuid::new_v4(),
@@ -198,38 +195,82 @@ pub async fn handle_connect(
         tracing::debug!(vendor = %host, "client TLS terminated");
 
         // 3c. Connect to upstream vendor
-        let upstream_tls = match tokio::time::timeout(
-            connect_timeout,
-            connect_upstream(&pool, &host, port),
-        )
-        .await
-        {
-            Ok(Ok(stream)) => stream,
-            Ok(Err(e)) => {
-                tracing::error!(
-                    vendor = %host,
-                    error = %e,
-                    "failed to connect to upstream vendor"
-                );
-                return;
-            }
-            Err(_) => {
-                tracing::error!(
-                    vendor = %host,
-                    timeout_ms = config.proxy.connect_timeout_ms,
-                    "upstream connect timeout"
-                );
-                return;
-            }
-        };
+        let upstream_tls =
+            match tokio::time::timeout(connect_timeout, connect_upstream(&pool, &host, port)).await
+            {
+                Ok(Ok(stream)) => stream,
+                Ok(Err(e)) => {
+                    tracing::error!(
+                        vendor = %host,
+                        error = %e,
+                        "failed to connect to upstream vendor"
+                    );
+                    return;
+                }
+                Err(_) => {
+                    tracing::error!(
+                        vendor = %host,
+                        timeout_ms = config.proxy.connect_timeout_ms,
+                        "upstream connect timeout"
+                    );
+                    return;
+                }
+            };
 
         tracing::debug!(vendor = %host, "upstream TLS established");
 
-        // 3d. Relay bytes bidirectionally with stream timeout
-        let relay_result = tokio::time::timeout(
-            stream_timeout,
-            relay::bidirectional(client_tls, upstream_tls),
-        )
+        // 3d. Relay bytes with content inspection on outbound direction
+        let relay_result = tokio::time::timeout(stream_timeout, async {
+            if let Some(ref inspector) = content_inspector {
+                use tokio::io::AsyncWriteExt;
+
+                // Split TLS streams into read/write halves
+                let (client_read, mut client_write) = tokio::io::split(client_tls);
+                let (mut upstream_read, upstream_write) = tokio::io::split(upstream_tls);
+
+                // Outbound (client -> upstream): inspect before forwarding
+                let outbound_future = relay::inspecting_relay_outbound(
+                    client_read,
+                    upstream_write,
+                    inspector.clone(),
+                );
+
+                // Inbound (upstream -> client): raw copy (InspectingRelay for streaming
+                // responses is wired separately when HTTP body parsing is added)
+                let inbound_future = tokio::io::copy(&mut upstream_read, &mut client_write);
+
+                // Run both directions concurrently; use select! so a block on outbound
+                // causes both to terminate
+                tokio::select! {
+                    result = outbound_future => {
+                        match result {
+                            Ok(bytes) => {
+                                // Shut down the write side to upstream so inbound sees EOF
+                                let _ = client_write.shutdown().await;
+                                Ok((bytes, 0u64))
+                            }
+                            Err(reason) => {
+                                tracing::warn!(
+                                    vendor = %host,
+                                    reason = %reason,
+                                    "outbound content blocked -- tunnel severed"
+                                );
+                                Err(std::io::Error::new(
+                                    std::io::ErrorKind::ConnectionAborted,
+                                    reason,
+                                ))
+                            }
+                        }
+                    }
+                    result = inbound_future => {
+                        result.map(|bytes| (0u64, bytes))
+                    }
+                }
+            } else {
+                // No inspector -- use original zero-copy bidirectional relay
+                relay::bidirectional(client_tls, upstream_tls).await
+            }
+        })
         .await;
 
         match relay_result {
@@ -288,17 +329,12 @@ pub struct ProxyService {
     pool: Arc<ConnectionPool>,
     config: Arc<Config>,
     pipeline: Option<Arc<PolicyPipeline>>,
-    #[allow(dead_code)]
     content_inspector: Option<Arc<ContentInspector>>,
 }
 
 impl ProxyService {
     /// Create a new ProxyService with shared state.
-    pub fn new(
-        cert_cache: Arc<CertCache>,
-        pool: Arc<ConnectionPool>,
-        config: Arc<Config>,
-    ) -> Self {
+    pub fn new(cert_cache: Arc<CertCache>, pool: Arc<ConnectionPool>, config: Arc<Config>) -> Self {
         Self {
             cert_cache,
             pool,
@@ -326,9 +362,9 @@ impl ProxyService {
 
     /// Add a content inspector to this ProxyService (builder pattern).
     ///
-    /// The content inspector will be used for request body inspection
-    /// when application protocol parsing is added in a future phase.
-    /// Phase 3 focuses on streaming response inspection via InspectingRelay.
+    /// The content inspector is used for outbound byte-level inspection
+    /// in the CONNECT tunnel relay. Phase 3 inspects outbound prompts
+    /// at the chunk level; structured JSON body parsing is Phase 6.
     pub fn with_content_inspector(mut self, inspector: Arc<ContentInspector>) -> Self {
         self.content_inspector = Some(inspector);
         self
@@ -349,10 +385,13 @@ impl Service<Request<Incoming>> for ProxyService {
         let pool = self.pool.clone();
         let config = self.config.clone();
         let pipeline = self.pipeline.clone();
+        let content_inspector = self.content_inspector.clone();
 
         Box::pin(async move {
             if req.method() == Method::CONNECT {
-                match handle_connect(req, cert_cache, pool, config, pipeline).await {
+                match handle_connect(req, cert_cache, pool, config, pipeline, content_inspector)
+                    .await
+                {
                     Ok(response) => Ok(response),
                     Err(e) => {
                         tracing::error!(error = %e, "CONNECT handler error");
@@ -455,14 +494,11 @@ mod tests {
         let server_handle = tokio::spawn(async move {
             let (stream, _) = listener.accept().await.unwrap();
             let io = TokioIo::new(stream);
-            let hyper_svc =
-                hyper_util::service::TowerToHyperService::new(svc);
-            hyper_util::server::conn::auto::Builder::new(
-                hyper_util::rt::TokioExecutor::new(),
-            )
-            .serve_connection(io, hyper_svc)
-            .await
-            .ok();
+            let hyper_svc = hyper_util::service::TowerToHyperService::new(svc);
+            hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new())
+                .serve_connection(io, hyper_svc)
+                .await
+                .ok();
         });
 
         // Connect as a client and send a GET request
@@ -510,14 +546,11 @@ mod tests {
         let server_handle = tokio::spawn(async move {
             let (stream, _) = listener.accept().await.unwrap();
             let io = TokioIo::new(stream);
-            let hyper_svc =
-                hyper_util::service::TowerToHyperService::new(svc);
-            hyper_util::server::conn::auto::Builder::new(
-                hyper_util::rt::TokioExecutor::new(),
-            )
-            .serve_connection_with_upgrades(io, hyper_svc)
-            .await
-            .ok();
+            let hyper_svc = hyper_util::service::TowerToHyperService::new(svc);
+            hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new())
+                .serve_connection_with_upgrades(io, hyper_svc)
+                .await
+                .ok();
         });
 
         // Connect as HTTP/1.1 client and send CONNECT
