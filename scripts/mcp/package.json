@@ -1,0 +1,12 @@
+{
+  "name": "interdict-mcp-helpers",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local MCP helper servers for Interdict Wasmtime and crypto operations",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "libsodium-wrappers-sumo": "^0.7.16",
+    "zod": "^4.1.5"
+  }
+}

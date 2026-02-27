@@ -1,0 +1,75 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "interdict_filesystem": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/fabiodinota/Documents/interdict"
+      ],
+      "enabled": true,
+      "timeout": 10000
+    },
+    "interdict_git": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@cyanheads/git-mcp-server"
+      ],
+      "enabled": true,
+      "timeout": 15000,
+      "environment": {
+        "MCP_LOG_LEVEL": "error",
+        "MCP_TRANSPORT_TYPE": "stdio"
+      }
+    },
+    "interdict_docker": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "mcp-server-docker"
+      ],
+      "enabled": true,
+      "timeout": 15000,
+      "environment": {
+        "ALLOWED_CONTAINERS": "kernel:interdict-kernel,control-plane:interdict-control-plane,dashboard:interdict-dashboard",
+        "DEFAULT_SERVICE": "kernel"
+      }
+    },
+    "interdict_kubernetes": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "mcp-server-kubernetes"
+      ],
+      "enabled": true,
+      "timeout": 15000
+    },
+    "interdict_wasmtime": {
+      "type": "local",
+      "command": [
+        "node",
+        "scripts/mcp/wasmtime_server.mjs"
+      ],
+      "enabled": true,
+      "timeout": 10000,
+      "environment": {
+        "INTERDICT_ROOT": "/Users/fabiodinota/Documents/interdict"
+      }
+    },
+    "interdict_crypto": {
+      "type": "local",
+      "command": [
+        "node",
+        "scripts/mcp/crypto_server.mjs"
+      ],
+      "enabled": true,
+      "timeout": 10000
+    }
+  }
+}
