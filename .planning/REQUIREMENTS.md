@@ -33,11 +33,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### PII & Sensitive Data
 
-- [ ] **PII-01**: Kernel detects and redacts personally identifiable information (names, emails, phone numbers, addresses, SSNs) in AI prompts before they reach the vendor
-- [ ] **PII-02**: Kernel detects and redacts financial data (credit card numbers, bank accounts, SWIFT codes, deal values) in AI prompts
-- [ ] **PII-03**: Kernel detects and redacts secrets and credentials (AWS keys, API tokens, private keys) in AI prompts
+- [x] **PII-01**: Kernel detects and redacts personally identifiable information (names, emails, phone numbers, addresses, SSNs) in AI prompts before they reach the vendor
+- [x] **PII-02**: Kernel detects and redacts financial data (credit card numbers, bank accounts, SWIFT codes, deal values) in AI prompts
+- [x] **PII-03**: Kernel detects and redacts secrets and credentials (AWS keys, API tokens, private keys) in AI prompts
 - [ ] **PII-04**: Kernel detects and redacts PII/sensitive data in streaming AI responses using the sliding window buffer
-- [ ] **PII-05**: Kernel supports custom pattern definitions per enterprise (client names, matter numbers, case codes, ISIN numbers) loaded from policy configuration
+- [x] **PII-05**: Kernel supports custom pattern definitions per enterprise (client names, matter numbers, case codes, ISIN numbers) loaded from policy configuration
 - [ ] **PII-06**: Redaction replaces detected content with category-tagged placeholders (e.g., `[PII:NAME]`, `[FINANCIAL:CARD]`) rather than blocking the entire request
 
 ### Policy Engine
@@ -167,11 +167,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KERN-12 | Phase 1 | Complete |
 | KERN-13 | Phase 1 | Complete |
 | KERN-14 | Phase 4 | Pending |
-| PII-01 | Phase 3 | Pending |
-| PII-02 | Phase 3 | Pending |
-| PII-03 | Phase 3 | Pending |
+| PII-01 | Phase 3 | Complete |
+| PII-02 | Phase 3 | Complete |
+| PII-03 | Phase 3 | Complete |
 | PII-04 | Phase 3 | Pending |
-| PII-05 | Phase 3 | Pending |
+| PII-05 | Phase 3 | Complete |
 | PII-06 | Phase 3 | Pending |
 | PLCY-01 | Phase 2 | Complete |
 | PLCY-02 | Phase 2 | Complete |
