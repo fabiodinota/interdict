@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-02-27T02:58:48Z"
+last_updated: "2026-02-27T20:56:05Z"
 progress:
   total_phases: 10
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** Phase 3: PII Detection & Content Inspection
+**Current focus:** Phase 3 COMPLETE -- Ready for Phase 4
 
 ## Current Position
 
-Phase: 3 of 10 (PII Detection & Content Inspection) -- GAP CLOSURE IN PROGRESS
-Plan: 5 of 6 in current phase (03-01, 03-02, 03-03, 03-04, 03-05 complete; 03-06 pending)
-Status: Phase 3 reopened for verifier gap closure; PLCY-11 complete, CONNECT request inspection wiring still pending
-Last activity: 2026-02-27 -- Plan 03-05 complete (PLCY-11 prompt injection detector implemented)
+Phase: 3 of 10 (PII Detection & Content Inspection) -- COMPLETE
+Plan: 6 of 6 in current phase (all complete)
+Status: Phase 3 fully complete including gap closure; ContentInspector wired into CONNECT tunnel
+Last activity: 2026-02-27 -- Plan 03-06 complete (CONNECT tunnel content inspection wiring)
 
-Progress: [███████████████░░░░░] ~32%
+Progress: [████████████████████] ~35%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: ~26min
-- Total execution time: ~5.2 hours
+- Total plans completed: 13
+- Average duration: ~25min
+- Total execution time: ~5.3 hours
 
 **By Phase:**
 
@@ -42,14 +42,15 @@ Progress: [███████████████░░░░░] ~32%
 |-------|-------|-------|----------|
 | 01 | 3/3 | ~72min | ~24min |
 | 02 | 4/4 | ~196min | ~49min |
-| 03 | 5/6 | ~32min | ~6.4min |
+| 03 | 6/6 | ~39min | ~6.5min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (~6min), 03-02 (~5min), 03-03 (~6min), 03-04 (~12min), 03-05 (~3min)
-- Trend: Phase 3 remains fast; gap closure work is highly targeted and test-driven
+- Last 5 plans: 03-02 (~5min), 03-03 (~6min), 03-04 (~12min), 03-05 (~3min), 03-06 (~7min)
+- Trend: Phase 3 complete; all gap closure resolved efficiently
 
 *Updated after each plan completion*
 | Phase 03 P05 | 3m16s | 2 tasks | 4 files |
+| Phase 03 P06 | 6m36s | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,9 @@ Recent decisions affecting current work:
 - [03-04]: default_patterns import path is kernel::policy::patterns::default::default_patterns (not re-exported from patterns)
 - [Phase 03]: Injection detection now runs before standard PII scanning and blocks immediately on match.
 - [Phase 03]: ContentInspector preserves pre-modification SHA-256 hashing for blocked injection attempts.
+- [03-06]: Split TLS streams with tokio::io::split for per-direction relay (outbound inspected, inbound raw copy)
+- [03-06]: Chunk-level inspection sufficient for Phase 3; cross-chunk detection deferred to streaming response path
+- [03-06]: tokio::select! terminates both directions when outbound is blocked, preventing data leakage
 
 ### Pending Todos
 
@@ -116,5 +120,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 03-05-PLAN.md (PLCY-11 prompt injection/jailbreak gap closure)
-Resume file: .planning/phases/03-pii-detection-content-inspection/03-06-PLAN.md
+Stopped at: Completed 03-06-PLAN.md (CONNECT tunnel content inspection wiring -- Phase 3 fully complete)
+Resume file: Next phase (Phase 4)
