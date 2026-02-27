@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-02-27T01:38:09Z"
+last_updated: "2026-02-27T01:46:06Z"
 progress:
   total_phases: 10
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 9
+  completed_plans: 9
 ---
 
 # Project State
@@ -23,18 +23,18 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 ## Current Position
 
 Phase: 3 of 10 (PII Detection & Content Inspection) -- IN PROGRESS
-Plan: 1 of 4 in current phase (03-01 complete)
+Plan: 2 of 4 in current phase (03-01, 03-02 complete)
 Status: Phase 3 in progress
-Last activity: 2026-02-27 -- Plan 03-01 complete (Default pattern library with validators)
+Last activity: 2026-02-27 -- Plan 03-02 complete (Adaptive streaming buffer and pattern detector)
 
-Progress: [████████░░░░░░░░░░░░] ~22%
+Progress: [████████░░░░░░░░░░░░] ~25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: ~34min
-- Total execution time: ~4.6 hours
+- Total plans completed: 9
+- Average duration: ~31min
+- Total execution time: ~4.7 hours
 
 **By Phase:**
 
@@ -42,11 +42,11 @@ Progress: [████████░░░░░░░░░░░░] ~22%
 |-------|-------|-------|----------|
 | 01 | 3/3 | ~72min | ~24min |
 | 02 | 4/4 | ~196min | ~49min |
-| 03 | 1/4 | ~6min | ~6min |
+| 03 | 2/4 | ~11min | ~5.5min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (~7min), 02-03 (~78min), 02-04 (~8min), 03-01 (~6min)
-- Trend: 03-01 executed quickly — pattern library files were pre-created, only needed test fixes and Debug trait implementation
+- Last 5 plans: 02-03 (~78min), 02-04 (~8min), 03-01 (~6min), 03-02 (~5min)
+- Trend: Phase 3 plans executing very quickly — scaffolding from 03-01 pre-created buffer.rs, 03-02 only implemented detector.rs
 
 *Updated after each plan completion*
 
@@ -90,6 +90,10 @@ Recent decisions affecting current work:
 - [03-01]: PatternValidator type alias for Arc<dyn Fn(&str) -> bool + Send + Sync> to satisfy clippy
 - [03-01]: CustomPattern uses literal matching (regex::escape) for examples; ML-based inference deferred
 - [03-01]: Example patterns use flexible regex without word boundaries for special character support
+- [03-02]: AdaptiveTokenBuffer uses VecDeque with Small/Medium/Large presets (Medium default: 7-20 tokens)
+- [03-02]: Partial match detection for EMAIL checks @ presence; generic heuristic checks pattern touches end
+- [03-02]: Context-aware confidence uses 3-word window before/after with keyword boosters (+0.2 per match)
+- [03-02]: Overlapping categories merge with | separator (PHONE|ACCOUNT format) per CONTEXT.md decision
 
 ### Pending Todos
 
@@ -102,5 +106,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 03-01-PLAN.md (Default pattern library with validators — Phase 3 Plan 1 complete)
+Stopped at: Completed 03-02-PLAN.md (Adaptive streaming buffer and pattern detector — Phase 3 Plan 2 complete)
 Resume file: None
