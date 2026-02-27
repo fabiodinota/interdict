@@ -21,7 +21,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **KERN-03**: Proxy decodes and handles gRPC streaming for enterprise AI services
 - [x] **KERN-04**: Proxy decodes and handles WebSocket connections for real-time AI applications
 - [x] **KERN-05**: Sliding window token buffer holds 5-10 tokens back for multi-token pattern detection in streaming responses
-- [ ] **KERN-06**: Kernel can sever a streaming connection mid-response and replace content with `[REDACTED BY INTERDICT POLICY: {RULE_NAME}]`
+- [x] **KERN-06**: Kernel can sever a streaming connection mid-response and replace content with `[REDACTED BY INTERDICT POLICY: {RULE_NAME}]`
 - [x] **KERN-07**: Kernel achieves <10ms p99 latency overhead (target <5ms) on proxied AI requests
 - [x] **KERN-08**: Kernel handles >10,000 requests/second per instance under sustained load
 - [x] **KERN-09**: Kernel steady-state RAM usage stays under 128MB with <100m CPU idle, <500m burst
@@ -38,7 +38,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PII-03**: Kernel detects and redacts secrets and credentials (AWS keys, API tokens, private keys) in AI prompts
 - [x] **PII-04**: Kernel detects and redacts PII/sensitive data in streaming AI responses using the sliding window buffer
 - [x] **PII-05**: Kernel supports custom pattern definitions per enterprise (client names, matter numbers, case codes, ISIN numbers) loaded from policy configuration
-- [ ] **PII-06**: Redaction replaces detected content with category-tagged placeholders (e.g., `[PII:NAME]`, `[FINANCIAL:CARD]`) rather than blocking the entire request
+- [x] **PII-06**: Redaction replaces detected content with category-tagged placeholders (e.g., `[PII:NAME]`, `[FINANCIAL:CARD]`) rather than blocking the entire request
 
 ### Policy Engine
 
@@ -158,7 +158,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KERN-03 | Phase 1 | Complete |
 | KERN-04 | Phase 1 | Complete |
 | KERN-05 | Phase 3 | Complete |
-| KERN-06 | Phase 3 | Pending |
+| KERN-06 | Phase 3 | Complete |
 | KERN-07 | Phase 1 | Complete |
 | KERN-08 | Phase 1 | Complete |
 | KERN-09 | Phase 1 | Complete |
@@ -172,7 +172,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PII-03 | Phase 3 | Complete |
 | PII-04 | Phase 3 | Complete |
 | PII-05 | Phase 3 | Complete |
-| PII-06 | Phase 3 | Pending |
+| PII-06 | Phase 3 | Complete |
 | PLCY-01 | Phase 2 | Complete |
 | PLCY-02 | Phase 2 | Complete |
 | PLCY-03 | Phase 2 | Complete |
