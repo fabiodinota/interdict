@@ -1,10 +1,8 @@
-mod config;
-// mod chain; // Plan 04-02
-// mod signing; // Plan 04-02
 // mod grpc; // Plan 04-02
 // mod merkle; // Plan 04-02
 // mod storage; // Plan 04-02
 
+use evidence_collector::config::CollectorConfig;
 use tracing::info;
 
 #[tokio::main]
@@ -14,6 +12,11 @@ async fn main() -> anyhow::Result<()> {
         .json()
         .init();
 
-    info!("interdict-collector starting (scaffold)");
+    let cfg = CollectorConfig::default();
+    info!(
+        grpc_listen_addr = %cfg.grpc_listen_addr,
+        clickhouse_url = %cfg.clickhouse_url,
+        "interdict-collector starting (scaffold)"
+    );
     Ok(())
 }

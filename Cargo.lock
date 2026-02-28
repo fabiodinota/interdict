@@ -1665,6 +1665,7 @@ dependencies = [
  "aws-config",
  "aws-sdk-kms",
  "aws-sdk-s3",
+ "base64",
  "chrono",
  "clickhouse",
  "ed25519-dalek",
