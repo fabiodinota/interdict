@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 4
 status: unknown
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-02-28T22:52:42.563Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-02-28T23:07:41.818Z"
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 17
-  completed_plans: 16
-  percent: 94
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Last activity: 2026-02-28 -- Plan 04-01 complete (collector/verifier scaffold + 
 
 **Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [█████████░] 94%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Last activity: 2026-02-28 -- Plan 04-01 complete (collector/verifier scaffold + 
 | Phase 04 P01 | 11 min | 2 tasks | 17 files |
 | Phase 04 P03 | 6m8s | 2 tasks | 8 files |
 | Phase 04 P02 | 5m50s | 2 tasks | 10 files |
+| Phase 04 P04 | 11m56s | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,9 @@ Recent decisions affecting current work:
 - [Phase 04]: ClickHouse Inserter wrapped in mpsc-channel worker to avoid holding Mutex across async boundary
 - [Phase 04]: CancellationToken from tokio-util for coordinated graceful shutdown of merkle rotation and gRPC server
 - [Phase 04]: S3 operations skipped in dev mode (empty bucket) with warning log; no AWS credentials needed for local development
+- [Phase 04]: bundle_content_bytes zeroes chain/sig metadata to reconstruct original signed content for verification
+- [Phase 04]: Integration tests use interdict_verify proto types to bridge cross-crate type boundary
+- [Phase 04]: interdict-verify prost upgraded from 0.13 to 0.14 for workspace consistency
 
 ### Pending Todos
 
@@ -137,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-02-28T22:52:42.561Z
-**Stopped At:** Completed 04-02-PLAN.md
+**Last session:** 2026-02-28T23:07:41.816Z
+**Stopped At:** Completed 04-04-PLAN.md
 **Resume file:** None

@@ -65,7 +65,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **EVID-07**: Evidence Collector batches inserts to ClickHouse (minimum 1000 rows per insert, maximum 1 INSERT/second) to prevent "too many parts" failures
 - [x] **EVID-08**: Evidence Collector is a separate Rust binary service (not TypeScript) for CPU-intensive cryptographic operations
 - [x] **EVID-09**: Signing private keys are stored in HSM/KMS (AWS KMS or Azure Key Vault), never in environment variables or config files
-- [ ] **EVID-10**: Open-source regulator verification script that any auditor can run independently to verify chain integrity, signatures, and Merkle root anchoring
+- [x] **EVID-10**: Open-source regulator verification script that any auditor can run independently to verify chain integrity, signatures, and Merkle root anchoring
 
 ### Control Plane API
 
@@ -193,7 +193,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVID-07 | Phase 4 | Complete |
 | EVID-08 | Phase 4 | Complete |
 | EVID-09 | Phase 4 | Complete |
-| EVID-10 | Phase 4 | Pending |
+| EVID-10 | Phase 4 | Complete |
 | CTRL-01 | Phase 5 | Pending |
 | CTRL-02 | Phase 5 | Pending |
 | CTRL-03 | Phase 6 | Pending |
