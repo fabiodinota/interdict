@@ -35,6 +35,11 @@ async-trait = "0.1"
 hex = "0.4"
 base64 = "0.22"
 
+[dev-dependencies]
+interdict-verify = { path = "../interdict-verify" }
+kernel = { path = "../kernel" }
+tokio = { version = "1", features = ["full", "test-util"] }
+
 [build-dependencies]
 tonic-prost-build = "0.14"
 prost-build = "0.14"

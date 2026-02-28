@@ -1670,6 +1670,8 @@ dependencies = [
  "clickhouse",
  "ed25519-dalek",
  "hex",
+ "interdict-verify",
+ "kernel",
  "prost 0.14.3",
  "prost-build",
  "prost-types",

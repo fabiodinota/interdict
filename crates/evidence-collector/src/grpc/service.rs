@@ -13,8 +13,7 @@ use crate::signing::SigningProvider;
 use crate::storage::clickhouse::{ClickHouseWriter, EvidenceRow};
 
 use super::proto::{
-    EvidenceBatch, EvidenceBundle, SubmitResponse,
-    evidence_collector_server::EvidenceCollector,
+    EvidenceBatch, EvidenceBundle, SubmitResponse, evidence_collector_server::EvidenceCollector,
 };
 
 pub struct EvidenceCollectorService {
@@ -259,8 +258,8 @@ mod tests {
             schema_version: 1,
             ..Default::default()
         };
-        let row = map_bundle_to_row(&bundle, &[1u8; 32], &[0u8; 32], &[2u8; 64])
-            .expect("map to row");
+        let row =
+            map_bundle_to_row(&bundle, &[1u8; 32], &[0u8; 32], &[2u8; 64]).expect("map to row");
 
         assert_eq!(row.chain_hash, "01".repeat(32));
         assert_eq!(row.previous_hash, "00".repeat(32));
