@@ -57,14 +57,14 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Cryptographic Audit Pipeline
 
 - [ ] **EVID-01**: Evidence Collector service receives compressed log events from kernels via gRPC streaming
-- [ ] **EVID-02**: Every evidence bundle includes SHA-256 hash incorporating the previous bundle's hash (linked chain)
-- [ ] **EVID-03**: Every evidence bundle is digitally signed with Ed25519 using a kernel-specific private key
+- [x] **EVID-02**: Every evidence bundle includes SHA-256 hash incorporating the previous bundle's hash (linked chain)
+- [x] **EVID-03**: Every evidence bundle is digitally signed with Ed25519 using a kernel-specific private key
 - [ ] **EVID-04**: Evidence bundles are structured into Merkle trees with hourly root hash computation
 - [ ] **EVID-05**: Hourly Merkle root hashes are anchored to S3 Object Lock (WORM) for external immutability verification
-- [ ] **EVID-06**: Evidence bundle captures: actor identity (from SSO), AI vendor/model, prompt hash (not plaintext), prompt classification, policy evaluation result with rules applied, response hash, token count, enforcement latency, chain linkage, and digital signature. Full prompt/response text storage is configurable per enterprise (some regulations require it, others prohibit it)
+- [x] **EVID-06**: Evidence bundle captures: actor identity (from SSO), AI vendor/model, prompt hash (not plaintext), prompt classification, policy evaluation result with rules applied, response hash, token count, enforcement latency, chain linkage, and digital signature. Full prompt/response text storage is configurable per enterprise (some regulations require it, others prohibit it)
 - [ ] **EVID-07**: Evidence Collector batches inserts to ClickHouse (minimum 1000 rows per insert, maximum 1 INSERT/second) to prevent "too many parts" failures
-- [ ] **EVID-08**: Evidence Collector is a separate Rust binary service (not TypeScript) for CPU-intensive cryptographic operations
-- [ ] **EVID-09**: Signing private keys are stored in HSM/KMS (AWS KMS or Azure Key Vault), never in environment variables or config files
+- [x] **EVID-08**: Evidence Collector is a separate Rust binary service (not TypeScript) for CPU-intensive cryptographic operations
+- [x] **EVID-09**: Signing private keys are stored in HSM/KMS (AWS KMS or Azure Key Vault), never in environment variables or config files
 - [ ] **EVID-10**: Open-source regulator verification script that any auditor can run independently to verify chain integrity, signatures, and Merkle root anchoring
 
 ### Control Plane API
@@ -185,14 +185,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLCY-10 | Phase 6 | Pending |
 | PLCY-11 | Phase 3 | Complete |
 | EVID-01 | Phase 4 | Pending |
-| EVID-02 | Phase 4 | Pending |
-| EVID-03 | Phase 4 | Pending |
+| EVID-02 | Phase 4 | Complete |
+| EVID-03 | Phase 4 | Complete |
 | EVID-04 | Phase 4 | Pending |
 | EVID-05 | Phase 4 | Pending |
-| EVID-06 | Phase 4 | Pending |
+| EVID-06 | Phase 4 | Complete |
 | EVID-07 | Phase 4 | Pending |
-| EVID-08 | Phase 4 | Pending |
-| EVID-09 | Phase 4 | Pending |
+| EVID-08 | Phase 4 | Complete |
+| EVID-09 | Phase 4 | Complete |
 | EVID-10 | Phase 4 | Pending |
 | CTRL-01 | Phase 5 | Pending |
 | CTRL-02 | Phase 5 | Pending |

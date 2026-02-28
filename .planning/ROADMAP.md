@@ -90,12 +90,13 @@ Plans:
   3. Evidence bundles form a linked hash chain where each bundle's SHA-256 hash incorporates the previous bundle's hash, and any tampering with a single bundle is detectable by re-computing the chain
   4. Hourly Merkle trees are constructed from evidence bundles and root hashes are anchored to S3 Object Lock (WORM), providing external immutability verification independent of the database
   5. The Evidence Collector batches inserts to ClickHouse (minimum 1000 rows per insert, maximum 1 INSERT/second), verified by monitoring `system.parts` staying well below 150 parts per partition under sustained load
-**Plans**: TBD
+**Plans**: 4 plans in progress
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
-- [ ] 04-03: TBD
+- [x] 04-01-PLAN.md — Workspace scaffold, protobuf schema, and crypto primitives (Wave 1)
+- [ ] 04-02-PLAN.md — gRPC ingestion service and ClickHouse batching pipeline
+- [ ] 04-03-PLAN.md — Merkle tree anchoring and storage integration
+- [ ] 04-04-PLAN.md — verifier implementation and end-to-end validation
 
 ### Phase 5: Control Plane API Core
 **Goal**: The Bun + Elysia API manages policies (CRUD with Rego/YAML source), compiles them to Wasm modules, manages the vendor registry, maps regulatory frameworks to policy configurations, and provides searchable audit trail queries against ClickHouse
@@ -207,7 +208,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 1. Kernel Proxy Foundation | 3/3 | Complete | 2026-02-26 |
 | 2. Policy Engine | 4/4 | Complete | 2026-02-26 |
 | 3. PII Detection & Content Inspection | 6/6 | Complete | 2026-02-27 |
-| 4. Evidence Collector | 0/3 | Not started | - |
+| 4. Evidence Collector | 1/4 | In Progress | - |
 | 5. Control Plane API Core | 0/3 | Not started | - |
 | 6. Policy Distribution & Kernel Integration | 0/2 | Not started | - |
 | 7. Identity, Access & Security | 0/3 | Not started | - |

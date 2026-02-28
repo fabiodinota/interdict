@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-02-27T21:03:58.941Z"
+last_updated: "2026-02-28T00:04:20Z"
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 17
+  completed_plans: 14
 ---
 
 # Project State
@@ -18,16 +18,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** Phase 3 COMPLETE -- Ready for Phase 4
+**Current focus:** Phase 4 in progress -- Evidence collector foundations complete
 
 ## Current Position
 
-Phase: 3 of 10 (PII Detection & Content Inspection) -- COMPLETE
-Plan: 6 of 6 in current phase (all complete)
-Status: Phase 3 fully complete including gap closure; ContentInspector wired into CONNECT tunnel
-Last activity: 2026-02-27 -- Plan 03-06 complete (CONNECT tunnel content inspection wiring)
+Phase: 4 of 10 (Evidence Collector) -- IN PROGRESS
+Plan: 2 of 4 in current phase (next)
+Status: 04-01 complete; ready to execute 04-02
+Last activity: 2026-02-28 -- Plan 04-01 complete (collector/verifier scaffold + crypto primitives)
 
-Progress: [████████████████████] ~35%
+**Current Plan:** 2
+**Total Plans in Phase:** 4
+**Progress:** [████████░░] 82%
 
 ## Performance Metrics
 
@@ -51,6 +53,7 @@ Progress: [████████████████████] ~35%
 *Updated after each plan completion*
 | Phase 03 P05 | 3m16s | 2 tasks | 4 files |
 | Phase 03 P06 | 6m36s | 2 tasks | 2 files |
+| Phase 04 P01 | 11 min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -108,6 +111,9 @@ Recent decisions affecting current work:
 - [03-06]: Split TLS streams with tokio::io::split for per-direction relay (outbound inspected, inbound raw copy)
 - [03-06]: Chunk-level inspection sufficient for Phase 3; cross-chunk detection deferred to streaming response path
 - [03-06]: tokio::select! terminates both directions when outbound is blocked, preventing data leakage
+- [Phase 04]: Switched proto codegen to tonic-prost-build for tonic 0.14 compatibility
+- [Phase 04]: Vendored protoc in build scripts to remove host protobuf dependency
+- [Phase 04]: Used per-kernel ChainManager for deterministic hash linkage across concurrent streams
 
 ### Pending Todos
 
@@ -119,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-27
-Stopped at: Completed 03-06-PLAN.md (CONNECT tunnel content inspection wiring -- Phase 3 fully complete)
-Resume file: Next phase (Phase 4)
+**Last session:** 2026-02-28T00:07:29.202Z
+**Stopped At:** Completed 04-01-PLAN.md
+**Resume file:** .planning/phases/04-evidence-collector/04-02-PLAN.md
