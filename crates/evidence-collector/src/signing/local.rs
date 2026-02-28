@@ -100,8 +100,9 @@ impl SigningProvider for LocalSigningProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::{LocalSigningProvider, Signature, Verifier, VerifyingKey};
+    use super::LocalSigningProvider;
     use crate::signing::SigningProvider;
+    use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
     #[tokio::test]
     async fn generated_key_signs_and_verifies() {

@@ -1,7 +1,7 @@
 use super::{SigningError, SigningProvider};
 use async_trait::async_trait;
-use aws_sdk_kms::types::SigningAlgorithmSpec;
 use aws_sdk_kms::Client as KmsClient;
+use aws_sdk_kms::types::SigningAlgorithmSpec;
 
 pub struct KmsSigningProvider {
     kms_client: KmsClient,
