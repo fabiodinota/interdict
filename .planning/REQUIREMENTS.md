@@ -29,7 +29,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **KERN-11**: Kernel checks vendor allowlist before forwarding any outbound AI request, blocking non-approved vendors
 - [x] **KERN-12**: Kernel manages multiple HTTP/2 connections per AI vendor backend to avoid single-connection stream saturation
 - [x] **KERN-13**: Kernel uses bounded tokio channels (no unbounded channels) with explicit capacity limits on all internal communication
-- [ ] **KERN-14**: Evidence bundle creation is fully asynchronous -- binary logs compressed and pushed to local memory buffer, background flush every 500ms via gRPC to Evidence Collector
+- [x] **KERN-14**: Evidence bundle creation is fully asynchronous -- binary logs compressed and pushed to local memory buffer, background flush every 500ms via gRPC to Evidence Collector
 
 ### PII & Sensitive Data
 
@@ -166,7 +166,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KERN-11 | Phase 2 | Complete |
 | KERN-12 | Phase 1 | Complete |
 | KERN-13 | Phase 1 | Complete |
-| KERN-14 | Phase 4 | Pending |
+| KERN-14 | Phase 4 | Complete |
 | PII-01 | Phase 3 | Complete |
 | PII-02 | Phase 3 | Complete |
 | PII-03 | Phase 3 | Complete |
