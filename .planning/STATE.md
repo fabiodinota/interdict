@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 3
+current_plan: 4
 status: unknown
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-02-28T22:52:18.596Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-02-28T22:52:42.563Z"
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 17
   completed_plans: 16
-  percent: 88
+  percent: 94
 ---
 
 # Project State
@@ -30,9 +30,9 @@ Plan: 2 of 4 in current phase (next)
 Status: 04-01 complete; ready to execute 04-02
 Last activity: 2026-02-28 -- Plan 04-01 complete (collector/verifier scaffold + crypto primitives)
 
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [█████████░] 88%
+**Progress:** [█████████░] 94%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Last activity: 2026-02-28 -- Plan 04-01 complete (collector/verifier scaffold + 
 | Phase 03 P06 | 6m36s | 2 tasks | 2 files |
 | Phase 04 P01 | 11 min | 2 tasks | 17 files |
 | Phase 04 P03 | 6m8s | 2 tasks | 8 files |
+| Phase 04 P02 | 5m50s | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ Recent decisions affecting current work:
 - [Phase 04]: Lazy gRPC connection with reconnect-on-failure for evidence client resilience
 - [Phase 04]: EvidenceBundleBatch wrapper for prost serialization of bundle vectors
 - [Phase 04]: clippy::too_many_arguments allowed on handle_connect due to evidence parameters
+- [Phase 04]: ClickHouse Inserter wrapped in mpsc-channel worker to avoid holding Mutex across async boundary
+- [Phase 04]: CancellationToken from tokio-util for coordinated graceful shutdown of merkle rotation and gRPC server
+- [Phase 04]: S3 operations skipped in dev mode (empty bucket) with warning log; no AWS credentials needed for local development
 
 ### Pending Todos
 
@@ -133,6 +137,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-02-28T22:52:18.594Z
-**Stopped At:** Completed 04-03-PLAN.md
+**Last session:** 2026-02-28T22:52:42.561Z
+**Stopped At:** Completed 04-02-PLAN.md
 **Resume file:** None
