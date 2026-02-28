@@ -8,6 +8,7 @@
 
 pub mod config;
 pub mod error;
+pub mod evidence;
 pub mod logging;
 pub mod middleware;
 pub mod policy;
