@@ -21,6 +21,7 @@ aws-sdk-kms = "1"
 aws-config = "1"
 zstd = "0.13"
 tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 serde = { version = "1", features = ["derive"] }

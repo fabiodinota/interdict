@@ -40,7 +40,7 @@ impl EvidenceRow {
 }
 
 enum WriteCommand {
-    Row(EvidenceRow),
+    Row(Box<EvidenceRow>),
     Flush(oneshot::Sender<Result<()>>),
 }
 
@@ -75,7 +75,7 @@ impl ClickHouseWriter {
 
     pub async fn write(&self, row: EvidenceRow) -> Result<()> {
         self.sender
-            .send(WriteCommand::Row(row))
+            .send(WriteCommand::Row(Box::new(row)))
             .await
             .map_err(|_| anyhow!("clickhouse writer channel closed"))
     }
