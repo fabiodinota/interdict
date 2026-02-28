@@ -16,6 +16,7 @@ use hyper_util::service::TowerToHyperService;
 use tower::ServiceBuilder;
 
 use kernel::config;
+use kernel::evidence;
 use kernel::logging;
 use kernel::middleware;
 use kernel::policy;
@@ -170,6 +171,23 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Policy pipeline initialized");
 
+    let evidence_collector_addr = std::env::var("INTERDICT_EVIDENCE_COLLECTOR_ADDR")
+        .unwrap_or_else(|_| "http://[::1]:50051".to_string());
+    let full_text_storage = std::env::var("INTERDICT_EVIDENCE_FULL_TEXT_STORAGE")
+        .map(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+        .unwrap_or(false);
+    let kernel_id = uuid::Uuid::new_v4().to_string();
+    let (evidence_buffer, evidence_flusher_handle) =
+        evidence::EvidenceBuffer::new(evidence_collector_addr.clone(), kernel_id.clone());
+    let evidence_buffer = Arc::new(evidence_buffer);
+
+    tracing::info!(
+        collector_addr = %evidence_collector_addr,
+        full_text_storage,
+        kernel_id = %kernel_id,
+        "evidence pipeline initialized"
+    );
+
     // 9. Build the Tower service stack
     //    Request flow: RequestIdLayer -> AllowlistLayer -> ProxyService
     let proxy_service = proxy::ProxyService::with_pipeline(
@@ -177,6 +195,8 @@ async fn main() -> anyhow::Result<()> {
         pool.clone(),
         config.clone(),
         pipeline,
+        evidence_buffer.clone(),
+        full_text_storage,
     );
 
     // 10. Bind TCP listener
@@ -267,6 +287,15 @@ async fn main() -> anyhow::Result<()> {
     }
 
     tracing::info!("kernel proxy shutdown complete");
+
+    drop(proxy_service);
+    drop(evidence_buffer);
+
+    match tokio::time::timeout(Duration::from_secs(2), evidence_flusher_handle).await {
+        Ok(Ok(())) => tracing::info!("evidence flusher stopped"),
+        Ok(Err(err)) => tracing::warn!(error = %err, "evidence flusher join failed"),
+        Err(_) => tracing::warn!("evidence flusher shutdown timed out"),
+    }
 
     Ok(())
 }

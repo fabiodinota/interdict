@@ -14,6 +14,8 @@
 
 use crate::config::Config;
 use crate::error::{ProxyBody, ProxyError};
+use crate::evidence::EvidenceBuffer;
+use crate::evidence::bundle::RawEvidenceEvent;
 use crate::policy::content_inspection::ContentInspector;
 use crate::policy::verdict::VerdictAction;
 use crate::policy::{Direction, PolicyPipeline, RequestContext};
@@ -27,6 +29,7 @@ use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Empty, Full};
 use hyper::body::Incoming;
 use hyper_util::rt::TokioIo;
+use sha2::{Digest, Sha256};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -55,6 +58,7 @@ fn full_body(data: Vec<u8>) -> ProxyBody {
 ///    b. Terminate TLS from the client using the cert cache
 ///    c. Connect to the upstream vendor via the connection pool
 ///    d. Relay bytes bidirectionally
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_connect(
     req: Request<Incoming>,
     cert_cache: Arc<CertCache>,
@@ -62,6 +66,8 @@ pub async fn handle_connect(
     config: Arc<Config>,
     pipeline: Option<Arc<PolicyPipeline>>,
     content_inspector: Option<Arc<ContentInspector>>,
+    evidence_buffer: Arc<EvidenceBuffer>,
+    full_text_storage: bool,
 ) -> Result<Response<ProxyBody>, ProxyError> {
     // 1. Extract host and port from CONNECT authority
     let authority = req.uri().authority().ok_or(ProxyError::MissingAuthority)?;
@@ -82,6 +88,7 @@ pub async fn handle_connect(
     // Phase 3 inspects outbound data at the byte-chunk level.
     // Full HTTP body parsing for structured JSON inspection is a Phase 6 concern.
     if let Some(ref pipeline) = pipeline {
+        let enforcement_start = std::time::Instant::now();
         let ctx = RequestContext {
             request_id: uuid::Uuid::new_v4(),
             vendor: host.clone(),
@@ -94,6 +101,15 @@ pub async fn handle_connect(
 
         match pipeline.evaluate(&ctx).await {
             Ok(result) => {
+                let evidence_event = build_evidence_event(
+                    &host,
+                    full_text_storage,
+                    &ctx,
+                    &result,
+                    enforcement_start.elapsed(),
+                );
+                evidence_buffer.try_send(evidence_event);
+
                 match result.merged_verdict.final_action {
                     VerdictAction::Block => {
                         tracing::info!(
@@ -126,6 +142,23 @@ pub async fn handle_connect(
                 }
             }
             Err(e) => {
+                let evidence_event = RawEvidenceEvent {
+                    timestamp: chrono::Utc::now(),
+                    actor_identity: "anonymous".to_string(),
+                    department: "unknown".to_string(),
+                    vendor: host.clone(),
+                    model: "unknown".to_string(),
+                    prompt_hash: sha256_hex(""),
+                    response_hash: String::new(),
+                    prompt_text: None,
+                    response_text: None,
+                    policy_action: "block".to_string(),
+                    policy_rules: vec!["pipeline_error".to_string()],
+                    token_count: 0,
+                    enforcement_latency_us: enforcement_start.elapsed().as_micros() as u64,
+                };
+                evidence_buffer.try_send(evidence_event);
+
                 tracing::error!(
                     vendor = %host,
                     error = %e,
@@ -330,6 +363,8 @@ pub struct ProxyService {
     config: Arc<Config>,
     pipeline: Option<Arc<PolicyPipeline>>,
     content_inspector: Option<Arc<ContentInspector>>,
+    evidence_buffer: Arc<EvidenceBuffer>,
+    full_text_storage: bool,
 }
 
 impl ProxyService {
@@ -341,6 +376,8 @@ impl ProxyService {
             config,
             pipeline: None,
             content_inspector: None,
+            evidence_buffer: Arc::new(EvidenceBuffer::stub()),
+            full_text_storage: false,
         }
     }
 
@@ -350,6 +387,8 @@ impl ProxyService {
         pool: Arc<ConnectionPool>,
         config: Arc<Config>,
         pipeline: Arc<PolicyPipeline>,
+        evidence_buffer: Arc<EvidenceBuffer>,
+        full_text_storage: bool,
     ) -> Self {
         Self {
             cert_cache,
@@ -357,6 +396,8 @@ impl ProxyService {
             config,
             pipeline: Some(pipeline),
             content_inspector: None,
+            evidence_buffer,
+            full_text_storage,
         }
     }
 
@@ -386,11 +427,22 @@ impl Service<Request<Incoming>> for ProxyService {
         let config = self.config.clone();
         let pipeline = self.pipeline.clone();
         let content_inspector = self.content_inspector.clone();
+        let evidence_buffer = self.evidence_buffer.clone();
+        let full_text_storage = self.full_text_storage;
 
         Box::pin(async move {
             if req.method() == Method::CONNECT {
-                match handle_connect(req, cert_cache, pool, config, pipeline, content_inspector)
-                    .await
+                match handle_connect(
+                    req,
+                    cert_cache,
+                    pool,
+                    config,
+                    pipeline,
+                    content_inspector,
+                    evidence_buffer,
+                    full_text_storage,
+                )
+                .await
                 {
                     Ok(response) => Ok(response),
                     Err(e) => {
@@ -420,6 +472,57 @@ impl Service<Request<Incoming>> for ProxyService {
             }
         })
     }
+}
+
+fn build_evidence_event(
+    host: &str,
+    full_text_storage: bool,
+    request_context: &RequestContext,
+    result: &crate::policy::PipelineResult,
+    enforcement_latency: Duration,
+) -> RawEvidenceEvent {
+    let prompt_text = if full_text_storage {
+        request_context.content.clone()
+    } else {
+        None
+    };
+
+    let policy_rules = result
+        .merged_verdict
+        .policy_verdicts
+        .iter()
+        .map(|verdict| verdict.policy_id.clone())
+        .collect();
+
+    RawEvidenceEvent {
+        timestamp: chrono::Utc::now(),
+        actor_identity: "anonymous".to_string(),
+        department: "unknown".to_string(),
+        vendor: host.to_string(),
+        model: "unknown".to_string(),
+        prompt_hash: sha256_hex(request_context.content.as_deref().unwrap_or("")),
+        response_hash: String::new(),
+        prompt_text,
+        response_text: None,
+        policy_action: verdict_action_to_str(result.merged_verdict.final_action).to_string(),
+        policy_rules,
+        token_count: 0,
+        enforcement_latency_us: enforcement_latency.as_micros() as u64,
+    }
+}
+
+fn verdict_action_to_str(action: VerdictAction) -> &'static str {
+    match action {
+        VerdictAction::Allow => "allow",
+        VerdictAction::Redact => "redact",
+        VerdictAction::Block => "block",
+    }
+}
+
+fn sha256_hex(input: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(input.as_bytes());
+    format!("{:x}", hasher.finalize())
 }
 
 /// Map a ProxyError to an appropriate HTTP error response.
@@ -469,6 +572,7 @@ fn error_response_for(err: ProxyError) -> Response<ProxyBody> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::policy::verdict::{MergedVerdict, PolicyVerdict};
 
     /// Test ProxyService via a real hyper client-server connection.
     /// This validates the full Tower service stack works with hyper's Service trait.
@@ -640,5 +744,55 @@ mod tests {
             },
             policy: crate::config::PolicyEngineConfig::default(),
         }
+    }
+
+    #[test]
+    fn evidence_event_captures_pipeline_fields() {
+        let request_context = RequestContext {
+            request_id: uuid::Uuid::new_v4(),
+            vendor: "api.openai.com".to_string(),
+            method: "CONNECT".to_string(),
+            path: "api.openai.com:443".to_string(),
+            content_type: None,
+            content: Some("sensitive prompt".to_string()),
+            direction: Direction::Outbound,
+        };
+
+        let policy_verdict = PolicyVerdict {
+            policy_id: "policy:test".to_string(),
+            action: VerdictAction::Block,
+            redactions: vec![],
+            reason: Some("blocked".to_string()),
+        };
+
+        let result = crate::policy::PipelineResult {
+            merged_verdict: MergedVerdict::merge(vec![policy_verdict]),
+            trace: crate::policy::verdict::VerdictTrace {
+                request_id: request_context.request_id,
+                merged_verdict: MergedVerdict::merge(vec![]),
+                layer1_results: vec![],
+                layer2_classification: None,
+                layer3_decision: None,
+                timestamp: chrono::Utc::now(),
+            },
+            redaction_result: None,
+        };
+
+        let event = build_evidence_event(
+            "api.openai.com",
+            true,
+            &request_context,
+            &result,
+            Duration::from_micros(700),
+        );
+
+        assert_eq!(event.vendor, "api.openai.com");
+        assert_eq!(event.model, "unknown");
+        assert_eq!(event.policy_action, "block");
+        assert_eq!(event.policy_rules, vec!["policy:test".to_string()]);
+        assert_eq!(event.prompt_text, Some("sensitive prompt".to_string()));
+        assert_eq!(event.response_hash, "");
+        assert_eq!(event.token_count, 0);
+        assert_eq!(event.enforcement_latency_us, 700);
     }
 }
