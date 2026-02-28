@@ -9,8 +9,9 @@ path = "src/main.rs"
 
 [dependencies]
 tonic = { version = "0.14", features = ["zstd"] }
-prost = "0.13"
-prost-types = "0.13"
+tonic-prost = "0.14"
+prost = "0.14"
+prost-types = "0.14"
 clickhouse = { version = "0.14", features = ["inserter", "lz4"] }
 ed25519-dalek = { version = "2.2", features = ["rand_core", "serde", "zeroize"] }
 rs_merkle = "1.5"
@@ -35,5 +36,5 @@ base64 = "0.22"
 
 [build-dependencies]
 tonic-prost-build = "0.14"
-prost-build = "0.13"
+prost-build = "0.14"
 protoc-bin-vendored = "3"
