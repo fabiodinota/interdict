@@ -6,7 +6,16 @@ Interdict.io is a kernel-level AI governance and compliance platform for regulat
 
 This is not a SaaS wrapper, monitoring dashboard, or chatbot platform. It is infrastructure — analogous to Check Point / Palo Alto for AI traffic, or IAM for AI actions and intent.
 
-**Current state (v1.0 shipped):** Data plane kernel with streaming proxy, 3-layer policy engine, PII/financial/secrets detection with category-tagged redaction, cryptographic evidence pipeline (hash chains + Merkle trees + S3 WORM), and control plane API with policy CRUD, Rego-to-Wasm compiler, vendor registry, and 8 regulatory framework packs. gRPC push-based policy distribution with hot-reload is operational. Identity, dashboard, and deployment packaging are next.
+**Current state (v1.1 in progress):** v1.0 shipped data plane kernel + evidence pipeline + control plane API. v1.1 adds Identity & Security (SAML SSO, RBAC, mTLS, key rotation), full Dashboard (10 features), and Deployment packaging (Docker Compose, Helm, sidecar, container images) — everything needed for pilot deployments.
+
+## Current Milestone: v1.1 Pilot Ready
+
+**Goal:** Make Interdict.io deployable and usable by pilot customers — a CISO can log in via SSO, configure policies through a dashboard, review audit trails, and IT can deploy via Docker Compose or Helm.
+
+**Target features:**
+- Identity & Security: SAML 2.0 SSO, 5-role RBAC, mTLS, key rotation, API key auth
+- Dashboard: Policy Builder, Regulatory Selector, Audit Trail, Vendor Management, Alerts, Compliance Reports, Department Management, Anomaly Detection, Evidence Verification, Human Review Queue
+- Deployment: Docker Compose, Helm chart, sidecar manifests, container images, CA cert onboarding
 
 ## Core Value
 
@@ -142,4 +151,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Monorepo structure | Both planes in one repo — simpler CI/CD, shared types/protos, atomic cross-plane changes | ✓ Good — shared proto definitions, workspace-level builds |
 
 ---
-*Last updated: 2026-03-01 after v1.0 milestone*
+*Last updated: 2026-03-01 after v1.1 milestone start*
