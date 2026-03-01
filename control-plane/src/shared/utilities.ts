@@ -56,6 +56,20 @@ export class ConflictError extends AppError {
   }
 }
 
+/** 401 Unauthorized */
+export class AuthError extends AppError {
+  constructor(message = "Authentication required") {
+    super(message, 401, "UNAUTHORIZED");
+  }
+}
+
+/** 403 Forbidden */
+export class ForbiddenError extends AppError {
+  constructor(message = "Insufficient permissions") {
+    super(message, 403, "FORBIDDEN");
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Response Envelope
 // ---------------------------------------------------------------------------
