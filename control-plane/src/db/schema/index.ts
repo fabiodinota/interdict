@@ -24,3 +24,6 @@ export {
 
 // Organization
 export { departments, teams, users } from "./organization";
+
+// Auth (API keys, user-department membership, role permissions)
+export { apiKeys, userDepartments, rolePermissions } from "./auth";
