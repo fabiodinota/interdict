@@ -1,1089 +1,1020 @@
-# Architecture Research
+# Architecture Research: v1.1 Integration
 
-**Domain:** AI Governance Kernel / Compliance Proxy Platform
-**Researched:** 2026-02-26
-**Confidence:** HIGH (core patterns) / MEDIUM (specific integration details)
+**Domain:** AI Governance Platform -- Identity, Dashboard, and Deployment integration with existing Rust kernel + Bun/Elysia API
+**Researched:** 2026-03-01
+**Confidence:** HIGH (integration patterns are well-understood; existing codebase is thoroughly mapped)
 
-## System Overview
+## System Overview: v1.1 Additions
+
+The diagram below shows the v1.0 architecture (unchanged) with v1.1 additions marked as `[NEW]`.
 
 ```
                          ENTERPRISE NETWORK BOUNDARY
  ============================================================================
 
-  EMPLOYEES                       DATA PLANE (Rust)
-  =========                       =================
+  EMPLOYEES                       DATA PLANE (Rust) -- UNCHANGED
+  =========                       ===================================
 
   Browser  ----\                 +--------------------------------------------+
   IDE      -----+--- HTTPS/SSE  | INTERDICT KERNEL (per-pod sidecar)         |
   Agent    ----/    ------------>|                                            |
-                                 |  +-----------+    +-----------+            |
-                                 |  | Protocol  |    | Session   |            |
-                                 |  | Decoder   |--->| Context   |            |
-                                 |  | (HTTP/1.1,|    | Tracker   |            |
-                                 |  |  H2, SSE, |    +-----+-----+            |
-                                 |  |  WS, gRPC)|          |                  |
-                                 |  +-----+-----+    +-----v-----+            |
-                                 |        |          | 3-Layer    |            |
-                                 |        |          | Enforcer   |            |
-                                 |        |          |            |            |
-                                 |        |          | L1: Wasm   |            |
-                                 |        |          | L2: NLP    |            |
-                                 |        |          | L3: Queue  |            |
-                                 |        |          +-----+-----+            |
-                                 |        |                |                  |
-                                 |  +-----v-----+   +-----v------+           |
-                                 |  | Streaming  |   | Evidence   |           |
-                                 |  | Inspector  |   | Buffer     |           |
-                                 |  | (sliding   |   | (in-mem,   |           |
-                                 |  |  window)   |   |  flush     |           |
-                                 |  +-----+------+   |  @500ms)   |           |
-                                 |        |          +------+------+           |
-                                 +--------|-----------------|------------------+
-                                          |                 |
-                     HTTPS/H2             |       gRPC      |  gRPC
-               to AI Vendor APIs          |    (streaming)   |  (push)
-                                          |                 |
-  AI VENDORS <----------------------------+                 |
-  ==========                                                |
-  OpenAI                                                    |
-  Anthropic                                                 |
-  Cohere                                                    |
-  Internal LLMs                                             |
-                                                            |
-               CONTROL PLANE (TypeScript)                   |
-               ==========================                   |
-                                                            |
+                                 |  Protocol Decoder -> Session Tracker ->    |
+                                 |  3-Layer Enforcer (L1/L2/L3) ->           |
+                                 |  Streaming Inspector -> Evidence Buffer    |
+                                 |                                            |
+                                 |  [NEW] mTLS on gRPC channels (tonic+      |
+                                 |        rustls ClientTlsConfig/             |
+                                 |        ServerTlsConfig)                    |
+                                 +--------+------------------+----------------+
+                                          |                  |
+                              HTTPS/H2    |  gRPC (mTLS)     |  gRPC (mTLS)
+                           to AI Vendors  |  [UPGRADED]      |  [UPGRADED]
+                                          |                  |
+  AI VENDORS <----------------------------+                  |
+                                                             |
+               CONTROL PLANE (TypeScript)                    |
+               ==========================                    |
+                                                             |
   +----------------------------------------------------------v---------+
   |                                                                    |
   |  +------------------+    +------------------+                      |
   |  | EVIDENCE         |    | CONTROL PLANE    |                      |
   |  | COLLECTOR        |    | API              |                      |
-  |  | SERVICE          |    | (Bun + Elysia)   |                      |
+  |  | (Rust)           |    | (Bun + Elysia)   |                      |
   |  |                  |    |                  |                      |
-  |  | - Hash chain     |    | - Policy CRUD   |                      |
-  |  | - Merkle tree    |    | - Policy compile |                      |
-  |  | - Ed25519 sign   |    | - gRPC push     |                      |
-  |  | - S3 WORM anchor |    | - Vendor mgmt   |                      |
-  |  +--------+---------+    | - RBAC          |                      |
-  |           |              | - Reg framework  |                      |
+  |  | [NEW] mTLS on    |    | [NEW] SAML 2.0  |                      |
+  |  |   gRPC listener  |    |   SSO module     |                      |
+  |  |                  |    | [NEW] RBAC       |                      |
+  |  +--------+---------+    |   middleware     |                      |
+  |           |              | [NEW] API key    |                      |
+  |           |              |   auth fallback  |                      |
+  |           |              | [NEW] Key        |                      |
+  |           |              |   rotation svc   |                      |
   |           |              +--------+---------+                      |
   |           |                       |                                |
   |     +-----v-------+        +-----v--------+                       |
   |     | ClickHouse  |        | PostgreSQL   |                       |
-  |     | (audit logs,|        | (config,     |                       |
-  |     |  analytics) |        |  policies,   |                       |
-  |     +-------------+        |  users,      |                       |
-  |                            |  metadata)   |                       |
-  |                            +--------------+                       |
+  |     | (unchanged) |        | [NEW] SAML   |                       |
+  |     +-------------+        |  sessions,   |                       |
+  |                            |  api_keys,   |                       |
+  |                            |  key_store   |                       |
+  |                            +-----^--------+                       |
+  |                                  |                                 |
+  |  +-------------------------------+------+                          |
+  |  | [NEW] DASHBOARD                     |                          |
+  |  | (Next.js 15 + React + shadcn/ui)    |                          |
+  |  |                                     |                          |
+  |  | SSR + server components             |                          |
+  |  | Calls Elysia API (HTTP)             |                          |
+  |  | Session cookie from SAML/API key    |                          |
+  |  |                                     |                          |
+  |  | 10 views: Policy Builder, Audit     |                          |
+  |  | Trail, Vendor Mgmt, Regulatory,     |                          |
+  |  | Alerts, Compliance Reports,         |                          |
+  |  | Departments, Anomaly Detection,     |                          |
+  |  | Evidence Verification, Review Queue |                          |
+  |  +-------------------------------------+                          |
   |                                                                    |
-  |  +------------------+                                              |
-  |  | DASHBOARD        |                                              |
-  |  | (Next.js + React)|                                              |
-  |  |                  |                                              |
-  |  | - Policy builder |                                              |
-  |  | - Audit trail    |                                              |
-  |  | - Vendor mgmt   |                                              |
-  |  | - Compliance rpt |                                              |
-  |  | - Evidence verify|                                              |
-  |  +------------------+                                              |
   +--------------------------------------------------------------------+
 
  ============================================================================
 ```
 
-## Component Responsibilities
+## Component Classification: New vs Modified
 
-| Component | Responsibility | Communicates With | Language/Runtime |
-|-----------|----------------|-------------------|------------------|
-| **Interdict Kernel** | Transparent proxy intercepting all AI traffic, enforcing policies inline, producing evidence | AI Vendors (HTTPS), Evidence Collector (gRPC stream), Control Plane API (gRPC for policy push) | Rust (tokio + hyper + tonic) |
-| **Protocol Decoder** | Decode HTTP/1.1, HTTP/2, SSE, WebSocket, gRPC frames into a unified internal request representation | Internal to Kernel | Rust (hyper + h2 + tokio-tungstenite) |
-| **Session Context Tracker** | Maintain multi-turn conversation state per actor+vendor pair, enabling cross-message policy evaluation | Internal to Kernel (in-memory HashMap) | Rust |
-| **3-Layer Enforcer** | Execute policy pipeline: Wasm rules, NLP classification, human review queue | Wasm Runtime (embedded), NLP Model (embedded ONNX), Control Plane (human review API) | Rust + Wasmtime + ort |
-| **Streaming Inspector** | Sliding window over SSE/streaming tokens, buffering 5-10 tokens to detect multi-token patterns before forwarding | Internal to Kernel | Rust |
-| **Evidence Buffer** | Compress and batch evidence events in memory, flush to Evidence Collector every 500ms | Evidence Collector (gRPC client stream) | Rust |
-| **Evidence Collector Service** | Receive evidence streams, compute SHA-256 hash chains, build hourly Merkle trees, sign with Ed25519, anchor to S3 Object Lock | Kernels (gRPC server), ClickHouse (batch insert), S3 (WORM write) | Rust (recommended) or TypeScript |
-| **Control Plane API** | Policy CRUD, Rego-to-Wasm compilation, gRPC policy push, vendor registry, regulatory mapping, RBAC, audit query | Dashboard (REST/tRPC), Kernel fleet (gRPC), PostgreSQL (config), ClickHouse (query), Evidence Collector (management) | Bun + Elysia |
-| **Dashboard** | UI for policy authoring, audit trail, vendor management, compliance reporting, evidence verification | Control Plane API only (never talks to kernel directly) | Next.js + React |
-| **PostgreSQL** | Config, policy definitions (source Rego), compiled Wasm blobs, user accounts, RBAC, vendor registry, regulatory mappings | Control Plane API (primary client) | PostgreSQL 16+ |
-| **ClickHouse** | High-volume audit log storage, analytics queries, anomaly detection data | Evidence Collector (bulk insert), Control Plane API (read queries), Dashboard (via API) | ClickHouse 24+ |
+### New Components (to build from scratch)
 
-## Recommended Monorepo Structure
+| Component | Location | Language | Responsibility |
+|-----------|----------|----------|----------------|
+| **SAML SSO Module** | `control-plane/src/modules/auth/` | TypeScript | SAML 2.0 SP-initiated login, assertion parsing, session creation |
+| **RBAC Middleware** | `control-plane/src/modules/auth/rbac.ts` | TypeScript | Per-route role enforcement as Elysia middleware |
+| **API Key Auth** | `control-plane/src/modules/auth/api-key.ts` | TypeScript | API key generation, validation, rate limiting |
+| **Key Rotation Service** | `control-plane/src/modules/crypto/` | TypeScript | Ed25519 key lifecycle, overlapping rotation, fleet notification |
+| **Dashboard** | `dashboard/` | TypeScript (Next.js) | All 10 UI views, SSR, RBAC-aware rendering |
+| **Docker Compose Stack** | `deploy/docker-compose/` | YAML | Full-stack dev/pilot deployment |
+| **Helm Chart** | `deploy/helm/interdict/` | YAML + Go templates | K8s production deployment |
+| **Sidecar Manifest** | `deploy/k8s/sidecar.yaml` | YAML | Kernel as sidecar container |
+| **Container Images** | `Dockerfile.*` | Dockerfile | Multi-stage builds for all 4 services |
+| **CA Cert Onboarding Script** | `deploy/scripts/ca-onboard.sh` | Shell | Client CA cert installation |
+
+### Modified Components (existing, need changes)
+
+| Component | What Changes | Why |
+|-----------|-------------|-----|
+| **Elysia API entry point** (`control-plane/src/index.ts`) | Add auth middleware, CORS for dashboard, new module registration | SAML/RBAC/API key auth wraps all routes |
+| **PostgreSQL schema** (`control-plane/src/db/schema/`) | Add `sessions`, `api_keys`, `signing_keys`, `audit_log` tables; extend `users` table with SAML fields | Identity and key rotation state |
+| **gRPC distribution server** (`control-plane/src/modules/distribution/server.ts`) | Upgrade `createInsecure()` to `createSsl()` with mTLS | Secure kernel-to-control-plane channel |
+| **Kernel gRPC clients** (`crates/kernel/src/policy/distribution/client.rs`, `crates/kernel/src/evidence/client.rs`) | Add `ClientTlsConfig` with client cert + CA cert | mTLS for outbound gRPC connections |
+| **Evidence collector gRPC server** (`crates/evidence-collector/src/grpc/service.rs`) | Add `ServerTlsConfig` with server cert + client CA | mTLS for inbound gRPC connections |
+| **Policy distribution proto** (`proto/interdict/policy/v1/policy_distribution.proto`) | Add `signing_key_id` field to `PolicyEntry` for key rotation awareness | Fleet needs to know which signing key to use |
+| **Control plane config** (`control-plane/src/config.ts`) | Add SAML, mTLS cert paths, JWT secret, dashboard URL configs | New subsystems need configuration |
+| **Policies schema** (`control-plane/src/db/schema/policies.ts`) | Populate `created_by` FK now that users exist | RBAC audit trail |
+
+### Unchanged Components
+
+| Component | Why Unchanged |
+|-----------|---------------|
+| **Kernel proxy hot path** (proxy, relay, streaming, TLS interception) | Identity/auth is control plane concern, not data plane |
+| **Policy pipeline** (L1/L2/L3, Wasm engine, Regorus, content inspection) | No changes to enforcement logic |
+| **Evidence bundle creation** (kernel-side) | Hash chain and signing logic unchanged; only gRPC transport gets mTLS |
+| **Merkle tree builder** (evidence collector) | Internal to collector, no interface change |
+| **ClickHouse schema** | Audit queries unchanged; dashboard reads via Elysia API |
+
+## Detailed Integration Architecture
+
+### 1. Identity & Authentication Flow
 
 ```
-interdict/
-├── Cargo.toml                    # Cargo workspace root
-├── turbo.json                    # Turborepo config (TS packages only)
-├── package.json                  # pnpm workspace root
-├── pnpm-workspace.yaml           # pnpm workspace definition
-│
-├── proto/                        # Shared protobuf definitions
-│   ├── buf.yaml                  # Buf configuration
-│   ├── interdict/
-│   │   ├── audit/v1/
-│   │   │   └── audit.proto       # Evidence streaming service
-│   │   ├── policy/v1/
-│   │   │   └── policy.proto      # Policy distribution service
-│   │   └── common/v1/
-│   │       └── common.proto      # Shared types (Identity, Verdict, etc.)
-│   └── buf.gen.yaml              # Buf code generation config
-│
-├── crates/                       # Rust workspace members
-│   ├── kernel/                   # Main proxy binary
-│   │   ├── Cargo.toml
-│   │   └── src/
-│   │       ├── main.rs
-│   │       ├── proxy/            # Protocol decoding, request/response handling
-│   │       │   ├── mod.rs
-│   │       │   ├── decoder.rs    # HTTP/1.1, H2, SSE, WS protocol parsing
-│   │       │   ├── inspector.rs  # Sliding window streaming inspector
-│   │       │   └── forwarder.rs  # Upstream forwarding
-│   │       ├── enforce/          # 3-layer enforcement pipeline
-│   │       │   ├── mod.rs
-│   │       │   ├── pipeline.rs   # Orchestrates L1 -> L2 -> L3
-│   │       │   ├── wasm.rs       # Wasmtime policy executor
-│   │       │   ├── nlp.rs        # ONNX model inference
-│   │       │   └── review.rs     # Human review queue client
-│   │       ├── session/          # Session context tracking
-│   │       ├── evidence/         # Evidence buffer and gRPC client
-│   │       ├── config/           # Runtime configuration, gRPC policy receiver
-│   │       └── vendor/           # Vendor allowlist enforcement
-│   │
-│   ├── evidence-collector/       # Evidence Collector service binary
-│   │   ├── Cargo.toml
-│   │   └── src/
-│   │       ├── main.rs
-│   │       ├── chain.rs          # SHA-256 hash chain construction
-│   │       ├── merkle.rs         # Merkle tree builder
-│   │       ├── signing.rs        # Ed25519 signing
-│   │       ├── anchor.rs         # S3 Object Lock writer
-│   │       ├── grpc_server.rs    # gRPC stream receiver
-│   │       └── clickhouse.rs     # ClickHouse batch inserter
-│   │
-│   ├── policy-compiler/          # OPA Rego -> Wasm compilation library
-│   │   ├── Cargo.toml
-│   │   └── src/
-│   │       ├── lib.rs
-│   │       ├── rego.rs           # Rego parsing and validation
-│   │       ├── wasm.rs           # Wasm module compilation (wraps OPA CLI)
-│   │       └── bundle.rs         # Bundle packaging
-│   │
-│   └── shared/                   # Shared Rust types and utilities
-│       ├── Cargo.toml
-│       └── src/
-│           ├── lib.rs
-│           ├── types.rs          # Core domain types (Identity, Verdict, etc.)
-│           ├── crypto.rs         # Ed25519, SHA-256 helpers
-│           └── proto.rs          # Generated protobuf types (from tonic-build)
-│
-├── packages/                     # TypeScript packages (pnpm + Turborepo)
-│   ├── api/                      # Control Plane API (Bun + Elysia)
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── src/
-│   │       ├── index.ts
-│   │       ├── routes/
-│   │       │   ├── policies.ts
-│   │       │   ├── vendors.ts
-│   │       │   ├── regulatory.ts
-│   │       │   ├── audit.ts
-│   │       │   └── auth.ts
-│   │       ├── services/
-│   │       │   ├── policy-compiler.ts    # Calls OPA CLI or policy-compiler crate via FFI
-│   │       │   ├── policy-distributor.ts # gRPC client to push to kernels
-│   │       │   ├── clickhouse.ts         # ClickHouse query service
-│   │       │   └── regulatory-mapper.ts  # Jurisdiction -> policy config
-│   │       ├── grpc/
-│   │       │   └── kernel-push.ts        # gRPC server for kernel connections
-│   │       └── middleware/
-│   │           ├── auth.ts               # OIDC/SAML verification
-│   │           └── rbac.ts               # Role-based access control
-│   │
-│   ├── dashboard/                # Next.js + React dashboard
-│   │   ├── package.json
-│   │   ├── next.config.ts
-│   │   └── src/
-│   │       ├── app/
-│   │       ├── components/
-│   │       └── lib/
-│   │
-│   ├── shared/                   # Shared TypeScript types
-│   │   ├── package.json
-│   │   └── src/
-│   │       ├── types.ts          # Domain types matching proto definitions
-│   │       └── validators.ts
-│   │
-│   └── proto-gen/                # Generated TS protobuf types
-│       ├── package.json
-│       └── src/                  # Auto-generated from proto/ via buf
-│
-├── policies/                     # Example/default policy definitions
-│   ├── base/
-│   │   ├── pii-detection.rego
-│   │   ├── vendor-allowlist.rego
-│   │   └── data-classification.rego
-│   └── frameworks/
-│       ├── eu-ai-act.rego
-│       ├── gdpr.rego
-│       └── nist-ai-rmf.rego
-│
-├── deploy/                       # Deployment configurations
-│   ├── docker/
-│   │   ├── Dockerfile.kernel
-│   │   ├── Dockerfile.evidence-collector
-│   │   ├── Dockerfile.api
-│   │   ├── Dockerfile.dashboard
-│   │   └── docker-compose.yml
-│   ├── k8s/
-│   │   ├── helm/
-│   │   │   └── interdict/
-│   │   │       ├── Chart.yaml
-│   │   │       ├── values.yaml
-│   │   │       └── templates/
-│   │   └── sidecar-inject.yaml
-│   └── scripts/
-│       ├── build.sh
-│       └── dev.sh
-│
-├── models/                       # NLP model artifacts
-│   └── classifier/
-│       ├── model.onnx            # Pre-trained/fine-tuned classification model
-│       └── tokenizer.json        # Tokenizer config
-│
-└── wit/                          # WebAssembly Interface Type definitions
-    └── policy/
-        ├── world.wit             # Policy plugin world
-        └── types.wit             # Shared WIT types
+Browser (CISO)
+    |
+    |  GET /dashboard/login
+    v
+[Next.js Dashboard] -- renders login page with "SSO Login" button
+    |
+    |  Click "SSO Login"
+    v
+[Next.js API Route: /api/auth/saml/login]
+    |
+    |  Generates SAML AuthnRequest
+    |  Redirects to IdP (Okta / Azure AD)
+    v
+[Enterprise IdP]
+    |
+    |  User authenticates (MFA, etc.)
+    |  IdP sends SAML Response (POST binding)
+    v
+[Next.js API Route: /api/auth/saml/callback]
+    |
+    |  Validates SAML assertion (samlify library)
+    |  Extracts: email, name, groups, external_id
+    |
+    |  POST /api/v1/auth/saml/callback  (to Elysia API)
+    v
+[Elysia API: auth module]
+    |
+    |  Upsert user in PostgreSQL (match on external_id or email)
+    |  Map IdP groups -> Interdict roles (configurable mapping)
+    |  Create session record in PostgreSQL
+    |  Return session token (JWT with role, user_id, org_id)
+    v
+[Next.js Dashboard]
+    |
+    |  Sets httpOnly cookie with session token
+    |  Redirects to /dashboard (role-appropriate landing)
+    v
+[Subsequent requests]
+    |
+    |  Next.js server components read cookie
+    |  Validate JWT, extract role
+    |  Call Elysia API with Authorization header
+    |  Elysia RBAC middleware checks role vs route permission
 ```
 
-### Structure Rationale
+**Key Design Decisions:**
 
-- **`proto/` at root:** Single source of truth for all gRPC definitions. Both Rust (tonic-build) and TypeScript (buf generate) consume the same proto files, ensuring type safety across the plane boundary.
-- **`crates/` for Rust workspace:** Cargo workspace with independent crates for kernel, evidence-collector, policy-compiler, and shared types. Each crate compiles independently, enabling parallel CI builds and clear dependency boundaries.
-- **`packages/` for TypeScript:** pnpm workspaces + Turborepo for the control plane. Separate packages for API, dashboard, and shared types.
-- **`wit/` at root:** WIT definitions for the Wasm policy plugin interface, consumed by both the kernel host (Rust) and policy authors (any language targeting Wasm Components).
-- **`policies/` at root:** Example Rego policies serving as both documentation and default deployments.
-- **Dual build system:** Cargo workspace handles Rust; Turborepo handles TypeScript. A root `Makefile` or `justfile` orchestrates both via `cargo build --workspace` and `turbo run build`.
+1. **SAML processing split between Next.js and Elysia.** The Next.js app handles the HTTP redirect flow (SAML is browser-redirect-heavy), while the Elysia API handles user upsert and session creation. This keeps user state management in the API where it belongs.
+
+2. **samlify for SAML parsing** because it is the most actively maintained TypeScript SAML 2.0 library with proper XML signature validation and runs on Bun without Node.js-specific dependencies. Confidence: MEDIUM (need to verify Bun compatibility of samlify's XML crypto dependencies).
+
+3. **JWT session tokens** (not opaque tokens) because the dashboard's Next.js server components need to decode the role without an API round-trip on every page load. Short-lived JWTs (15 min) + refresh via Elysia API.
+
+4. **API key auth as parallel path** for programmatic access, CI/CD integrations, and pilot customers who do not yet have SAML IdP configured. API keys stored as SHA-256 hashes in PostgreSQL.
+
+### 2. RBAC Model
+
+```
+Role Hierarchy (most to least privilege):
+
+  super_admin
+      |
+  compliance_officer
+      |
+  policy_admin
+      |
+  department_manager
+      |
+  read_only_auditor
+```
+
+**Permission Matrix:**
+
+| Resource | super_admin | compliance_officer | policy_admin | dept_manager | read_only_auditor |
+|----------|:-----------:|:------------------:|:------------:|:------------:|:-----------------:|
+| Users CRUD | RW | R | - | - | - |
+| Policies CRUD | RW | RW | RW | R | R |
+| Vendor CRUD | RW | RW | R | R | R |
+| Regulatory CRUD | RW | RW | R | R | R |
+| Audit trail read | RW | RW | R | R (dept) | R (dept) |
+| Evidence verify | RW | RW | R | R | R |
+| Key rotation | RW | - | - | - | - |
+| Department mgmt | RW | R | R | RW (own) | R (own) |
+| Human review queue | RW | RW | RW | R (dept) | - |
+| Compliance reports | RW | RW | R | R (dept) | R (dept) |
+| System config | RW | - | - | - | - |
+
+**Implementation as Elysia middleware:**
+
+```typescript
+// control-plane/src/modules/auth/rbac.ts
+import { Elysia } from "elysia";
+
+type Role = "super_admin" | "compliance_officer" | "policy_admin"
+           | "department_manager" | "read_only_auditor";
+
+const ROLE_RANK: Record<Role, number> = {
+  super_admin: 5,
+  compliance_officer: 4,
+  policy_admin: 3,
+  department_manager: 2,
+  read_only_auditor: 1,
+};
+
+// Route-level permission check
+export function requireRole(minRole: Role) {
+  return new Elysia()
+    .derive(({ headers, set }) => {
+      const token = headers.authorization?.replace("Bearer ", "");
+      // Validate JWT, extract role
+      const user = validateSession(token);
+      if (!user || ROLE_RANK[user.role] < ROLE_RANK[minRole]) {
+        set.status = 403;
+        throw new Error("Insufficient permissions");
+      }
+      return { user };
+    });
+}
+```
+
+**Department scoping:** `department_manager` and `read_only_auditor` roles are automatically scoped to their assigned department. Elysia middleware injects `user.departmentId` into the request context; service layer filters queries by department.
+
+### 3. mTLS Integration
+
+mTLS secures all internal gRPC channels. Three integration points:
+
+```
+                     mTLS Channel 1                    mTLS Channel 2
+Kernel (Rust)  <========================>  Control Plane  <--- HTTP (no mTLS)
+  tonic client       gRPC policy push        @grpc/grpc-js         |
+  ClientTlsConfig    server-streaming       ServerCredentials      Dashboard
+                                            .createSsl()           (Next.js)
+                     mTLS Channel 3
+Kernel (Rust)  ========================>  Evidence Collector (Rust)
+  tonic client       gRPC evidence push      tonic server
+  ClientTlsConfig                            ServerTlsConfig
+```
+
+**Rust side (kernel clients):**
+
+```rust
+// Kernel's distribution client upgrade (crates/kernel/src/policy/distribution/client.rs)
+use tonic::transport::{Certificate, ClientTlsConfig, Identity, Channel, Endpoint};
+
+let ca_cert = std::fs::read("certs/ca.pem")?;
+let client_cert = std::fs::read("certs/kernel-client.pem")?;
+let client_key = std::fs::read("certs/kernel-client.key")?;
+
+let tls = ClientTlsConfig::new()
+    .ca_certificate(Certificate::from_pem(ca_cert))
+    .identity(Identity::from_pem(client_cert, client_key))
+    .domain_name("control-plane.interdict.local");
+
+let channel = Endpoint::from_shared(distribution_addr)?
+    .tls_config(tls)?
+    .connect()
+    .await?;
+```
+
+**Rust side (evidence collector server):**
+
+```rust
+// Evidence collector server upgrade (crates/evidence-collector/src/grpc/service.rs)
+use tonic::transport::{Certificate, Identity, Server, ServerTlsConfig};
+
+let server_cert = std::fs::read("certs/collector-server.pem")?;
+let server_key = std::fs::read("certs/collector-server.key")?;
+let ca_cert = std::fs::read("certs/ca.pem")?;
+
+let tls = ServerTlsConfig::new()
+    .identity(Identity::from_pem(server_cert, server_key))
+    .client_ca_root(Certificate::from_pem(ca_cert));
+
+Server::builder()
+    .tls_config(tls)?
+    .add_service(evidence_service)
+    .serve(addr)
+    .await?;
+```
+
+**TypeScript side (control plane gRPC server):**
+
+```typescript
+// control-plane/src/modules/distribution/server.ts upgrade
+import * as grpc from "@grpc/grpc-js";
+import { readFileSync } from "node:fs";
+
+const rootCert = readFileSync("certs/ca.pem");
+const serverCert = readFileSync("certs/control-plane-server.pem");
+const serverKey = readFileSync("certs/control-plane-server.key");
+
+const credentials = grpc.ServerCredentials.createSsl(
+  rootCert,
+  [{ private_key: serverKey, cert_chain: serverCert }],
+  true  // checkClientCertificate = true (require mTLS)
+);
+
+server.bindAsync(bindAddress, credentials, (err, port) => { ... });
+```
+
+**Certificate hierarchy:**
+
+```
+interdict-ca (self-signed root, generated at deployment)
+    |
+    +-- control-plane-server.pem  (SAN: control-plane.interdict.local)
+    +-- collector-server.pem      (SAN: evidence-collector.interdict.local)
+    +-- kernel-client.pem         (SAN: kernel-*.interdict.local)
+```
+
+All certs generated by a deployment-time script (`deploy/scripts/gen-internal-certs.sh`). Docker Compose mounts them as volumes. Helm chart generates them via an init container or cert-manager.
+
+**Fallback for mTLS-disabled mode:** Configuration flag `INTERDICT_MTLS_ENABLED=false` allows insecure gRPC for development. Production deployments MUST have this set to `true`. The kernel config gains `[policy.distribution.tls]` section; evidence collector gains similar.
+
+### 4. Signing Key Rotation
+
+```
+Key Lifecycle:
+
+  PENDING -----> ACTIVE -----> DRAINING -----> RETIRED
+  (generated)   (signing)     (verify only)   (archived)
+
+  At any time, exactly ONE key is ACTIVE.
+  During rotation, the OLD key is DRAINING while the NEW key is ACTIVE.
+  Verification accepts signatures from ACTIVE + all DRAINING keys.
+```
+
+**Schema addition:**
+
+```sql
+CREATE TABLE signing_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key_id VARCHAR(64) NOT NULL UNIQUE,  -- human-friendly "key-2026-03"
+  public_key_pem TEXT NOT NULL,
+  -- private key stored encrypted or in KMS, NOT in DB
+  private_key_encrypted BYTEA,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending/active/draining/retired
+  activated_at TIMESTAMPTZ,
+  drained_at TIMESTAMPTZ,
+  retired_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+**Rotation flow:**
+
+1. Admin triggers rotation via API (`POST /api/v1/crypto/keys/rotate`)
+2. Control plane generates new Ed25519 keypair, stores with status `pending`
+3. Control plane transitions new key to `active`, old key to `draining`
+4. Control plane pushes key update to kernel fleet via gRPC (new proto message or piggyback on policy push)
+5. Kernels begin signing new evidence bundles with the new key
+6. After configurable drain period (e.g., 24 hours), old key moves to `retired`
+7. Evidence verification uses `signing_key_id` field in `EvidenceBundle` proto to select correct public key
+
+**Integration with existing evidence pipeline:** The kernel already includes `signing_key_id` and `dev_signed` fields in `EvidenceBundle` proto. The evidence collector's `signing/mod.rs` already has `SigningMode::File` and `SigningMode::Kms` variants. Key rotation extends `SigningMode::File` to accept a key directory with versioned keys, and adds a `SigningMode::Managed` variant where keys are fetched from the control plane API.
+
+### 5. Dashboard Architecture
+
+```
+dashboard/                          # NEW: Next.js 15 app
+  app/
+    layout.tsx                      # Root layout: auth guard, sidebar
+    (auth)/
+      login/page.tsx                # SAML login page
+      api/auth/saml/login/route.ts  # SAML AuthnRequest redirect
+      api/auth/saml/callback/route.ts  # SAML assertion handler
+    (dashboard)/
+      layout.tsx                    # Dashboard shell: sidebar, topbar
+      page.tsx                      # Overview/home (role-based)
+      policies/
+        page.tsx                    # Policy list (server component)
+        [id]/page.tsx               # Policy detail/edit
+        new/page.tsx                # Policy builder
+      audit/
+        page.tsx                    # Audit trail search
+      vendors/
+        page.tsx                    # Vendor management
+      regulatory/
+        page.tsx                    # Regulatory framework selector
+      alerts/
+        page.tsx                    # Real-time violation alerts
+      reports/
+        page.tsx                    # Compliance report generation
+      departments/
+        page.tsx                    # Department management
+      anomaly/
+        page.tsx                    # Anomaly detection views
+      evidence/
+        page.tsx                    # Evidence verification UI
+      review/
+        page.tsx                    # Human review queue
+    api/                            # Next.js API routes (BFF pattern)
+      v1/[...path]/route.ts         # Proxy to Elysia API with auth
+  components/
+    ui/                             # shadcn/ui primitives
+    layout/                         # Sidebar, topbar, breadcrumbs
+    policies/                       # Policy builder components
+    audit/                          # Audit trail components
+    charts/                         # recharts or tremor wrappers
+  lib/
+    api-client.ts                   # Typed Elysia API client
+    auth.ts                         # Session helpers, JWT decode
+    rbac.ts                         # Client-side role checks
+  package.json
+  next.config.ts
+  tailwind.config.ts
+```
+
+**Dashboard-to-API communication pattern:**
+
+The dashboard uses a Backend-for-Frontend (BFF) pattern. Next.js server components call the Elysia API directly (server-to-server, localhost in Docker/K8s). Client components use Next.js API routes as a proxy, which adds the auth token and forwards to Elysia.
+
+```
+Server Component (SSR):
+  fetch("http://control-plane:3000/api/v1/policies", {
+    headers: { Authorization: `Bearer ${sessionToken}` }
+  })
+
+Client Component (CSR):
+  fetch("/api/v1/policies")  --> Next.js API route --> Elysia API
+```
+
+**Technology choices for dashboard:**
+
+| Concern | Choice | Why |
+|---------|--------|-----|
+| Framework | Next.js 15 (App Router) | SSR, server components, already decided in PROJECT.md |
+| UI components | shadcn/ui + Tailwind CSS | Enterprise-grade, accessible, customizable, no vendor lock-in |
+| Data tables | TanStack Table | Server-side pagination/sorting/filtering, most mature React table |
+| Charts | Recharts | Lightweight, composable, React-native, good for time-series |
+| Forms | React Hook Form + Zod | Type-safe validation, integrates with shadcn/ui form components |
+| State management | React Server Components + SWR for client mutations | Minimal client state; server components handle most data fetching |
+| Code editor (policy builder) | Monaco Editor (react) | Rego syntax highlighting, autocompletion potential, same as VS Code |
+
+### 6. Deployment Architecture
+
+#### Docker Compose (for pilot: law firm ~80 employees)
+
+```yaml
+# deploy/docker-compose/docker-compose.yml
+services:
+  postgres:
+    image: postgres:16-alpine
+    volumes: [pg-data:/var/lib/postgresql/data]
+    environment:
+      POSTGRES_DB: interdict
+      POSTGRES_USER: interdict
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    volumes: [ch-data:/var/lib/clickhouse]
+    ulimits: { nofile: { soft: 262144, hard: 262144 } }
+
+  control-plane:
+    build: { context: ../.., dockerfile: Dockerfile.control-plane }
+    depends_on: [postgres, clickhouse]
+    environment:
+      DATABASE_URL: postgres://interdict:${PG_PASSWORD}@postgres:5432/interdict
+      CLICKHOUSE_URL: http://clickhouse:8123
+      INTERDICT_MTLS_ENABLED: "true"
+    volumes:
+      - certs:/app/certs:ro
+      - wasm-storage:/app/data/wasm
+
+  evidence-collector:
+    build: { context: ../.., dockerfile: Dockerfile.evidence-collector }
+    depends_on: [clickhouse]
+    volumes:
+      - certs:/app/certs:ro
+
+  dashboard:
+    build: { context: ../.., dockerfile: Dockerfile.dashboard }
+    depends_on: [control-plane]
+    ports: ["443:3000"]  # Only public-facing service
+    environment:
+      CONTROL_PLANE_URL: http://control-plane:3000
+      NEXTAUTH_URL: https://interdict.lawfirm.local
+
+  kernel:
+    build: { context: ../.., dockerfile: Dockerfile.kernel }
+    depends_on: [control-plane, evidence-collector]
+    ports: ["8443:8443"]  # Proxy port
+    volumes:
+      - certs:/app/certs:ro
+      - ./interdict.toml:/app/interdict.toml:ro
+
+  # Init container: generates internal CA + component certs
+  cert-init:
+    build: { context: ../.., dockerfile: Dockerfile.cert-init }
+    volumes:
+      - certs:/certs
+    entrypoint: /app/gen-internal-certs.sh
+
+volumes:
+  pg-data:
+  ch-data:
+  wasm-storage:
+  certs:
+```
+
+**Key decisions:**
+- Only the dashboard exposes a port externally (HTTPS on 443)
+- The kernel exposes 8443 for proxy traffic (configured in client machines)
+- All internal communication uses Docker networking (no exposed ports)
+- Certificate init container runs once, generates internal mTLS certs into a shared volume
+
+#### Helm Chart (for enterprise K8s)
+
+```
+deploy/helm/interdict/
+  Chart.yaml
+  values.yaml
+  templates/
+    _helpers.tpl
+    namespace.yaml
+    configmap.yaml
+    secret.yaml
+    postgres/
+      statefulset.yaml       # Or ExternalName if customer provides DB
+      service.yaml
+    clickhouse/
+      statefulset.yaml
+      service.yaml
+    control-plane/
+      deployment.yaml
+      service.yaml
+      hpa.yaml
+    evidence-collector/
+      deployment.yaml
+      service.yaml
+    dashboard/
+      deployment.yaml
+      service.yaml
+      ingress.yaml           # Only externally-routable service
+    kernel/
+      daemonset.yaml         # One per node for sidecar injection
+      # OR deployment.yaml   # Standalone proxy deployment
+    cert-init/
+      job.yaml               # Generate internal certs on install
+    networkpolicy.yaml       # Restrict inter-pod communication
+```
+
+**Sidecar pattern (separate manifest):**
+
+```yaml
+# deploy/k8s/sidecar.yaml -- injected into customer app pods
+apiVersion: v1
+kind: Pod
+metadata:
+  name: customer-app
+spec:
+  containers:
+  - name: app
+    image: customer/their-app:latest
+    env:
+    - name: HTTP_PROXY
+      value: "http://localhost:8443"
+    - name: HTTPS_PROXY
+      value: "http://localhost:8443"
+  - name: interdict-kernel
+    image: interdict/kernel:1.1
+    ports:
+    - containerPort: 8443
+    resources:
+      requests: { memory: "64Mi", cpu: "50m" }
+      limits:   { memory: "128Mi", cpu: "500m" }
+    volumeMounts:
+    - name: kernel-config
+      mountPath: /app/interdict.toml
+      subPath: interdict.toml
+    - name: certs
+      mountPath: /app/certs
+      readOnly: true
+  volumes:
+  - name: kernel-config
+    configMap: { name: interdict-kernel-config }
+  - name: certs
+    secret: { secretName: interdict-internal-certs }
+```
+
+#### Container Images (multi-stage builds)
+
+| Image | Base | Build Strategy | Expected Size |
+|-------|------|----------------|---------------|
+| `interdict/kernel` | `debian:bookworm-slim` | Rust release build, copy binary only | ~30MB |
+| `interdict/evidence-collector` | `debian:bookworm-slim` | Rust release build, copy binary only | ~25MB |
+| `interdict/control-plane` | `oven/bun:1-alpine` | Copy source + node_modules | ~80MB |
+| `interdict/dashboard` | `node:22-alpine` | Next.js standalone output | ~120MB |
+| `interdict/cert-init` | `alpine:3.19` | openssl + shell script | ~10MB |
+
+## Data Flow Changes
+
+### New Data Flow: Authentication
+
+```
+IdP SAML Response
+    |
+    v
+Dashboard (validate XML signature, extract assertions)
+    |
+    v
+Elysia API /auth/saml/callback
+    |
+    +---> PostgreSQL: upsert user (match external_id or email)
+    +---> PostgreSQL: create session (JWT claims: user_id, role, org_id, dept_id)
+    |
+    v
+Dashboard: set httpOnly cookie
+    |
+    v
+All subsequent Elysia API calls: Authorization: Bearer <jwt>
+    |
+    v
+Elysia RBAC middleware: validate JWT, check role >= required_role
+```
+
+### New Data Flow: Key Rotation
+
+```
+Admin: POST /api/v1/crypto/keys/rotate
+    |
+    v
+Elysia API: generate Ed25519 keypair
+    +---> PostgreSQL: insert signing_keys (status: pending -> active)
+    +---> PostgreSQL: old key status: active -> draining
+    |
+    v
+Elysia API: notify kernel fleet via gRPC push
+    (piggyback on PolicyUpdate or new dedicated KeyUpdate message)
+    |
+    v
+Kernel: update local signing key reference (ArcSwap)
+    |
+    v
+Evidence bundles: new bundles use new signing_key_id
+    |
+    v
+Evidence collector: verify signatures using key_id lookup
+    (accepts active + draining keys)
+```
+
+### Modified Data Flow: gRPC with mTLS
+
+```
+BEFORE (v1.0):
+  Kernel --[insecure gRPC]--> Control Plane
+  Kernel --[insecure gRPC]--> Evidence Collector
+
+AFTER (v1.1):
+  Kernel --[mTLS gRPC (rustls)]--> Control Plane (@grpc/grpc-js SSL)
+  Kernel --[mTLS gRPC (rustls)]--> Evidence Collector (tonic ServerTlsConfig)
+
+  Both sides present certificates signed by the internal CA.
+  Control plane verifies kernel client cert.
+  Evidence collector verifies kernel client cert.
+```
+
+### New Data Flow: Dashboard SSR
+
+```
+Browser request: GET /dashboard/audit
+    |
+    v
+Next.js Server Component
+    |
+    +---> Read session cookie, extract JWT
+    +---> Validate JWT (check expiry, signature)
+    +---> Call Elysia API: GET /api/v1/audit?filters...
+    |       (server-to-server, Authorization: Bearer <jwt>)
+    |
+    v
+Elysia API
+    +---> RBAC middleware: validate role has audit read permission
+    +---> AuditService.search() -> ClickHouse + PostgreSQL enrichment
+    |
+    v
+Next.js: render server component HTML with data
+    |
+    v
+Browser: receives fully-rendered page (no loading spinners for initial data)
+```
+
+## New PostgreSQL Schema Additions
+
+```sql
+-- Sessions (JWT is primary, but server tracks for revocation)
+CREATE TABLE sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
+  token_hash VARCHAR(64) NOT NULL,  -- SHA-256 of JWT
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ
+);
+CREATE INDEX idx_sessions_token_hash ON sessions(token_hash) WHERE revoked_at IS NULL;
+
+-- API Keys (for programmatic access)
+CREATE TABLE api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
+  name VARCHAR(255) NOT NULL,
+  key_hash VARCHAR(64) NOT NULL UNIQUE,  -- SHA-256 of the key
+  key_prefix VARCHAR(8) NOT NULL,  -- first 8 chars for identification
+  permissions JSONB NOT NULL DEFAULT '[]',  -- scoped permissions
+  expires_at TIMESTAMPTZ,
+  last_used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ
+);
+
+-- Signing Keys (Ed25519 key rotation)
+CREATE TABLE signing_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key_id VARCHAR(64) NOT NULL UNIQUE,
+  public_key_pem TEXT NOT NULL,
+  private_key_encrypted BYTEA,  -- encrypted at rest
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  activated_at TIMESTAMPTZ,
+  drained_at TIMESTAMPTZ,
+  retired_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- SAML configuration per organization
+CREATE TABLE saml_configs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id VARCHAR(255) NOT NULL UNIQUE,
+  idp_metadata_xml TEXT NOT NULL,
+  sp_entity_id VARCHAR(1024) NOT NULL,
+  sp_acs_url VARCHAR(1024) NOT NULL,
+  attribute_mapping JSONB NOT NULL DEFAULT '{}',
+  role_mapping JSONB NOT NULL DEFAULT '{}',  -- IdP group -> Interdict role
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Extend existing users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS
+  last_login_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS
+  saml_name_id VARCHAR(512);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS
+  idp_groups JSONB DEFAULT '[]';
+```
 
 ## Architectural Patterns
 
-### Pattern 1: Data Plane / Control Plane Strict Separation
+### Pattern 1: Auth Middleware Chain (Elysia)
 
-**What:** The kernel (data plane) never reads from PostgreSQL, never serves REST endpoints, never handles admin logic. The control plane never touches live AI traffic. Communication between planes is exclusively via gRPC.
+**What:** Composable authentication that supports both SAML sessions and API keys with a single middleware stack.
 
-**When to use:** Always. This is the non-negotiable foundation.
-
-**Trade-offs:**
-- Pro: Kernel stays fast and stateless; control plane can evolve independently
-- Pro: Kernel crash does not affect admin operations; control plane restart does not drop traffic
-- Con: More moving parts; requires well-designed gRPC contracts
-- Con: Policy updates have a propagation delay (mitigated by gRPC push, not polling)
+**When to use:** Every Elysia API route (except `/health` and SAML callback endpoints).
 
 **Implementation:**
+
+```typescript
+// Resolve auth from either JWT cookie or API key header
+export const authMiddleware = new Elysia()
+  .derive(async ({ headers, cookie }) => {
+    // Try JWT first (dashboard sessions)
+    const bearer = headers.authorization?.replace("Bearer ", "");
+    if (bearer) {
+      const user = await validateJwt(bearer);
+      if (user) return { user, authMethod: "jwt" as const };
+    }
+
+    // Try API key (programmatic access)
+    const apiKey = headers["x-api-key"];
+    if (apiKey) {
+      const user = await validateApiKey(apiKey);
+      if (user) return { user, authMethod: "api_key" as const };
+    }
+
+    throw new AuthError("Authentication required", 401);
+  });
+
+// Role check composes on top of auth
+export const requireRole = (minRole: Role) =>
+  new Elysia()
+    .use(authMiddleware)
+    .derive(({ user, set }) => {
+      if (ROLE_RANK[user.role] < ROLE_RANK[minRole]) {
+        set.status = 403;
+        throw new AuthError("Insufficient permissions", 403);
+      }
+      return { user };
+    });
 ```
-Kernel receives policies via gRPC push (control plane -> kernel)
-Kernel sends evidence via gRPC stream (kernel -> evidence collector)
-Kernel NEVER calls REST APIs, NEVER queries databases
-```
 
-### Pattern 2: Envoy-Inspired xDS Policy Distribution
+### Pattern 2: Server Component Data Loading (Next.js)
 
-**What:** Adapt the Envoy xDS pattern for policy distribution. The control plane API acts as an xDS-style management server. Kernels establish long-lived gRPC streams and receive policy updates as they happen -- not polling, not REST webhooks.
+**What:** Server components fetch data from the Elysia API during SSR, avoiding client-side loading states for initial page render.
 
-**When to use:** For pushing compiled Wasm policy modules, vendor allowlists, and configuration changes to the kernel fleet.
+**When to use:** All dashboard pages that display data.
 
-**Trade-offs:**
-- Pro: Real-time propagation (sub-second); no polling overhead; push guarantees delivery order
-- Pro: Battle-tested pattern from service mesh world (Envoy/Istio use it at massive scale)
-- Con: Requires reconnection logic and state reconciliation on kernel restart
+```typescript
+// app/(dashboard)/audit/page.tsx
+import { getSession } from "@/lib/auth";
+import { apiClient } from "@/lib/api-client";
+import { AuditTrailTable } from "@/components/audit/audit-trail-table";
 
-**gRPC service definition pattern:**
-```protobuf
-// proto/interdict/policy/v1/policy.proto
+export default async function AuditPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string }>;
+}) {
+  const session = await getSession();
+  const params = await searchParams;
 
-syntax = "proto3";
-package interdict.policy.v1;
+  const data = await apiClient.audit.search({
+    token: session.token,
+    filters: {
+      from_date: params.from,
+      to_date: params.to,
+      vendor: params.vendor,
+      action: params.action,
+    },
+  });
 
-service PolicyDistribution {
-  // Kernel connects and receives policy updates as a server stream.
-  // Request includes kernel identity and current policy version vector.
-  // Server sends full state on connect, then deltas.
-  rpc SubscribePolicies(PolicySubscribeRequest) returns (stream PolicyUpdate);
-
-  // Kernel reports its current enforcement status back
-  rpc ReportStatus(KernelStatusReport) returns (KernelStatusAck);
-}
-
-message PolicySubscribeRequest {
-  string kernel_id = 1;
-  string cluster_id = 2;
-  map<string, uint64> current_versions = 3; // policy_id -> version
-}
-
-message PolicyUpdate {
-  string policy_id = 1;
-  uint64 version = 2;
-  PolicyAction action = 3;       // UPSERT or DELETE
-  bytes wasm_module = 4;         // Compiled Wasm binary (only for UPSERT)
-  PolicyMetadata metadata = 5;
-  string checksum_sha256 = 6;    // Integrity check
-}
-
-enum PolicyAction {
-  POLICY_ACTION_UNSPECIFIED = 0;
-  POLICY_ACTION_UPSERT = 1;
-  POLICY_ACTION_DELETE = 2;
-}
-
-message PolicyMetadata {
-  string name = 1;
-  string description = 2;
-  uint32 priority = 3;           // Execution order
-  EnforcementMode mode = 4;
-  repeated string regulatory_frameworks = 5;
-  repeated string applicable_vendors = 6;   // Empty = all vendors
-  repeated string applicable_departments = 7;
-}
-
-enum EnforcementMode {
-  ENFORCEMENT_MODE_UNSPECIFIED = 0;
-  ENFORCEMENT_MODE_ENFORCE = 1;  // Block violations
-  ENFORCEMENT_MODE_AUDIT = 2;    // Log only, don't block
-  ENFORCEMENT_MODE_DISABLED = 3;
+  return <AuditTrailTable initialData={data} session={session} />;
 }
 ```
 
-### Pattern 3: Streaming Evidence Pipeline (Async Sidecar Drain)
+### Pattern 3: mTLS Certificate Loading with Graceful Fallback
 
-**What:** The kernel never blocks on evidence collection. Evidence events are serialized into a bounded in-memory ring buffer and flushed to the Evidence Collector via a gRPC client stream every 500ms (or when buffer hits threshold). The Evidence Collector handles the expensive cryptographic work (hash chain, Merkle tree, signing) asynchronously.
+**What:** Components attempt to load mTLS certificates, falling back to insecure transport in development when certs are missing.
 
-**When to use:** For all audit evidence. Zero evidence work should happen on the hot path.
+**When to use:** All gRPC client and server initialization points.
 
-**Trade-offs:**
-- Pro: Evidence collection adds zero latency to AI response path
-- Pro: Evidence Collector can batch ClickHouse inserts (1000+ rows per batch)
-- Con: 500ms window means evidence could be lost on kernel crash (acceptable: crash-restart logs the gap)
-- Con: Eventual consistency between action and audit record
-
-**gRPC service definition pattern:**
-```protobuf
-// proto/interdict/audit/v1/audit.proto
-
-syntax = "proto3";
-package interdict.audit.v1;
-
-import "google/protobuf/timestamp.proto";
-
-service AuditPipeline {
-  // Client streaming: kernel sends a continuous stream of evidence events.
-  // Server acknowledges with the latest processed sequence number.
-  rpc StreamEvidence(stream EvidenceEvent) returns (stream EvidenceAck);
-
-  // Query API for the control plane
-  rpc QueryAuditTrail(AuditQuery) returns (AuditQueryResponse);
-}
-
-message EvidenceEvent {
-  string event_id = 1;            // UUIDv7 (time-sortable)
-  string kernel_id = 2;
-  uint64 sequence_number = 3;     // Monotonic per kernel, gap detection
-  google.protobuf.Timestamp timestamp = 4;
-
-  // Actor
-  ActorIdentity actor = 5;
-
-  // What happened
-  string ai_vendor = 6;
-  string ai_model = 7;
-  RequestDirection direction = 8;  // INBOUND (to AI) or OUTBOUND (from AI)
-
-  // Content fingerprints (NEVER plaintext prompts/responses)
-  bytes prompt_hash_sha256 = 9;
-  bytes response_hash_sha256 = 10;
-  uint32 prompt_token_count = 11;
-  uint32 response_token_count = 12;
-
-  // Policy decision
-  PolicyDecision decision = 13;
-
-  // Session linkage
-  string session_id = 14;
-  uint32 turn_number = 15;
-
-  // Chain linkage
-  bytes previous_event_hash = 16;  // SHA-256 of previous evidence event
-}
-
-message ActorIdentity {
-  string user_id = 1;
-  string email = 2;
-  string department = 3;
-  string idp_source = 4;           // "okta", "azure_ad", etc.
-  string jwt_fingerprint = 5;      // Hash of the JWT, not the JWT itself
-}
-
-message PolicyDecision {
-  Verdict verdict = 1;
-  repeated PolicyResult policy_results = 2;
-  uint32 enforcement_latency_us = 3;  // Microseconds for full pipeline
-}
-
-enum Verdict {
-  VERDICT_UNSPECIFIED = 0;
-  VERDICT_ALLOW = 1;
-  VERDICT_BLOCK = 2;
-  VERDICT_REDACT = 3;
-  VERDICT_REVIEW = 4;             // Sent to human review queue
-}
-
-message PolicyResult {
-  string policy_id = 1;
-  string policy_name = 2;
-  Verdict result = 3;
-  uint32 layer = 4;               // 1=Wasm, 2=NLP, 3=Human
-  uint32 latency_us = 5;
-  string detail = 6;              // Human-readable explanation
-}
-
-enum RequestDirection {
-  REQUEST_DIRECTION_UNSPECIFIED = 0;
-  REQUEST_DIRECTION_INBOUND = 1;    // User -> AI vendor
-  REQUEST_DIRECTION_OUTBOUND = 2;   // AI vendor -> User
-}
-
-message EvidenceAck {
-  uint64 last_sequence_number = 1;
-  string merkle_batch_id = 2;       // Which Merkle batch this event joined
-}
-```
-
-### Pattern 4: WIT-Based Policy Plugin API (Wasm Component Model)
-
-**What:** Define the policy plugin interface using WIT (WebAssembly Interface Types) rather than the raw OPA Wasm ABI. This creates a type-safe contract between the kernel host and policy plugins, supporting both OPA-compiled Wasm and custom Wasm components.
-
-**When to use:** For the L1 (Wasm) enforcement layer. All policy modules conform to this interface.
-
-**Trade-offs:**
-- Pro: Type-safe interface; policies can be authored in any language that targets Wasm Components (Rust, Go, Python, JS)
-- Pro: Host can provide capabilities to policies (regex, data lookups) in a controlled way
-- Con: Component Model adds ~50-100us overhead vs raw module instantiation (negligible vs policy logic)
-- Con: OPA-compiled Wasm uses the older module ABI, not Component Model -- need an adapter layer
-
-**WIT Definition:**
-```wit
-// wit/policy/world.wit
-
-package interdict:policy@0.1.0;
-
-interface types {
-    record request-context {
-        actor-id: string,
-        actor-email: string,
-        actor-department: string,
-        vendor: string,
-        model: string,
-        direction: direction,
-        session-id: string,
-        turn-number: u32,
-        content-hash: list<u8>,
-        token-count: u32,
-        metadata: list<tuple<string, string>>,
-    }
-
-    enum direction {
-        inbound,
-        outbound,
-    }
-
-    record policy-result {
-        verdict: verdict,
-        detail: string,
-        matched-rules: list<string>,
-    }
-
-    enum verdict {
-        allow,
-        block,
-        redact,
-        review,
-    }
-
-    // Host-provided capabilities
-    record regex-match {
-        pattern: string,
-        matched: bool,
-        captures: list<string>,
-    }
-}
-
-interface host-capabilities {
-    use types.{regex-match};
-
-    // Regex matching (compiled and cached by host for performance)
-    regex-check: func(pattern: string, text: string) -> regex-match;
-
-    // Data lookup (host-managed reference data)
-    lookup-set: func(set-name: string, key: string) -> bool;
-
-    // Logging (sandboxed, goes to policy evaluation log)
-    log-debug: func(message: string);
-}
-
-world policy-plugin {
-    import host-capabilities;
-
-    use types.{request-context, policy-result};
-
-    // Core evaluation function. Called for every request/response.
-    export evaluate: func(ctx: request-context, content: list<u8>) -> policy-result;
-
-    // Optional: streaming chunk evaluation for response inspection.
-    // Called per token window. Return none to continue, some to act.
-    export evaluate-chunk: func(ctx: request-context, chunk: list<u8>, window: list<u8>) -> option<policy-result>;
-
-    // Metadata
-    export name: func() -> string;
-    export version: func() -> string;
-    export description: func() -> string;
-}
-```
-
-**Host-side Rust implementation pattern:**
 ```rust
-// crates/kernel/src/enforce/wasm.rs (conceptual)
+// Shared pattern for kernel gRPC clients
+fn build_grpc_tls_config(cert_dir: &Path) -> Option<ClientTlsConfig> {
+    let ca = cert_dir.join("ca.pem");
+    let cert = cert_dir.join("client.pem");
+    let key = cert_dir.join("client.key");
 
-use wasmtime::component::{bindgen, Component, Linker};
-use wasmtime::{Config, Engine, Store};
-
-// Generate Rust bindings from WIT
-bindgen!({
-    world: "policy-plugin",
-    path: "../../wit/policy",
-    async: true,
-});
-
-struct PolicyHost {
-    regex_cache: HashMap<String, Regex>,
-    data_sets: HashMap<String, HashSet<String>>,
-}
-
-impl host_capabilities::Host for PolicyHost {
-    async fn regex_check(&mut self, pattern: String, text: String) -> RegexMatch {
-        let re = self.regex_cache.entry(pattern.clone())
-            .or_insert_with(|| Regex::new(&pattern).unwrap());
-        // ... perform match, return result
-    }
-
-    async fn lookup_set(&mut self, set_name: String, key: String) -> bool {
-        self.data_sets.get(&set_name)
-            .map(|s| s.contains(&key))
-            .unwrap_or(false)
-    }
-
-    async fn log_debug(&mut self, message: String) {
-        tracing::debug!(policy_log = %message);
+    if ca.exists() && cert.exists() && key.exists() {
+        let ca_pem = std::fs::read(&ca).ok()?;
+        let cert_pem = std::fs::read(&cert).ok()?;
+        let key_pem = std::fs::read(&key).ok()?;
+        Some(
+            ClientTlsConfig::new()
+                .ca_certificate(Certificate::from_pem(ca_pem))
+                .identity(Identity::from_pem(cert_pem, key_pem))
+        )
+    } else {
+        tracing::warn!("mTLS certs not found at {:?}, using insecure transport", cert_dir);
+        None
     }
 }
 ```
 
-### Pattern 5: OPA-to-Wasm Dual Path (Component Adapter)
+## Anti-Patterns to Avoid
 
-**What:** Support two policy authoring paths: (1) Rego policies compiled via OPA's built-in Wasm compiler, wrapped in a thin adapter to conform to the WIT interface; (2) Native Wasm Components written directly against the WIT interface in any language.
+### Anti-Pattern 1: Auth in the Data Plane
 
-**When to use:** Rego path for day-one regulatory policies (faster to author for compliance teams). Native Wasm path for complex custom policies.
+**What people do:** Put JWT validation or RBAC checks in the Rust kernel.
+**Why it is wrong:** The kernel is a stateless proxy. Adding user/session lookup to the hot path violates plane separation, adds latency, and requires the kernel to access PostgreSQL -- breaking the architecture invariant that the data plane never writes to the DB.
+**Do this instead:** Auth lives entirely in the control plane (Elysia API) and dashboard (Next.js). The kernel trusts the control plane implicitly (mTLS ensures it is talking to the real control plane).
 
-**OPA Compilation Pipeline:**
-```
-                    OPA CLI / Go API
-Rego Source  ──────────────────────>  OPA Wasm Module (.wasm)
-   (.rego)        opa build              (OPA ABI 1.x)
-                  -t wasm                    │
-                  -e entrypoint              │
-                                             v
-                                    Adapter Component
-                                    (wraps OPA module in
-                                     WIT-compatible shell)
-                                             │
-                                             v
-                                    Policy Plugin (.wasm)
-                                    (conforms to policy-plugin world)
-```
+### Anti-Pattern 2: Dashboard Direct DB Access
 
-**Key OPA Wasm ABI details** (from official docs, HIGH confidence):
-- OPA compiles Rego to Wasm modules with exported functions: `eval()`, `builtins()`, `entrypoints()`, `opa_eval_ctx_new()`, `opa_eval_ctx_set_input()`, `opa_eval_ctx_set_data()`, `opa_eval_ctx_get_result()`
-- Memory is managed via `opa_malloc()`/`opa_free()` and JSON parsing via `opa_json_parse()`/`opa_json_dump()`
-- The host must implement `env.opa_abort()`, `env.opa_println()`, and `env.opa_builtin0/1/2/3/4()` as imports
-- Compilation command: `opa build -t wasm -e <entrypoint> <rego_file>`
-- Output is always an OPA bundle (tar.gz) containing `policy.wasm`
-- Core Rego language is fully supported; `http.send` and similar I/O built-ins are not (must be implemented by host)
+**What people do:** Have Next.js server components query PostgreSQL or ClickHouse directly.
+**Why it is wrong:** Bypasses RBAC middleware, duplicates query logic, creates two sources of truth for data access patterns, and couples the dashboard to the database schema.
+**Do this instead:** Dashboard always goes through the Elysia API. The API is the single authority for data access and authorization. Next.js API routes act as a thin proxy when needed.
 
-**Adapter layer:** The adapter is itself a Wasm Component that internally instantiates the OPA module, translates the WIT `request-context` into OPA JSON input, calls `eval()`, and translates the OPA JSON result back into a WIT `policy-result`. This is a fixed piece of infrastructure code, not per-policy.
+### Anti-Pattern 3: Storing Private Keys in PostgreSQL
 
-### Pattern 6: Sliding Window Token Buffer for Streaming
+**What people do:** Store Ed25519 private keys as plaintext in the database.
+**Why it is wrong:** Database backups, replication, and SQL injection could expose signing keys. Violates CLAUDE.md invariant #6 (never log/store plaintext secrets).
+**Do this instead:** Store private keys encrypted at rest (AES-256-GCM with a master key from environment/KMS). Or better: use `SigningMode::Kms` when available. Database stores only the encrypted blob and the public key.
 
-**What:** For SSE/streaming responses from AI vendors, the kernel does not forward tokens immediately. Instead, it holds back a sliding window of 5-10 tokens, running policy evaluation on the accumulated window. If a violation is detected mid-stream, the connection is severed and remaining content replaced with `[REDACTED BY INTERDICT POLICY]`.
+### Anti-Pattern 4: Monolithic Container Image
 
-**When to use:** All streaming AI responses (SSE from OpenAI, Anthropic, etc.).
+**What people do:** Build one container with all services.
+**Why it is wrong:** Violates plane separation, prevents independent scaling, creates massive images, and makes sidecar deployment impossible.
+**Do this instead:** One Dockerfile per service. Multi-stage builds. Shared base images where practical.
 
-**Implementation approach:**
-```
-  AI Vendor SSE stream:
-    token1 -> token2 -> token3 -> token4 -> token5 -> token6 -> ...
-                                                        │
-                          ┌─────────────────────────────┘
-                          v
-                    Sliding Window Buffer
-                    [token2, token3, token4, token5, token6]
-                          │
-                          v
-                    L1 Wasm evaluation on window text
-                          │
-                    ┌─────┴─────┐
-                    │           │
-                 ALLOW       BLOCK
-                    │           │
-                    v           v
-              Forward       Sever connection
-              token1        Insert redaction marker
-              to client     Close upstream
-```
+### Anti-Pattern 5: Polling for SAML Session Validity
 
-**Key design decisions:**
-- Window size is configurable per policy (default 5 tokens)
-- The delay is imperceptible to users (tokens arrive ~50ms apart from most vendors)
-- L1 (Wasm) runs on every window shift; L2 (NLP) runs only if L1 returns `review`
-- Window state is per-stream, stored in the kernel's memory (not persisted)
-- SSE parsing: split on `data:` lines, handle `[DONE]` sentinel
+**What people do:** Check session validity against the IdP on every request.
+**Why it is wrong:** Adds 50-200ms latency per API call, creates IdP dependency for availability.
+**Do this instead:** Short-lived JWTs (15 min). Validate locally (check signature + expiry). Background refresh. Session revocation table checked only on refresh.
 
-### Pattern 7: NLP Classifier as Embedded ONNX Model
+## Build Order (Dependency-Driven)
 
-**What:** Layer 2 of the enforcement pipeline is a lightweight NLP classifier running as an ONNX model embedded in the kernel process. Use the `ort` crate (Rust bindings for ONNX Runtime) to run a DistilBERT or similar small model for content classification (PII detection, topic classification, sensitivity scoring).
-
-**When to use:** When L1 Wasm rules return an inconclusive or `review` verdict, and the content needs semantic analysis (not just pattern matching).
-
-**Trade-offs:**
-- Pro: Runs in-process, no network hop; inference in <10ms for small models
-- Pro: Deterministic (same input = same output), unlike LLM-based classification
-- Con: Model size (~60-100MB for DistilBERT ONNX); adds to kernel memory footprint
-- Con: Must be fine-tuned for the specific classification tasks (PII, sensitivity, topic)
-- Con: Not as flexible as LLM -- handles predefined categories only
-
-**Model selection (MEDIUM confidence):**
-- **Primary:** DistilBERT-base fine-tuned for multi-label classification, exported to ONNX with INT8 quantization. ~66MB model size, ~3-8ms inference on CPU.
-- **Alternative:** A custom small model (2-3 transformer layers) trained specifically on governance-relevant categories. Smaller footprint, faster inference, but requires training investment.
-- **Runtime:** `ort` crate (Rust ONNX Runtime bindings) -- 3-5x faster than Python, supports CPU execution providers. No GPU needed for small models.
-
-**Architecture:**
-```
-L2 NLP Classifier (in kernel process)
-├── Tokenizer (loaded from tokenizer.json at startup)
-├── ONNX Session (loaded from model.onnx at startup, one per kernel)
-├── Classification heads:
-│   ├── PII detection (names, emails, SSNs, etc.)
-│   ├── Sensitivity scoring (confidential, internal, public)
-│   ├── Topic classification (financial, legal, medical, etc.)
-│   └── Custom categories (configurable per deployment)
-└── Threshold config (per category, per policy)
-```
-
-## Data Flow
-
-### Primary Request Flow (Inline Enforcement)
+The following order minimizes blocked dependencies:
 
 ```
-Employee App
-    │
-    │ HTTPS request to AI vendor (e.g., api.openai.com)
-    │ (intercepted by proxy config / sidecar network policy)
-    v
-INTERDICT KERNEL
-    │
-    ├── 1. Protocol Decode: Parse HTTP/H2/SSE/WS/gRPC
-    │       Extract: method, headers, body/stream, target vendor
-    │
-    ├── 2. Identity Extract: Pull identity from JWT/SAML assertion
-    │       Map to: user_id, email, department, IdP source
-    │
-    ├── 3. Vendor Check: Verify target is in approved vendor registry
-    │       BLOCK if vendor not approved (fast path, no policy eval needed)
-    │
-    ├── 4. Session Lookup: Find or create session context
-    │       Key: (user_id, vendor, conversation_id)
-    │       Provides: turn history, accumulated context
-    │
-    ├── 5. L1 Wasm Evaluation (<2ms target)
-    │   │   Run all active Wasm policy plugins in priority order
-    │   │   Input: request-context + content bytes
-    │   │   Each plugin returns: allow / block / redact / review
-    │   │   Aggregate: strictest verdict wins (block > redact > review > allow)
-    │   │
-    │   ├── If BLOCK: Return 403 + policy violation message
-    │   ├── If REDACT: Modify request body, continue to L1 check on modified content
-    │   ├── If ALLOW: Skip L2, forward request
-    │   └── If REVIEW: Continue to L2
-    │
-    ├── 6. L2 NLP Classification (<10ms target)
-    │   │   Run ONNX model inference on content
-    │   │   Categories: PII, sensitivity, topic
-    │   │   Compare scores against per-policy thresholds
-    │   │
-    │   ├── If high-confidence classification: Apply verdict (block/allow/redact)
-    │   └── If low-confidence: Route to L3 human review queue
-    │
-    ├── 7. L3 Human Review (async)
-    │   │   Enqueue to review queue (via control plane API)
-    │   │   Default behavior while pending: configurable (block / allow with flag)
-    │   │
-    │   └── Note: This is async. The request is either blocked pending review
-    │       or allowed with an audit flag. Review happens in dashboard.
-    │
-    ├── 8. Forward Request: Proxy to AI vendor
-    │       Maintain original headers, body (or redacted body)
-    │       For streaming: enter response inspection loop (Pattern 6)
-    │
-    ├── 9. Response Inspection:
-    │       Non-streaming: Buffer response, run L1+L2 on response body
-    │       Streaming (SSE): Sliding window inspection per Pattern 6
-    │       If violation in response: sever stream, insert redaction marker
-    │
-    └── 10. Evidence Emission (async, non-blocking):
-            Push EvidenceEvent to in-memory buffer
-            Buffer flushes to Evidence Collector via gRPC stream every 500ms
-            Event includes: actor, vendor, hashes, verdict, latency, chain link
+Phase 7: Identity, Access & Security
+  7.1: PostgreSQL schema migrations (sessions, api_keys, signing_keys, saml_configs)
+       + users table extensions
+       WHY FIRST: Everything else depends on the schema existing.
+
+  7.2: Auth module (JWT creation/validation, API key generation/validation)
+       + RBAC middleware
+       WHY SECOND: Dashboard and all protected routes need auth.
+
+  7.3: SAML SSO integration (samlify, IdP config, assertion handling)
+       WHY THIRD: Builds on auth module. Can test with Okta dev account.
+
+  7.4: mTLS (cert generation script, tonic TLS config, @grpc/grpc-js TLS config)
+       WHY FOURTH: Independent of auth, but same phase for security cohesion.
+
+  7.5: Key rotation service
+       WHY FIFTH: Requires auth (admin-only endpoint) and mTLS (fleet notification).
+
+Phase 8: Dashboard Core
+  8.1: Next.js project scaffold + layout + auth flow
+       WHY FIRST: All views need the shell and login.
+
+  8.2: Policy Builder + Vendor Management + Regulatory Selector (3 CRUD views)
+       WHY SECOND: Most straightforward, validates API integration pattern.
+
+  8.3: Audit Trail + Real-time Alerts (data-heavy views)
+       WHY THIRD: ClickHouse queries already exist in API; UI is the work.
+
+Phase 9: Compliance & Advanced Dashboard
+  9.1: Compliance Reports + Evidence Verification UI
+       WHY FIRST: Highest value for pilot customers (auditor-facing).
+
+  9.2: Department Management + Human Review Queue
+       WHY SECOND: Uses department scoping from RBAC.
+
+  9.3: Anomaly Detection views
+       WHY THIRD: Requires ClickHouse aggregation queries (new API endpoints).
+
+Phase 10: Deployment & Packaging
+  10.1: Dockerfiles (all 4 services + cert-init)
+        WHY FIRST: Everything else in this phase needs working images.
+
+  10.2: Docker Compose stack + integration test
+        WHY SECOND: Validates full stack before Helm complexity.
+
+  10.3: Helm chart + sidecar manifest + CA onboarding script
+        WHY THIRD: K8s packaging, uses proven images from 10.1.
 ```
 
-### Policy Update Flow
+## Integration Points Summary
 
-```
-Compliance Officer (Dashboard)
-    │
-    │ Creates/edits policy in Policy Builder UI
-    v
-DASHBOARD (Next.js)
-    │
-    │ REST API call
-    v
-CONTROL PLANE API (Bun + Elysia)
-    │
-    ├── 1. Validate Rego syntax
-    ├── 2. Store source in PostgreSQL (policies table)
-    ├── 3. Compile: opa build -t wasm -e <entrypoint> <rego>
-    │       Produces: policy.wasm (OPA bundle)
-    ├── 4. Wrap in adapter (OPA ABI -> WIT Component)
-    ├── 5. Store compiled Wasm blob in PostgreSQL
-    ├── 6. Increment policy version
-    ├── 7. Push PolicyUpdate to all subscribed kernels via gRPC stream
-    │       (PolicyDistribution.SubscribePolicies server stream)
-    │       Include: Wasm binary, metadata, checksum
-    └── 8. Kernels receive update:
-            - Verify checksum
-            - Hot-load new Wasm module into Wasmtime engine
-            - Update local policy registry (in-memory HashMap)
-            - Begin enforcing new version on next request
-            - No restart required
-```
+### Internal Boundaries
 
-### Evidence and Audit Flow
-
-```
-KERNEL (per request)
-    │
-    │ EvidenceEvent (protobuf, compressed)
-    │ Pushed to in-memory ring buffer
-    │ Buffer auto-flushes every 500ms or at capacity
-    v
-EVIDENCE COLLECTOR SERVICE (gRPC stream receiver)
-    │
-    ├── 1. Receive batch of EvidenceEvents
-    ├── 2. For each event:
-    │       - Verify sequence continuity (detect gaps = kernel crash)
-    │       - Compute SHA-256(event_bytes + previous_event_hash) -> event_hash
-    │       - Append to hash chain
-    │       - Add event_hash as leaf to current Merkle tree batch
-    │
-    ├── 3. Every hour (configurable):
-    │       - Finalize Merkle tree
-    │       - Compute Merkle root
-    │       - Sign root with Ed25519 key
-    │       - Create Merkle batch record:
-    │           { batch_id, root_hash, signature, start_time, end_time,
-    │             event_count, leaf_hashes }
-    │
-    ├── 4. Anchor to immutable storage:
-    │       - S3 PutObject with Object Lock (WORM)
-    │       - Content: signed Merkle batch + all evidence events
-    │       - Retention: configurable (regulatory minimum, e.g., 7 years)
-    │
-    ├── 5. Batch insert to ClickHouse:
-    │       - Denormalized event rows for analytics
-    │       - 1000+ rows per INSERT for performance
-    │
-    └── 6. Acknowledge to kernel:
-            - Return last_sequence_number processed
-            - Return merkle_batch_id for cross-reference
-```
-
-## ClickHouse Schema Design
-
-**Confidence:** MEDIUM (based on ClickHouse best practices, not production-validated for this exact use case)
-
-```sql
--- Primary audit events table
-CREATE TABLE audit_events (
-    -- Time-sortable primary identifiers
-    event_id UUID,                                  -- UUIDv7
-    event_time DateTime64(3, 'UTC'),                -- Millisecond precision
-    event_date Date MATERIALIZED toDate(event_time), -- For partition pruning
-
-    -- Tenant isolation (multi-tenant from day one)
-    tenant_id UInt32,
-
-    -- Actor dimensions (LowCardinality for enum-like fields)
-    actor_user_id String,
-    actor_email String,
-    actor_department LowCardinality(String),
-    actor_idp_source LowCardinality(String),
-
-    -- AI interaction dimensions
-    ai_vendor LowCardinality(String),              -- "openai", "anthropic", etc.
-    ai_model LowCardinality(String),               -- "gpt-4o", "claude-3.5-sonnet"
-    direction LowCardinality(String),               -- "inbound", "outbound"
-
-    -- Content fingerprints (NEVER store plaintext)
-    prompt_hash FixedString(32),                    -- SHA-256 (32 bytes binary)
-    response_hash FixedString(32),
-    prompt_token_count UInt32,
-    response_token_count UInt32,
-
-    -- Policy decision
-    verdict LowCardinality(String),                 -- "allow", "block", "redact", "review"
-    enforcement_latency_us UInt32,                  -- Microseconds
-
-    -- Policy results (nested as JSON string, queryable via JSON functions)
-    policy_results String CODEC(ZSTD(3)),
-
-    -- Session tracking
-    session_id String,
-    turn_number UInt16,
-
-    -- Kernel metadata
-    kernel_id String,
-    sequence_number UInt64,
-
-    -- Cryptographic chain
-    event_hash FixedString(32),
-    previous_event_hash FixedString(32),
-    merkle_batch_id String
-)
-ENGINE = MergeTree()
-PARTITION BY (tenant_id, toYYYYMM(event_date))
-ORDER BY (tenant_id, event_date, actor_department, ai_vendor, event_time)
-TTL event_date + INTERVAL 7 YEAR
-SETTINGS index_granularity = 8192;
-
--- Materialized view: Hourly aggregates per department
-CREATE MATERIALIZED VIEW audit_hourly_stats
-ENGINE = SummingMergeTree()
-PARTITION BY (tenant_id, toYYYYMM(event_date))
-ORDER BY (tenant_id, event_date, hour, actor_department, ai_vendor, verdict)
-AS SELECT
-    tenant_id,
-    toDate(event_time) AS event_date,
-    toStartOfHour(event_time) AS hour,
-    actor_department,
-    ai_vendor,
-    verdict,
-    count() AS event_count,
-    sum(prompt_token_count) AS total_prompt_tokens,
-    sum(response_token_count) AS total_response_tokens,
-    avg(enforcement_latency_us) AS avg_latency_us
-FROM audit_events
-GROUP BY tenant_id, event_date, hour, actor_department, ai_vendor, verdict;
-
--- Materialized view: Policy violation tracking
-CREATE MATERIALIZED VIEW audit_violations
-ENGINE = MergeTree()
-PARTITION BY (tenant_id, toYYYYMM(event_date))
-ORDER BY (tenant_id, event_date, verdict, ai_vendor, event_time)
-AS SELECT
-    event_id,
-    event_time,
-    toDate(event_time) AS event_date,
-    tenant_id,
-    actor_user_id,
-    actor_email,
-    actor_department,
-    ai_vendor,
-    ai_model,
-    verdict,
-    policy_results,
-    session_id,
-    turn_number
-FROM audit_events
-WHERE verdict IN ('block', 'redact', 'review');
-```
-
-**Schema design rationale:**
-- **ORDER BY** starts with `tenant_id` (lowest cardinality, primary filter) then `event_date` (time range queries), then `actor_department` and `ai_vendor` (common dashboard filters), then `event_time` (final sort within groups).
-- **PARTITION BY** includes `tenant_id` for strict tenant isolation and `toYYYYMM(event_date)` for monthly time partitioning. At 10K events/sec per tenant, monthly partitions stay well within the 1-300GB optimal range.
-- **LowCardinality** on all enum-like string columns (vendor, model, department, verdict, direction) -- dictionary encoding dramatically reduces storage and speeds filtering.
-- **FixedString(32)** for SHA-256 hashes -- avoids variable-length overhead.
-- **ZSTD(3) codec** on the `policy_results` JSON column -- compresses well but with acceptable decompress speed.
-- **TTL 7 years** -- regulatory minimum for most frameworks; configurable per deployment.
-- **Materialized views** pre-aggregate common dashboard queries, avoiding full table scans.
-
-## Scaling Considerations
-
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| **Pilot (80 users, ~100 req/s)** | Single kernel instance, single Evidence Collector, single-node ClickHouse, single-node PostgreSQL. Docker Compose. Everything on one VM is fine. |
-| **Mid-market (1K-5K users, ~5K req/s)** | Multiple kernel sidecar instances (one per app pod). Dedicated Evidence Collector replica set. ClickHouse with 2-3 shards. PostgreSQL with read replicas. Kubernetes deployment. |
-| **Enterprise (10K-50K users, ~50K req/s)** | Kernel fleet with horizontal scaling (stateless, so linear). Evidence Collector scaled to 3-5 replicas with consistent hashing for chain ordering. ClickHouse cluster (sharded by tenant_id). PostgreSQL with pgBouncer connection pooling. S3-compatible storage with cross-region replication. |
-| **Large Enterprise (100K+ users, ~500K req/s)** | Kernel auto-scaling based on request rate. Evidence pipeline may need Kafka/NATS as buffer between kernels and Evidence Collector to handle burst. ClickHouse with ReplicatedMergeTree across availability zones. Dedicated ClickHouse cluster per large tenant. |
-
-### Scaling Priorities (what breaks first)
-
-1. **First bottleneck: Evidence Collector throughput.** At high request volumes, the single Evidence Collector becomes a bottleneck for hash chain construction (sequential by nature). Mitigation: partition chains by kernel_id (each kernel maintains its own chain), merge into Merkle trees per batch. This allows parallel Evidence Collector instances.
-
-2. **Second bottleneck: ClickHouse insert throughput.** Solved by batching (already designed in) and adding shards. ClickHouse handles 100K+ inserts/sec per node with proper batching.
-
-3. **Third bottleneck: Policy compilation latency.** OPA compilation is CPU-intensive. At scale with many policy changes, the control plane may need a dedicated compilation worker pool. Mitigation: compile asynchronously, queue compilation jobs.
-
-4. **Kernel itself is unlikely to bottleneck** -- Rust + tokio handles >10K concurrent connections per instance. The Wasm evaluation is <2ms. NLP inference is <10ms. The proxy overhead is dominated by network I/O to the AI vendor, not kernel processing.
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Synchronous Evidence Collection on Hot Path
-
-**What people do:** Write evidence to database or external service synchronously before returning the AI response to the user.
-**Why it's wrong:** Adds 5-50ms of latency per request for database writes, hash computation, and signing. At 10K req/s this destroys the latency budget and makes the kernel a bottleneck.
-**Do this instead:** Async evidence buffer with background flush. Evidence is eventually consistent (500ms max lag), which is acceptable for audit purposes. No auditor needs real-time logs.
-
-### Anti-Pattern 2: Polling for Policy Updates
-
-**What people do:** Kernel periodically polls the control plane API for policy changes (e.g., every 30 seconds via REST).
-**Why it's wrong:** 30-second propagation delay is unacceptable for security policy changes. Polling at high frequency wastes bandwidth and CPU. Polling at low frequency leaves enforcement gaps.
-**Do this instead:** Long-lived gRPC server stream from control plane to kernels. Push-based delivery ensures sub-second propagation. Reconnection with version vector handles kernel restarts.
-
-### Anti-Pattern 3: Storing Plaintext Prompts/Responses in Audit Logs
-
-**What people do:** Log the full text of every prompt and response for auditability.
-**Why it's wrong:** Creates a honeypot of sensitive data. If the audit log is breached, every AI conversation is exposed. Also violates GDPR data minimization and potentially creates new compliance liabilities.
-**Do this instead:** Store SHA-256 hashes of content (prompt_hash, response_hash) in the audit log. Store token counts for usage analytics. The plaintext is reconstructable from the original system (if needed for investigation) but never centralized in the audit pipeline. Evidence bundles in S3 WORM may optionally include encrypted content for forensic access with strict key management.
-
-### Anti-Pattern 4: Mixing Data Plane and Control Plane Concerns
-
-**What people do:** Add REST endpoints to the kernel for configuration, or have the kernel query PostgreSQL for policy definitions.
-**Why it's wrong:** The kernel becomes a monolith. Database connection pools consume memory and file descriptors. REST handler bugs can crash the proxy. Configuration queries add latency to the hot path. The kernel can no longer be truly stateless.
-**Do this instead:** Kernel receives ALL configuration via gRPC push from the control plane. Kernel has zero database dependencies. Kernel exposes only a health check endpoint and gRPC streams.
-
-### Anti-Pattern 5: Evaluating All Policy Layers on Every Request
-
-**What people do:** Run L1 (Wasm) + L2 (NLP) + L3 (Human) on every single request regardless of L1 result.
-**Why it's wrong:** NLP inference at 5-10ms per request is expensive at scale. If L1 gives a definitive ALLOW or BLOCK, running L2 wastes CPU and adds latency for no benefit.
-**Do this instead:** Short-circuit evaluation. L1 result of ALLOW or BLOCK is final. Only REVIEW triggers L2. L2 result of ALLOW or BLOCK is final. Only continued ambiguity triggers L3 (human review). Expected distribution: ~90% resolved at L1, ~9% at L2, ~1% at L3.
-
-## Integration Points
+| Boundary | Communication | Direction | Auth | Changes in v1.1 |
+|----------|---------------|-----------|------|------------------|
+| Dashboard <-> Elysia API | HTTP REST | Dashboard calls API | JWT Bearer token | NEW (dashboard is new) |
+| Kernel <-> Control Plane | gRPC (server-streaming) | CP pushes to kernel | mTLS client cert | MODIFIED (add mTLS) |
+| Kernel <-> Evidence Collector | gRPC (client-streaming) | Kernel pushes to EC | mTLS client cert | MODIFIED (add mTLS) |
+| Elysia API <-> PostgreSQL | SQL (drizzle ORM) | API reads/writes | Connection string | MODIFIED (new tables) |
+| Elysia API <-> ClickHouse | HTTP SQL | API reads | Connection string | UNCHANGED |
+| Dashboard <-> IdP | SAML 2.0 (HTTP redirect) | SP-initiated flow | SAML assertions | NEW |
 
 ### External Services
 
 | Service | Integration Pattern | Notes |
 |---------|---------------------|-------|
-| **AI Vendors (OpenAI, Anthropic, etc.)** | HTTPS proxy pass-through with TLS termination/re-origination | Kernel terminates incoming TLS, inspects, then originates new TLS to vendor. Must handle vendor-specific auth headers (API keys passthrough). |
-| **Identity Providers (Okta, Azure AD)** | OIDC/SAML token validation in kernel + control plane | Kernel validates JWT signature and extracts claims. Control plane manages IdP configuration. Keys fetched from JWKS endpoint and cached. |
-| **S3-Compatible Storage** | S3 PutObject with Object Lock from Evidence Collector | Use AWS SDK for Rust (`aws-sdk-s3`). Object Lock requires bucket-level configuration. MinIO for on-prem deployments. |
-| **Container Registries** | Docker image publishing for all services | Multi-arch builds (amd64 + arm64). Kernel image should be minimal (scratch or distroless base). |
+| Enterprise IdP (Okta/Azure AD) | SAML 2.0 SP-initiated SSO | Dashboard redirects to IdP; IdP POSTs assertion back |
+| Container Registry | Docker push during CI | Images published for customer pull |
+| Customer's K8s cluster | Helm install | Air-gapped friendly: images can be pre-loaded |
 
-### Internal Boundaries
+## Scaling Considerations
 
-| Boundary | Communication | Protocol | Authentication |
-|----------|---------------|----------|----------------|
-| Kernel <-> Evidence Collector | Unidirectional stream (kernel sends events) | gRPC client streaming | mTLS (mutual TLS certificates) |
-| Kernel <-> Control Plane API | Bidirectional (policy push + status reports) | gRPC server streaming + unary | mTLS |
-| Control Plane API <-> Dashboard | Request/response | REST (HTTP/2) or tRPC | Session cookie + RBAC middleware |
-| Control Plane API <-> PostgreSQL | Query/write | PostgreSQL wire protocol | TLS + password/certificate |
-| Evidence Collector <-> ClickHouse | Batch insert | ClickHouse native protocol or HTTP | TLS + password |
-| Evidence Collector <-> S3 | Object write | HTTPS (S3 API) | IAM role or access key |
-| All internal services | Service discovery | Kubernetes DNS or Docker Compose DNS | mTLS between all components |
+| Scale | Architecture Adjustments |
+|-------|--------------------------|
+| Pilot (80 users, single kernel) | Docker Compose on a single VM. All services on one host. PostgreSQL and ClickHouse have trivial load. |
+| Medium (1k users, 10 kernels) | Helm chart. Multiple kernel instances. Control plane handles 10 gRPC streams. Dashboard behind a load balancer. |
+| Enterprise (10k users, 100 kernels) | Horizontal pod autoscaler on control plane and dashboard. ClickHouse cluster for query throughput. Consider Redis session store for JWT validation if PostgreSQL becomes a bottleneck. |
 
-## Build Order (Dependency-Driven)
+### Scaling priorities for v1.1
 
-The following build order reflects hard technical dependencies between components.
-
-```
-Phase 1: Foundation
-├── proto/ definitions (everything depends on these)
-├── crates/shared (types, crypto primitives)
-├── packages/shared (TS types)
-└── wit/ definitions (policy plugin contract)
-
-Phase 2: Kernel Core
-├── crates/kernel/proxy (protocol decode + forward without inspection)
-├── Basic transparent proxy that passes traffic through
-└── Performance benchmarks (establish baseline)
-
-Phase 3: Enforcement Pipeline
-├── crates/kernel/enforce/wasm (Wasmtime integration + WIT host)
-├── crates/policy-compiler (Rego -> Wasm + adapter)
-├── L1 enforcement working end-to-end
-└── Streaming inspector (sliding window)
-
-Phase 4: Evidence Pipeline
-├── crates/evidence-collector (hash chain + Merkle tree + signing)
-├── crates/kernel/evidence (buffer + gRPC client)
-├── ClickHouse schema deployment
-└── S3 Object Lock integration
-
-Phase 5: Control Plane
-├── packages/api (Elysia API with policy CRUD)
-├── gRPC policy distribution (API -> kernel push)
-├── PostgreSQL schema + migrations
-└── RBAC + auth middleware
-
-Phase 6: Dashboard
-├── packages/dashboard (Next.js)
-├── Policy builder UI
-├── Audit trail views
-└── Compliance reporting
-
-Phase 7: NLP Layer (L2)
-├── Model selection and fine-tuning
-├── ONNX export + quantization
-├── crates/kernel/enforce/nlp (ort integration)
-└── Threshold calibration
-
-Phase 8: Hardening
-├── mTLS everywhere
-├── Identity provider integration (OIDC/SAML)
-├── Helm chart + K8s sidecar injection
-├── Load testing at target scale
-└── Security audit
-```
-
-**Rationale for this order:**
-- Proto definitions and shared types are the foundation -- everything else depends on them.
-- The kernel must work as a transparent proxy before adding enforcement (proves the proxy works, establishes performance baseline).
-- Enforcement before evidence because enforcement is the core value proposition; evidence without enforcement is just logging.
-- Control plane after kernel because the kernel can initially load policies from local files during development, but enforcement cannot work without the kernel.
-- Dashboard last among features because it is a UI on top of working APIs; the API must exist first.
-- NLP (L2) is deferred because L1 (Wasm/Rego) handles the majority of cases; L2 adds incremental value and requires model training investment.
-- Hardening is last because security features (mTLS, OIDC) add complexity that slows down development velocity in early phases.
+1. **Dashboard SSR latency:** Server components with proper caching (Next.js fetch cache + revalidation). Not a concern at pilot scale.
+2. **gRPC connection count on control plane:** 100 kernel connections is trivial for @grpc/grpc-js. Only matters at 1000+ kernels.
+3. **ClickHouse query load from dashboard:** Already optimized with materialized views (v1.0). Dashboard adds UI, not new query patterns.
 
 ## Sources
 
-- [OPA WebAssembly Documentation](https://www.openpolicyagent.org/docs/latest/wasm/) -- HIGH confidence, official docs
-- [Wasmtime Component Model Bindgen](https://docs.wasmtime.dev/api/wasmtime/component/macro.bindgen.html) -- HIGH confidence, official docs
-- [Building Native Plugin Systems with WebAssembly Components](https://tartanllama.xyz/posts/wasm-plugins/) -- MEDIUM confidence, detailed technical walkthrough
-- [Envoy xDS Protocol Documentation](https://www.envoyproxy.io/docs/envoy/latest/api-docs/xds_protocol) -- HIGH confidence, official docs
-- [Tonic gRPC for Rust](https://github.com/hyperium/tonic) -- HIGH confidence, official repo
-- [ClickHouse MergeTree Key Selection (Altinity)](https://kb.altinity.com/engines/mergetree-table-engine-family/pick-keys/) -- HIGH confidence, authoritative knowledge base
-- [ort Crate - ONNX Runtime for Rust](https://ort.pyke.io) -- MEDIUM confidence, active project
-- [rust-bert NLP Pipelines](https://github.com/guillaume-be/rust-bert) -- MEDIUM confidence, active project
-- [Ed25519 + Merkle Tree Tamper-Proof Decision Logs](https://dev.to/veritaschain/ed25519-merkle-tree-uuidv7-building-tamper-proof-decision-logs-o1e) -- LOW confidence, community article
-- [Constant-Size Cryptographic Evidence Structures for Regulated AI Workflows](https://arxiv.org/pdf/2511.17118) -- MEDIUM confidence, academic paper
-- [Building a Scalable Audit Log System with ClickHouse](https://dev.to/epilot/building-a-scalable-audit-log-system-with-aws-and-clickhouse-jn5) -- LOW confidence, community article
-- [ClickHouse Schema Design Best Practices](https://medium.com/@lureilly1/clickhouse-schema-design-best-practices-for-high-performance-analytics-5c26998c7e56) -- MEDIUM confidence
-- [Monorepo with pnpm + Turborepo + Rust](https://github.com/spa5k/monorepo-typescript-rust) -- LOW confidence, example repo
+- [Tonic mTLS Rustls Example](https://github.com/hyperium/tonic/blob/master/examples/src/tls_rustls/server.rs) -- HIGH confidence, official example
+- [Tonic Transport Docs](https://docs.rs/tonic/latest/tonic/transport/index.html) -- HIGH confidence, official docs
+- [@grpc/grpc-js mTLS](https://grpc.io/docs/guides/auth/) -- HIGH confidence, official gRPC docs
+- [samlify SAML 2.0 library](https://github.com/tngan/samlify) -- MEDIUM confidence, most maintained TS SAML lib
+- [Next.js App Router Architecture 2026](https://www.yogijs.tech/blog/nextjs-project-architecture-app-router) -- MEDIUM confidence, community patterns
+- [Next.js Dashboard Learn Tutorial](https://nextjs.org/learn/dashboard-app) -- HIGH confidence, official Next.js tutorial
+- [Next.js + shadcn/ui Admin Dashboard Template](https://vercel.com/templates/next.js/next-js-and-shadcn-ui-admin-dashboard) -- HIGH confidence, Vercel official template
+- [Helm Best Practices](https://helm.sh/docs/chart_best_practices/) -- HIGH confidence, official Helm docs
+- [ClickHouse Docker Compose Architectures](https://clickhouse.com/blog/clickhouse-architectures-with-docker-compose) -- HIGH confidence, official ClickHouse blog
+- [Key Rotation Best Practices](https://www.kiteworks.com/regulatory-compliance/encryption-key-rotation-strategies/) -- MEDIUM confidence, industry guidance
+- [RBAC in Next.js App Router](https://www.jigz.dev/blogs/how-to-implement-role-based-access-control-rbac-in-next-js-app-router) -- MEDIUM confidence, community guide
+- [WorkOS Next.js App Router Auth Guide 2026](https://workos.com/blog/nextjs-app-router-authentication-guide-2026) -- MEDIUM confidence, vendor guide
 
 ---
-*Architecture research for: AI Governance Kernel / Compliance Proxy Platform*
-*Researched: 2026-02-26*
+*Architecture research for: Interdict.io v1.1 Integration (Identity, Dashboard, Deployment)*
+*Researched: 2026-03-01*

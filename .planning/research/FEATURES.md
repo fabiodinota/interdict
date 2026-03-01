@@ -1,188 +1,242 @@
-# Feature Landscape
+# Feature Landscape: v1.1 Pilot Ready
 
-**Domain:** AI Governance & Compliance Proxy for Regulated Enterprises
-**Researched:** 2026-02-26
-**Confidence:** MEDIUM-HIGH (multi-source competitive analysis + regulatory requirements)
+**Domain:** Identity & Security, Dashboard, Deployment for AI Governance Platform
+**Researched:** 2026-03-01
+**Confidence:** HIGH (multi-source: competitor analysis, enterprise security standards, regulatory requirements, deployment ecosystem research)
+**Scope:** NEW features only -- v1.0 data plane, evidence pipeline, and control plane API already shipped
+
+---
+
+## Context: What Already Exists (v1.0)
+
+The v1.1 feature landscape builds on a complete foundation:
+
+- Streaming Rust proxy with 3-layer policy engine (Wasm + NLP + human review)
+- PII/financial/secrets detection with redaction in requests and streaming responses
+- Cryptographic evidence pipeline (SHA-256 hash chain, Ed25519 signatures, Merkle trees, S3 WORM)
+- Control plane API: policy CRUD, Rego-to-Wasm compiler, vendor registry, regulatory mappings, audit trail queries
+- gRPC push-based policy distribution with hot-reload
+- PostgreSQL (config/users/policies) + ClickHouse (audit analytics)
+- Existing DB schema: `users` table with `role` column (unused), `externalId` for SAML (unused), `departments`, `teams`
+
+v1.1 adds the enterprise-facing layer: identity, dashboard, and deployment packaging.
 
 ---
 
 ## Table Stakes
 
-Features users expect. Missing = product feels incomplete. Regulated enterprise buyers (CISOs, compliance officers, legal/risk teams at banks, law firms, hospitals) will not purchase without these.
+Features that pilot customers (law firm ~80 employees, small private bank) will expect on day one. Missing any of these means the product cannot be deployed.
 
-| # | Feature | Why Expected | Complexity | Notes |
-|---|---------|--------------|------------|-------|
-| T1 | **Real-Time Prompt/Response Inspection** | Every competitor (Lasso, CalypsoAI/F5, Purview) offers this. Gartner AI TRiSM framework mandates runtime inspection. Without it, you are a logging tool, not a governance tool. | High | Core data plane capability. Must handle streaming (SSE), not just request/response. Interdict's sliding-window token buffer is the right approach. |
-| T2 | **PII/Sensitive Data Detection & Redaction** | 90%+ of enterprise AI security incidents involve data leakage. Buyers list DLP-for-AI as requirement #1 in procurement checklists. Every competitor has this. GDPR/HIPAA make it legally mandatory. | High | Must detect PII, PHI, PCI, API keys, secrets, proprietary code, and custom patterns. Must support both blocking and redaction (replace with placeholder, not just reject). Named entity recognition + regex hybrid approach. |
-| T3 | **Policy Enforcement (Block/Allow/Redact)** | The fundamental value proposition. Lasso, CalypsoAI, and Purview all enforce policies at runtime. Without enforcement, you are a monitor, not a control. | High | Three actions minimum: block (reject request), allow (pass through), redact (modify and pass). Must support per-department, per-user, per-vendor granularity. |
-| T4 | **Audit Trail with Full Attribution** | EU AI Act Article 12 requires logging. Every regulated enterprise needs audit evidence for regulators. All competitors offer this. Banks need 7+ year retention. | Med | Every AI interaction logged with: who (user identity), what (prompt hash, response hash), when, which model/vendor, policy decision, and why (rule that triggered). Prompt/response content storage should be configurable (some customers want full text, others only hashes for privacy). |
-| T5 | **SSO/IdP Integration (OIDC + SAML)** | Enterprise procurement blocks any product without SSO. Non-negotiable for banks, hospitals, government. Every enterprise product ships this. | Med | OIDC (Okta, Azure AD, Google Workspace) and SAML 2.0 (legacy enterprise IdPs). Must map every AI action to a verified corporate identity -- this is what makes audit trails meaningful. |
-| T6 | **Role-Based Access Control (RBAC)** | Enterprise buyers need separation of duties. Compliance officers, admins, auditors, department managers all need different views and permissions. Standard enterprise requirement. | Med | Minimum roles: Super Admin, Compliance Officer, Policy Admin, Department Manager, Read-Only Auditor. CalypsoAI and Lasso both have RBAC. Auditor role is critical for regulated industries -- external regulators need read-only access to evidence. |
-| T7 | **Vendor/Model Allowlisting** | Enterprises need to control which AI vendors employees can use. Shadow AI (90% of enterprise AI usage is unapproved) is the #1 CISO concern. CalypsoAI, Lasso, and Purview all offer this. | Low | Approve/block specific AI vendors and model versions. Per-department granularity (legal team gets GPT-4 but not open-source models; engineering gets Copilot). Must include version pinning -- model updates can change behavior. |
-| T8 | **Compliance Dashboard & Reporting** | CISOs and compliance officers need visual evidence of regulatory compliance for board presentations and regulator inquiries. All governance platforms have dashboards. Gartner lists this as core AI TRiSM capability. | Med | Real-time policy violation stats, compliance posture by regulation, trend analysis, exportable reports (PDF/CSV) for regulators. Must show: total interactions governed, violations caught, violations by type/department/vendor. |
-| T9 | **Regulatory Framework Mapping** | EU AI Act enforcement begins August 2026. NIST AI RMF is the US standard. Buyers want "turn on EU AI Act compliance" not "figure out which policies to write." Every governance platform (Credo AI, Holistic AI, OneTrust) maps to frameworks. | Med | Pre-built policy packs for: EU AI Act, GDPR, NIST AI RMF, ISO 42001, HIPAA, SOC 2. Selecting a jurisdiction auto-enables relevant policy configurations. Must map individual policies to specific regulatory articles for audit evidence. |
-| T10 | **Prompt Injection / Jailbreak Detection** | Core AI security threat. HiddenLayer, CalypsoAI, and Lasso all detect prompt injection attacks. OWASP Top 10 for LLMs lists this as #1 vulnerability. Customers will ask about this in every sales call. | High | Detect direct and indirect prompt injection, jailbreak attempts, prompt leaking attacks. Layer 2 NLP classifier in Interdict's pipeline is the right place for this. Must evolve continuously as attack techniques change. |
-| T11 | **VPC/On-Premises Deployment** | Regulated enterprises (banks, hospitals, government) will not send data to a SaaS vendor. This is a hard procurement blocker. CalypsoAI supports on-prem. Microsoft Purview is cloud-only (weakness). | Med | Docker Compose for smaller deployments (law firm pilot), Helm chart for Kubernetes. All data stays in customer perimeter. No phone-home telemetry. Air-gapped mode is future but VPC-native is day-one. |
-| T12 | **Integration with Existing Security Stack** | Enterprise buyers demand SIEM/SOAR integration. They will not adopt a governance tool that creates a new silo. Lasso, CalypsoAI, and Purview all integrate with security stacks. | Med | At minimum: webhook/syslog for SIEM integration (Splunk, Sentinel, QRadar), API for programmatic access. SOAR integration (automated incident response) is a fast-follow. |
+| # | Feature | Why Expected | Complexity | Dependencies on Existing | Notes |
+|---|---------|--------------|------------|--------------------------|-------|
+| TS-1 | **SAML 2.0 SSO** | Enterprise procurement blocks products without SSO. Both pilot targets (law firm, bank) use enterprise IdPs (Okta, Azure AD). Every enterprise security product ships SAML. Non-negotiable for regulated verticals. | Med | Adds auth middleware to existing Elysia API. Maps SAML subject to `users.externalId` column (already in schema). | SAML 2.0 specifically (not just OIDC) because law firms and banks often run on-premises AD/ADFS. OIDC is a v2 fast-follow. Use a proven library (BoxyHQ/SAML-Jackson or saml2-js) rather than hand-rolling XML signature verification -- SAML is a minefield of security bugs. |
+| TS-2 | **API Key Auth Fallback** | Pilot deployments need a working auth mechanism from day one, before SAML IdP integration is configured. Service-to-service communication (scripts, CI/CD) always needs API keys. Every API product supports this. | Low | Adds to existing unauthenticated Elysia endpoints. Stores hashed keys in PostgreSQL `users` or new `api_keys` table. | Hash keys with SHA-256 before storage. Support key rotation (create new, revoke old). Rate-limit per key. This ships before SAML because it unblocks everything else. |
+| TS-3 | **5-Role RBAC** | Separation of duties is mandatory for regulated enterprises. A compliance officer must not be able to modify policies. An auditor must have read-only access. Every competitor (CalypsoAI, Lasso, Credo AI) has RBAC. | Med | Uses existing `users.role` column. Adds middleware to every existing API endpoint. Requires refactoring all routes to check permissions. | Roles: Super Admin (full access), Compliance Officer (audit + reports + review queue), Policy Admin (policy CRUD + vendor management), Department Manager (own-department view), Read-Only Auditor (view everything, modify nothing). Principle of least privilege. External regulators get Auditor role. |
+| TS-4 | **mTLS Between Components** | All internal communication (kernel to control plane, kernel to evidence collector, API to databases) must be encrypted and mutually authenticated. Required for SOC 2, ISO 27001, and any bank deployment. Standard enterprise security practice. | Med | Configures TLS on existing gRPC channels and HTTP connections. Requires CA certificate generation per deployment. | Generate deployment-unique CA keypair during install (never ship pre-generated keys). Mutual authentication prevents rogue components from joining the mesh. For Kubernetes deployments, can leverage service mesh mTLS (Istio/Linkerd) as alternative. For Docker Compose, manual cert generation with helper script. |
+| TS-5 | **Key Rotation for Evidence Signing** | Ed25519 signing keys must be rotatable without losing the ability to verify old evidence bundles. Key rotation is table stakes for any cryptographic system. Banks require documented key management procedures. | Med | Extends existing evidence-collector signing module. Adds key version tracking to evidence bundles. Control plane API endpoint to trigger rotation. | Must support: generate new keypair, mark old key as "verify-only", new evidence signed with new key, old evidence still verifiable with old key. Store key metadata (version, creation date, retirement date) in PostgreSQL. The key rotation API is a control plane feature, not a data plane feature. |
+| TS-6 | **Policy Builder UI** | CISOs and compliance officers cannot write Rego policy language. A visual policy builder is the primary interface for non-technical users to create and manage governance rules. Every governance dashboard (CalypsoAI, Credo AI, Holistic AI) has a policy builder. | High | Consumes existing `/api/policies` CRUD endpoints. Must translate visual builder output to Rego source that the existing compiler accepts. | Form-based builder, not drag-and-drop (too complex for v1.1). Sections: trigger conditions (vendor, department, content type), detection rules (PII categories, custom patterns), enforcement action (block/allow/redact), scope (departments/teams). Preview mode showing what the policy will do. Enable/disable toggle. The hard part is generating valid Rego from UI inputs. |
+| TS-7 | **Audit Trail Dashboard** | The #1 feature compliance officers need. Searchable, filterable view of all AI interactions with policy decisions. Every governance tool has this. Without it, the audit trail API is useless to non-technical users. Pilot customers specifically asked for this. | Med-High | Consumes existing `/api/audit/events` query endpoints. Reads from ClickHouse via control plane API. | Filters: time range, user, department, vendor, policy decision (allow/block/redact), violation type. Search by content hash or event ID. Click-through to evidence bundle detail. Pagination for large result sets (ClickHouse handles volume). Real-time updates via WebSocket or polling. Export to CSV for compliance reports. |
+| TS-8 | **Compliance Reporting** | CISOs need PDF/CSV reports for board presentations, regulator inquiries, and legal teams. "Show me all AI interactions in the legal department last quarter" is a day-one request. All compliance tools (Vanta, Drata, Sprinto) generate automated reports. | Med | Aggregates data from existing ClickHouse audit tables and PostgreSQL policy/regulatory data. | Report types: Executive summary (violations by period/department), Regulatory compliance status (per framework), Department activity report, Vendor usage report, Incident detail report. PDF generation (server-side rendering with Puppeteer or react-pdf). CSV export for raw data. Scheduled reports (weekly/monthly email) are a fast-follow, not MVP. |
+| TS-9 | **Real-Time Violation Statistics** | Compliance officers need a live overview of what is happening right now. Violation counts, trends, hot spots. This is the "home screen" of the dashboard. Every monitoring/governance tool has a statistics view. | Med | Queries existing ClickHouse audit data. Aggregation queries on existing event schema. | Visualizations: violations over time (line chart), violations by type (bar chart), violations by department (bar chart), violations by vendor (pie chart), top triggered policies. Time range selector (last hour, day, week, month). Auto-refresh interval. This is the first thing a CISO sees when logging in. |
+| TS-10 | **Vendor Management UI** | Approve/block AI vendors, set model version allowlists. The visual interface for the existing vendor registry API. Non-technical compliance officers need this to manage which AI tools are approved. | Low-Med | Consumes existing `/api/vendors` CRUD endpoints. Direct mapping to existing schema. | List view of all vendors with status (approved/blocked/pending). Add/edit vendor dialog. Model version allowlist per vendor. Bulk import/export. Risk status indicators (red/yellow/green). Simple CRUD UI -- low complexity because the API already exists. |
+| TS-11 | **Docker Compose Stack** | The law firm pilot (~80 employees) runs on a single server, not Kubernetes. Docker Compose is the standard for single-machine multi-container deployments. Without this, they cannot deploy. | Med | Packages existing services: kernel, evidence-collector, control plane API, dashboard, PostgreSQL, ClickHouse. | Single `docker-compose.yml` with all services, networking, volumes, and health checks. Environment variable configuration. One-command deploy: `docker compose up -d`. Include sample policies (EU AI Act pack pre-loaded per PILOT-01). Include onboarding documentation. Resource limits configured for ~80 user scale. |
+| TS-12 | **Container Images** | All services must be containerized and published to a registry. This is the deployment primitive for both Docker Compose and Kubernetes. | Med | Multi-stage Dockerfiles for each Rust binary (kernel, evidence-collector) and each Node.js service (control plane API, dashboard). | Minimal base images (distroless or alpine). Multi-stage builds (compile in builder, copy binary to runtime). Image size targets: Rust binaries <50MB, Node.js services <200MB. Publish to GitHub Container Registry (ghcr.io). Tag with version and git SHA. Security scanning (Trivy) in CI. |
+| TS-13 | **Regulatory Framework Selector UI** | Visual interface for the existing regulatory mapping engine. Pick a jurisdiction, see what policies are auto-enabled. Compliance officers need this to configure regulatory compliance without understanding individual policies. | Med | Consumes existing `/api/regulatory` endpoints. Existing 8 framework packs (EU AI Act, GDPR, NIST, PDPA, DPDP, China, Canada, GCC). | Framework selection with descriptions. Toggle individual policy mappings on/off. Show which policies are enabled by each framework. Visual display of which articles/requirements are addressed. Jurisdiction conflict detection (what happens when EU AI Act and GDPR both apply). |
 
 ## Differentiators
 
-Features that set Interdict apart from competitors. Not expected by default, but create competitive advantage and justify premium pricing. These are where Interdict's architecture enables capabilities competitors cannot match.
+Features that set v1.1 apart from competitors. Not required for pilot launch, but create significant competitive advantage and demonstrate enterprise maturity.
 
-| # | Feature | Value Proposition | Complexity | Notes |
-|---|---------|-------------------|------------|-------|
-| D1 | **Inline Prevention (Not Post-Hoc Monitoring)** | Microsoft Purview and Lasso are primarily post-hoc -- they log and alert after the fact. Interdict blocks violations before data reaches the AI vendor. This is the single most important architectural differentiator. Gartner's 2025 AI TRiSM report highlights that 80% of unauthorized AI transactions stem from internal policy violations -- post-hoc detection means the damage is already done. | Already designed | This is Interdict's core architecture. The transparent proxy + Wasm policy engine achieves this. Market it as "firewall for AI" not "monitoring for AI." |
-| D2 | **Cryptographically Signed, Tamper-Proof Audit Trails** | No competitor offers Ed25519-signed, Merkle-tree-anchored evidence chains. CalypsoAI and Lasso have "immutable logs" but these are database records -- an admin with DB access can modify them. Interdict's hash-chain + digital signatures provide mathematical proof of non-tampering. Academic research (arxiv.org/abs/2511.17118) validates this approach for regulated AI workflows. | High | SHA-256 hash chain, Ed25519 signatures, Merkle tree batching, S3 Object Lock (WORM) anchoring. This is the kind of evidence that stands up in court and satisfies regulators who understand cryptography. Major differentiator for banks and law firms. |
-| D3 | **Streaming-First Response Inspection** | Most competitors inspect complete request/response pairs. Interdict inspects streaming responses in real-time via sliding-window token buffer and can sever connections mid-stream with `[REDACTED BY INTERDICT POLICY]`. No competitor publicly claims mid-stream interception capability. This matters because modern AI APIs stream by default. | Very High | Holding 5-10 tokens back for multi-token pattern detection while maintaining low latency is technically demanding. But it is the only correct approach -- non-streaming inspection misses real-time violations and adds unacceptable latency to user experience. |
-| D4 | **Policy-as-Code via Wasm** | OPA/Rego is the industry standard for policy-as-code, but executing policies as compiled Wasm modules inside the data plane is novel for AI governance. Competitors use interpreted rules or cloud-side evaluation (adding latency). Wasm gives: deterministic execution (<2ms), sandboxed safety, hot-reload without restart, and customer-extensible policies. | High | Compile Rego/YAML rules to Wasm, push to kernel fleet via gRPC. Customers can write custom policy modules. This enables "governance-as-infrastructure" positioning that no SaaS dashboard competitor can match. |
-| D5 | **Multi-Turn Session Context Tracking** | Most competitors evaluate individual messages in isolation. Interdict tracks session context across multi-turn conversations, detecting policy violations that only emerge across multiple exchanges (e.g., an employee gradually revealing confidential information across 10 messages that individually seem harmless). | High | Requires session state management in the data plane. Critical for catching "slow leak" data exfiltration and context-dependent policy violations. Few competitors mention this capability. |
-| D6 | **Sub-10ms Latency Overhead** | CalypsoAI claims "low latency" but does not publish numbers. Lasso and Purview do not publish latency overhead. Interdict's target of <10ms p99 (aspirationally <5ms) with a Rust data plane is a concrete, measurable claim that resonates with DevOps teams who will otherwise block governance tool adoption. | High | Rust kernel, zero-copy I/O, async pipeline, Wasm policy execution. Performance is a feature -- DevOps teams uninstall governance tools that add noticeable latency. Publish benchmarks in marketing. |
-| D7 | **3-Layer Policy Pipeline with Escalation** | Competitors use either fast-but-dumb regex/rules OR slow-but-smart LLM classification. Interdict's 3-layer pipeline (Wasm rules <2ms -> NLP classifier <10ms -> async human review) covers 95%+ deterministically while gracefully escalating edge cases. This avoids the false-positive fatigue of rules-only systems and the latency/cost of LLM-in-path systems. | High | Layer 1 handles clear violations instantly. Layer 2 catches nuanced violations. Layer 3 provides human judgment for genuine edge cases. The key insight: never put an LLM in the synchronous enforcement path. |
-| D8 | **Evidence Bundle Verification UI** | Auditors and regulators can independently verify the integrity of the entire audit chain through the dashboard -- verify hash chains, check signatures, view Merkle proofs. No competitor offers self-service evidence verification. This matters because regulated enterprises need to prove evidence was not altered after collection. | Med | Verification UI that shows: chain integrity status, individual bundle signatures, Merkle tree structure, anchoring proof. External auditors get read-only access to verify independently. |
-| D9 | **Department-Level Policy Segmentation** | Most competitors apply policies organization-wide. Interdict supports per-department, per-team, per-role policy configuration. A law firm's litigation team has different AI governance needs than their corporate team. A bank's trading desk vs. HR department. | Med | Policy inheritance model: organization defaults -> department overrides -> team overrides. Compliance officers configure without IT involvement. Critical for large enterprises with diverse AI usage patterns. |
-| D10 | **Agentic AI / MCP Gateway Governance** | Emerging market need (2026). MCP is becoming the standard for AI agent-to-tool communication. Lasso just launched an open-source MCP security gateway. Proofpoint acquired Acuvity for agentic AI security. Singapore published an agentic AI governance framework in January 2026. Interdict's proxy architecture naturally extends to govern MCP traffic -- intercept agent tool calls, enforce authorization policies, log tool usage. | Very High | Not MVP but critical for 2026-2027 relevance. Agentic AI creates far more governance surface area than chat-based AI. Interdict's architecture (transparent proxy + policy engine) is uniquely suited for this -- agents cannot bypass an inline proxy like they can bypass a SaaS monitoring dashboard. |
-| D11 | **Fail-Closed / Fail-Open Toggle** | Per-policy configuration for what happens when the governance kernel is unavailable or encounters an error. Banks want fail-closed (block everything if governance is down). Development teams want fail-open (don't block developers if governance is temporarily unavailable). No competitor explicitly offers per-policy fail-mode configuration. | Low | Simple but powerful for regulated enterprise sales. Shows architectural maturity and understanding of different risk appetites. |
-| D12 | **Shadow AI Discovery** | 90% of enterprise AI usage is unapproved. Network-level detection of which AI services employees are using (even unapproved ones) is a CISO's top priority. Lasso and Palo Alto are leaders here. Interdict's Phase 1 is opt-in proxy, but Shadow AI discovery should be on the roadmap. | High | Phase 2+ capability. Requires network-level visibility (DNS analysis, SSL inspection integration, CASB integration). Not MVP but essential for full enterprise value. |
+| # | Feature | Value Proposition | Complexity | Dependencies on Existing | Notes |
+|---|---------|-------------------|------------|--------------------------|-------|
+| DF-1 | **Evidence Bundle Verification UI** | No competitor offers self-service cryptographic evidence verification. Auditors can independently verify hash chain integrity, check Ed25519 signatures, and view Merkle proofs through the dashboard. This is unique to Interdict and directly leverages the cryptographic evidence pipeline built in v1.0. For banks and law firms, the ability to prove evidence was not tampered with is not just nice-to-have -- it is the core value proposition. | Med-High | Reads evidence bundles from ClickHouse. Uses verification logic from existing `interdict-verify` crate. Calls existing verification endpoints or implements client-side verification. | Chain integrity visualization: green chain of bundles, red highlight on any break. Individual bundle detail: hash, previous hash, signature, verification status. Merkle tree view: expandable tree showing hourly roots and leaf bundles. S3 anchor verification: compare computed root with WORM-stored root. External auditor mode: read-only access with full verification capabilities. |
+| DF-2 | **Human Review Queue UI** | The Layer 3 human review queue exists in the kernel but has no interface. Compliance officers need a queue of escalated AI interactions to review, with context, approve/reject buttons, and feedback that improves policy. This workflow pattern (green/amber/red lanes with SLA-based escalation) is proven in compliance tooling. No competitor in the AI governance space has a true human-in-the-loop review interface. | High | Consumes Layer 3 queue from kernel. Requires new API endpoints for queue management (list pending, approve, reject, reassign). WebSocket for real-time queue updates. | Queue view with priority sorting. Escalation SLA timers (configurable per policy: 15min for critical, 4hr for standard). Full context display: the prompt, the policy that triggered escalation, the detection confidence score, relevant session history. Approve/reject with mandatory reasoning. Reject feedback feeds back into policy refinement. Role-restricted: only Compliance Officers and Super Admins. |
+| DF-3 | **Department-Level Policy Management UI** | Visual configuration of per-department policy overrides with inheritance display. Interdict already supports the backend (organization defaults -> department overrides -> team overrides), but there is no UI. This is a differentiator because most competitors apply policies organization-wide. | Med | Consumes existing department/team hierarchy from PostgreSQL. Extends existing policy API with department scope parameters. | Tree view of department hierarchy. Click department to see: inherited policies (from org default), overridden policies (department-specific), effective policy set (merged). Drag-and-drop or toggle to override/inherit specific policies. Visual diff between org default and department override. Department Managers can only see/modify their own department (enforced by RBAC). |
+| DF-4 | **Anomaly Detection Views** | Proactive detection of unusual AI usage patterns goes beyond reactive policy enforcement. Volume anomalies (sudden spike in API calls), time-based anomalies (3 AM usage from finance department), pattern anomalies (user suddenly querying legal topics when they are in engineering). ClickHouse time-series capabilities make this computationally feasible. Most competitors offer monitoring but not anomaly detection. | High | Runs aggregate queries on existing ClickHouse audit data. Anomaly detection logic is server-side (statistical baselines, moving averages, standard deviation thresholds). | Anomaly types: volume spikes (>2 sigma from rolling average), off-hours usage (configurable per department), vendor switching (user suddenly using new AI vendor), topic drift (user's prompt categories change significantly), velocity anomalies (too many requests per minute from single user). Alert configuration: which anomaly types trigger notifications, severity thresholds. Dashboard visualization: timeline with anomaly markers, drill-down to individual events. |
+| DF-5 | **Kubernetes Helm Chart** | While Docker Compose serves the law firm pilot, the bank pilot and any larger enterprise will require Kubernetes deployment. A production-quality Helm chart with configurable resource limits, RBAC, and health probes demonstrates enterprise readiness. Replicated's research shows Helm is the standard for enterprise K8s software distribution. | High | Packages same services as Docker Compose but with K8s-native configurations: Deployments, Services, ConfigMaps, Secrets, PersistentVolumeClaims, NetworkPolicies. | Subchart structure: kernel, evidence-collector, control-plane, dashboard, dependencies (PostgreSQL, ClickHouse). Configurable `values.yaml` with documentation. Resource limits per component. Health/readiness probes. NetworkPolicy for component isolation. Optional Ingress configuration. Optional service mesh integration (Istio mTLS as alternative to manual mTLS). Private registry support for air-gapped environments. |
+| DF-6 | **Sidecar Deployment Manifest** | Kernel running as a sidecar container in the same pod as the company's AI application is the cleanest deployment model for Kubernetes. Traffic interception happens at the pod level without network-wide changes. This is Interdict's intended deployment model and a key architectural advantage over SaaS competitors. | Med | Kernel container image from TS-12. Sidecar YAML with init container for iptables rules or Istio traffic capture. | Sidecar YAML manifest: kernel container spec, resource limits, volume mounts for policy cache, init container for traffic redirection. Documentation for integrating with existing pods. iptables-based traffic capture for explicit proxy mode. Supports both sidecar injection and manual pod modification. |
+| DF-7 | **CA Certificate Onboarding Script** | For explicit proxy mode, client machines need to trust Interdict's CA certificate for TLS interception. An automated onboarding script reduces deployment friction from "multi-day IT ticket" to "10-minute setup." This is a deployment differentiator -- competitors that require manual cert installation lose deals over deployment complexity. | Low | Uses CA cert generated during deployment setup (TS-4 mTLS). Script distributes cert to client machines. | Platform-specific scripts: macOS (`security add-trusted-cert`), Windows (certutil), Linux (update-ca-certificates). Group Policy template for Windows domain environments. MDM profile for macOS (Jamf, Mosyle). Verification command to confirm cert is trusted. Rollback script to remove cert. |
 
 ## Anti-Features
 
-Features to explicitly NOT build. These are traps that seem valuable but would either dilute the product, compromise architecture, or misalign with the market position.
+Features to explicitly NOT build in v1.1. These are tempting but would either delay the pilot, compromise architecture, or misalign with the product.
 
 | # | Anti-Feature | Why Avoid | What to Do Instead |
 |---|--------------|-----------|-------------------|
-| A1 | **LLM-Powered Inline Policy Enforcement** | LLMs in the enforcement path are too slow (100ms-2s), too expensive ($0.01-0.10/call at scale), and non-deterministic (same input -> different output). This violates the <10ms latency budget and makes policy decisions unpredictable. CalypsoAI uses LLM-based scanners which adds cost and latency. | Use deterministic Wasm/Rego rules (Layer 1) and lightweight NLP classifiers (Layer 2) for inline enforcement. LLMs only for async edge-case review (Layer 3) where latency does not matter. |
-| A2 | **AI Model Training/Fine-Tuning** | Interdict is governance infrastructure, not a model platform. Adding model capabilities confuses the market position and competes with every AI vendor you need as a partner. Protect AI and HiddenLayer focus on model security -- different market segment. | Stay model-agnostic. Govern any AI vendor's traffic. Let customers use whatever models they want. |
-| A3 | **SaaS-Only Deployment** | Regulated enterprises will not send AI traffic to a third-party SaaS for inspection. This is a hard procurement blocker for banks, hospitals, and government agencies. CalypsoAI's SaaS-first approach limits their market in highly regulated verticals. | VPC-native deployment only (Docker Compose + Helm). Data never leaves customer perimeter. This is a core differentiator vs. SaaS competitors. |
-| A4 | **Chat Interface / AI Assistant** | Building a ChatGPT-like frontend positions Interdict as a chatbot platform, not infrastructure. Employees should never interact with Interdict directly -- it should be invisible. | Interdict is invisible infrastructure. The dashboard is for CISOs and compliance officers, not end users. Employees interact with their normal AI tools; Interdict governs transparently. |
-| A5 | **Blockchain-Based Audit Trail** | Private Merkle trees with S3 Object Lock (WORM) achieve identical tamper-evidence guarantees at vastly lower complexity, cost, and latency. Blockchain adds consensus overhead, requires node management, and signals "crypto" to enterprise buyers (negative connotation). | Ed25519 signatures + SHA-256 hash chains + Merkle trees + S3 Object Lock. Same mathematical guarantees, zero blockchain overhead. |
-| A6 | **General-Purpose API Gateway** | Becoming a generic API gateway (rate limiting, load balancing, routing for non-AI traffic) dilutes the AI governance positioning and competes with Kong, Envoy, and NGINX. | Focus exclusively on AI traffic governance. Integrate with existing API gateways via sidecar/plugin model rather than replacing them. |
-| A7 | **Per-Seat SaaS Pricing** | Per-seat pricing penalizes adoption and encourages shadow AI. If governance costs scale linearly with users, CISOs will limit rollout to a subset of employees, defeating the purpose. | Price per kernel instance or per throughput tier. Encourage governing ALL AI traffic, not just select users. Align pricing with infrastructure value, not user count. |
-| A8 | **AI Ethics / Bias Detection Platform** | Ethics and bias detection (fairness, explainability, model cards) is a different market segment served by Credo AI, Arthur AI, and IBM watsonx.governance. Mixing governance-of-usage with governance-of-models creates product confusion. | Focus on governing AI usage (who uses what AI, with what data, under what policies). Let Credo AI handle model fairness. Interdict may integrate with ethics platforms but should not become one. |
-| A9 | **Mobile App** | Enterprise governance tools are administered from desktops. Mobile adds development cost, security surface, and maintenance burden with minimal value. No AI governance competitor has a mobile app for good reason. | Web-first dashboard (Next.js) with responsive design for tablet use if needed. |
-| A10 | **Custom LLM Marketplace** | Hosting or brokering access to AI models makes Interdict a vendor, not infrastructure. Creates conflicts of interest with model providers whose traffic you govern. | Stay model-agnostic and vendor-neutral. Govern traffic to any model provider without preference. |
+| AF-1 | **OIDC Support in v1.1** | OIDC adds a second authentication protocol alongside SAML. The pilot targets (law firm, bank) use SAML-based IdPs (AD/ADFS, Okta SAML). Adding OIDC doubles the auth surface area and testing matrix. Ship SAML first, OIDC in v1.2. | SAML 2.0 only for v1.1. Track OIDC as v2 requirement (already listed as IDENT-01). |
+| AF-2 | **SCIM User Provisioning** | Automated user provisioning/deprovisioning from IdP is valuable but not pilot-critical. For 80 users, manual user management is acceptable. SCIM adds significant complexity (webhook receivers, conflict resolution, directory sync). | Manual user creation via API/dashboard. SAML auto-creates user on first login (JIT provisioning). SCIM is v2. |
+| AF-3 | **Custom Dashboard Widgets** | Drag-and-drop dashboard customization sounds appealing but adds massive frontend complexity (widget framework, layout persistence, per-user state). Pilot users need a working dashboard, not a customizable one. | Ship a well-designed fixed layout. Iterate based on pilot feedback. Custom layouts are a v3 feature at earliest. |
+| AF-4 | **AI-Powered Policy Suggestions** | Using ML/LLM to suggest policies based on usage patterns is interesting but violates the "no LLM in enforcement path" principle and adds unreliable, non-deterministic behavior to governance configuration. | Manual policy creation via builder UI. Pre-built regulatory framework packs cover 80% of needs. Policy templates for common use cases. |
+| AF-5 | **Kubernetes Operator** | A custom K8s operator for automated kernel lifecycle management (auto-scaling, rolling upgrades, health monitoring) is enterprise-grade but overkill for pilot. Helm chart + standard K8s primitives suffice. An operator is 2-4 weeks of additional work. | Helm chart with standard Deployment/StatefulSet. K8s operator is v2 feature for fleet management at scale. |
+| AF-6 | **Multi-Tenant Dashboard** | Supporting multiple isolated organizations in a single dashboard deployment adds schema complexity, data isolation concerns, and auth complexity. Both pilot targets are single-tenant. | Single-tenant deployment per customer. Multi-tenancy is an MSP/reseller feature for v3+. |
+| AF-7 | **Real-Time Streaming Dashboard** | WebSocket-based real-time event streaming to the dashboard (showing AI interactions as they happen) is visually impressive but creates performance problems at scale, adds frontend complexity, and is not what compliance officers actually need (they need historical analysis and reporting). | Poll-based refresh (30s-60s intervals). WebSocket only for human review queue notifications (time-sensitive). Compliance officers analyze trends, not individual live events. |
+| AF-8 | **Terraform Provider** | A Terraform provider for infrastructure-as-code deployment of Interdict is a nice-to-have for DevOps teams but premature when the product has two pilot customers. Build when there are 10+ deployments and patterns stabilize. | Docker Compose + Helm chart. CLI tool for configuration management. Terraform provider is v2+. |
+| AF-9 | **Embedded BI / Data Exploration** | Integrating a full BI tool (Metabase, Grafana, etc.) into the dashboard for ad-hoc querying provides flexibility but adds dependency complexity, security surface, and maintenance burden. | Fixed report templates cover pilot needs. ClickHouse native SQL access for power users. Grafana integration guide for customers who want custom dashboards (but not embedded). |
+| AF-10 | **Dark Mode** | Cosmetic feature that doubles CSS/theme maintenance. Ship one polished light theme. | Single light theme with clean enterprise design. Dark mode in v2 if customers request it. |
 
-## Feature Dependencies
+## Feature Dependencies (v1.1 Scope)
 
 ```
-T5 (SSO/IdP) -> T4 (Audit Trail with Attribution)
-  Attribution requires verified identity from SSO
+TS-2 (API Key Auth) -> TS-3 (RBAC)
+  API keys need role association. API key auth unblocks RBAC testing.
 
-T5 (SSO/IdP) -> T6 (RBAC)
-  Role-based access requires identity
+TS-1 (SAML SSO) -> TS-3 (RBAC)
+  SSO provides identity; RBAC uses identity to enforce permissions.
+  But RBAC can work with API key auth alone for initial testing.
 
-T3 (Policy Enforcement) -> T1 (Prompt/Response Inspection)
-  Enforcement decisions require inspection results
+TS-3 (RBAC) -> TS-6 (Policy Builder UI)
+  Builder must respect RBAC (only Policy Admin and Super Admin can create policies).
 
-T3 (Policy Enforcement) -> T2 (PII/Sensitive Data Detection)
-  PII redaction is a policy enforcement action
+TS-3 (RBAC) -> TS-7 (Audit Trail Dashboard)
+  Dashboard shows role-appropriate data (Dept Managers see only their department).
 
-T1 (Prompt/Response Inspection) -> D3 (Streaming Inspection)
-  Streaming is the implementation of inspection
+TS-3 (RBAC) -> DF-2 (Human Review Queue)
+  Queue is role-restricted (Compliance Officers and Super Admins only).
 
-D4 (Policy-as-Code Wasm) -> T3 (Policy Enforcement)
-  Wasm runtime is how policies execute
+TS-3 (RBAC) -> DF-3 (Department Policy Management)
+  Department Managers scoped to their department only.
 
-T4 (Audit Trail) -> D2 (Cryptographic Signing)
-  Crypto signing builds on top of audit trail creation
+TS-7 (Audit Trail Dashboard) -> TS-8 (Compliance Reporting)
+  Reports consume same data views as the audit trail dashboard.
 
-T4 (Audit Trail) -> T8 (Compliance Dashboard)
-  Dashboard visualizes audit trail data
+TS-7 (Audit Trail Dashboard) -> TS-9 (Violation Statistics)
+  Stats are aggregations of the same audit data.
 
-T9 (Regulatory Mapping) -> T3 (Policy Enforcement)
-  Regulatory frameworks activate policy sets
+TS-9 (Violation Statistics) -> DF-4 (Anomaly Detection)
+  Anomaly detection builds on statistical baselines from violation statistics.
 
-D2 (Cryptographic Signing) -> D8 (Evidence Verification UI)
-  Verification UI requires signed evidence to exist
+TS-12 (Container Images) -> TS-11 (Docker Compose)
+  Compose references container images.
 
-T7 (Vendor Allowlist) -> T3 (Policy Enforcement)
-  Vendor blocking is a policy enforcement action
+TS-12 (Container Images) -> DF-5 (Helm Chart)
+  Helm chart references same container images.
 
-D5 (Session Tracking) -> T1 (Prompt/Response Inspection)
-  Session context enhances inspection accuracy
+TS-12 (Container Images) -> DF-6 (Sidecar Manifest)
+  Sidecar manifest references kernel container image.
 
-T11 (VPC Deployment) -> T12 (Security Stack Integration)
-  SIEM integration happens within VPC
+TS-4 (mTLS) -> DF-7 (CA Cert Onboarding)
+  CA cert onboarding uses the deployment CA generated for mTLS.
 
-D1 (Inline Prevention) -> D6 (Sub-10ms Latency)
-  Inline enforcement must be fast to be viable
+TS-5 (Key Rotation) -- standalone
+  Extends existing evidence-collector signing; no v1.1 dependencies.
 
-D9 (Department Segmentation) -> T6 (RBAC)
-  Department policies require department-scoped roles
+TS-10 (Vendor Management UI) -- low dependency
+  Direct CRUD wrapper around existing vendor API.
 
-D10 (Agentic AI) -> T1 (Prompt/Response Inspection)
-  Agent governance extends the inspection pipeline
+TS-13 (Regulatory Selector UI) -- low dependency
+  Direct wrapper around existing regulatory API.
 
-D12 (Shadow AI Discovery) -> T7 (Vendor Allowlist)
-  Discovery feeds into allowlist enforcement
+DF-1 (Evidence Verification UI) -- low dependency
+  Reads existing evidence bundles; uses existing interdict-verify logic.
 ```
 
-## MVP Recommendation
+**Critical path for pilot deployment:**
+```
+TS-2 (API Key Auth)
+  -> TS-3 (RBAC)
+    -> TS-6 (Policy Builder) + TS-7 (Audit Trail) + TS-9 (Stats)
+      -> TS-8 (Compliance Reports)
 
-For the law firm pilot (~80 employees) and small bank, prioritize features that enable the core value proposition: inline governance with auditable evidence.
+TS-12 (Container Images)
+  -> TS-11 (Docker Compose)
 
-**Must ship for pilot (Phase 1):**
+TS-1 (SAML SSO) -- parallel with above, not blocking
+TS-4 (mTLS) -- parallel, not blocking dashboard work
+TS-5 (Key Rotation) -- parallel, not blocking dashboard work
+```
 
-1. **T1 - Prompt/Response Inspection** -- the core data plane capability
-2. **T2 - PII/Sensitive Data Detection** -- #1 buyer concern for law firms and banks
-3. **T3 - Policy Enforcement (Block/Allow/Redact)** -- the enforcement actions
-4. **T7 - Vendor/Model Allowlisting** -- simple but immediately valuable for controlling which AI tools are used
-5. **D1 - Inline Prevention** -- the architectural differentiator, not a feature to add but the way everything works
-6. **T4 - Audit Trail with Attribution** -- paired with basic identity (API key / JWT initially, full SSO can follow)
-7. **D4 - Policy-as-Code via Wasm** -- the enforcement engine
+## Feature Complexity Assessment
 
-**Ship in Phase 2 (enterprise readiness):**
+| Feature | Frontend | Backend | Infra | Total | Risk |
+|---------|----------|---------|-------|-------|------|
+| TS-1 SAML SSO | Low | High (XML signature verification, IdP metadata) | Low | **High** | SAML XML parsing has many CVEs. Use proven library. |
+| TS-2 API Key Auth | None | Low (hash, store, validate) | None | **Low** | Straightforward. Ship first. |
+| TS-3 RBAC | Low (UI restrictions) | Med (middleware on every route) | None | **Med** | Retrofit to all existing endpoints is the tedious part. |
+| TS-4 mTLS | None | Med (cert generation, TLS config) | Med (per-deployment CA) | **Med** | Self-signed CA management. Helper scripts needed. |
+| TS-5 Key Rotation | None | Med (versioned keys, verification compat) | Low | **Med** | Must not break verification of old evidence. |
+| TS-6 Policy Builder | High (complex form UX) | Low (maps to existing API) | None | **High** | The Rego generation from UI inputs is the hard part. |
+| TS-7 Audit Trail | High (table, filters, search, pagination) | Low (existing API) | None | **Med-High** | Large data volume handling in frontend. Pagination critical. |
+| TS-8 Compliance Reports | Med (report templates) | Med (aggregation queries, PDF gen) | None | **Med** | PDF generation adds dependency. Server-side rendering. |
+| TS-9 Violation Stats | High (charts, visualizations) | Low (ClickHouse aggregations) | None | **Med** | Charting library selection matters. Recharts or similar. |
+| TS-10 Vendor Mgmt UI | Low (simple CRUD) | None (existing API) | None | **Low** | Simplest dashboard feature. |
+| TS-11 Docker Compose | None | None | Med (multi-service orchestration) | **Med** | Networking, volume management, health checks. |
+| TS-12 Container Images | None | None | Med (multi-stage Dockerfiles, CI) | **Med** | Rust cross-compilation. Image size optimization. |
+| TS-13 Regulatory Selector | Med (framework display) | None (existing API) | None | **Low-Med** | Visual complexity in showing framework relationships. |
+| DF-1 Evidence Verification | High (tree visualization, chain display) | Low (existing verify logic) | None | **Med-High** | Unique UI with no standard component library equivalent. |
+| DF-2 Human Review Queue | High (queue, timers, context) | Med (new queue mgmt API) | None | **High** | Real-time updates, SLA timers, role restrictions. |
+| DF-3 Dept Policy Mgmt | Med (tree view, inheritance) | Low (extends existing) | None | **Med** | Inheritance visualization is the challenge. |
+| DF-4 Anomaly Detection | High (timeline, anomaly markers) | High (statistical baselines) | None | **High** | Requires building anomaly detection logic from scratch. |
+| DF-5 Helm Chart | None | None | High (subchart structure, values) | **High** | Enterprise Helm charts require extensive testing. |
+| DF-6 Sidecar Manifest | None | None | Med (iptables, traffic capture) | **Med** | Traffic redirection complexity varies by K8s version. |
+| DF-7 CA Cert Onboarding | None | None | Low (shell scripts) | **Low** | Cross-platform script testing. |
 
-8. **T5 - SSO/IdP Integration** -- required for larger enterprise sales but API key auth works for pilot
-9. **T6 - RBAC** -- required for larger enterprises, pilot can use admin-only access
-10. **T8 - Compliance Dashboard** -- visual evidence for compliance officers
-11. **T9 - Regulatory Framework Mapping** -- pre-built policy packs for EU AI Act, GDPR
-12. **D2 - Cryptographic Signing** -- the evidence chain differentiator
-13. **T10 - Prompt Injection Detection** -- Layer 2 NLP classifier
-14. **T12 - SIEM Integration** -- webhook/syslog output
+## MVP Recommendation (Pilot-Ready Minimum)
 
-**Defer to Phase 3+:**
+**Must ship for law firm pilot (Docker Compose deployment):**
 
-- **D3 - Streaming Inspection** -- implement basic request/response first, add streaming mid-stream interception after core is stable. Actually, per PROJECT.md, the architecture decision is streaming-first since non-streaming would be throwaway code. Resolve this tension: if the Rust kernel is streaming-first from day one (correct decision), this is Phase 1 but at very high complexity cost.
-- **D5 - Session Tracking** -- valuable but not required for pilot
-- **D8 - Evidence Verification UI** -- dashboard feature, not kernel capability
-- **D10 - Agentic AI Governance** -- emerging market, not pilot requirement
-- **D12 - Shadow AI Discovery** -- requires network-level capabilities beyond proxy
+1. **TS-2 API Key Auth** -- unblocks everything, lowest complexity
+2. **TS-3 RBAC** -- required for any multi-user access
+3. **TS-12 Container Images** -- prerequisite for deployment
+4. **TS-11 Docker Compose** -- the deployment mechanism
+5. **TS-7 Audit Trail Dashboard** -- the #1 compliance officer feature
+6. **TS-9 Violation Statistics** -- the dashboard home screen
+7. **TS-6 Policy Builder UI** -- how non-technical users create rules
+8. **TS-10 Vendor Management UI** -- simple but immediately valuable
+9. **TS-13 Regulatory Selector UI** -- enables "turn on EU AI Act"
+10. **TS-8 Compliance Reporting** -- PDF/CSV for regulators
 
-**Explicitly defer (Phase 4+):**
+**Must ship for bank pilot (adds security hardening):**
 
-- **D10 - Full MCP Gateway Governance** -- market is still forming
-- **D12 - Shadow AI Discovery** -- requires network-level interception architecture
+11. **TS-1 SAML SSO** -- bank will require enterprise SSO
+12. **TS-4 mTLS** -- bank will require encrypted internal comms
+13. **TS-5 Key Rotation** -- bank will require key management
+14. **DF-5 Helm Chart** -- bank likely runs Kubernetes
 
-## Competitive Positioning Matrix
+**Defer to post-pilot iteration:**
 
-| Feature Area | Interdict | Purview | CalypsoAI/F5 | Lasso | Credo AI | HiddenLayer |
-|-------------|-----------|---------|--------------|-------|----------|-------------|
-| Inline prevention | YES (core) | No (post-hoc) | Partial | Partial | No | No |
-| Crypto audit trail | YES (signed) | No | No | "Immutable" logs | No | No |
-| VPC-native | YES | Cloud-only | On-prem option | Cloud-first | Cloud | Cloud |
-| Model agnostic | YES | Microsoft only | YES | YES | YES | YES |
-| Streaming inspection | YES | No | No | No | N/A | N/A |
-| Policy-as-Code | Wasm/Rego | JSON rules | Custom scanners | Dynamic rules | Policy workflows | N/A |
-| PII/DLP | YES | YES | YES | YES | No | No |
-| Prompt injection | YES (L2) | YES | YES | YES | No | YES |
-| Agentic governance | Roadmap | Partial | No | MCP gateway | No | No |
-| Shadow AI discovery | Roadmap | Partial | No | YES | No | No |
+- **DF-1 Evidence Verification UI** -- high value but not blocking pilot launch
+- **DF-2 Human Review Queue UI** -- Layer 3 escalation can be API-only initially
+- **DF-3 Dept Policy Management UI** -- 80-person law firm has limited department structure
+- **DF-4 Anomaly Detection** -- valuable but complex; ship after baseline data exists
+- **DF-6 Sidecar Manifest** -- Docker Compose serves pilot; sidecar is K8s-only
+- **DF-7 CA Cert Onboarding** -- manual cert install works for 80 users
+
+## Competitive Positioning for v1.1
+
+| Feature Area | Interdict v1.1 | CalypsoAI/F5 | Lasso | Credo AI | Microsoft Purview |
+|-------------|----------------|--------------|-------|----------|-------------------|
+| SSO/RBAC | SAML + 5 roles | SSO + RBAC | SSO + RBAC | SSO + RBAC | Azure AD native |
+| Policy Builder | Visual form -> Rego/Wasm | Custom scanners | Dynamic rules | Policy workflows | JSON rules |
+| Audit Dashboard | Searchable + crypto verification | Dashboard | Dashboard | Dashboard | Purview portal |
+| Compliance Reports | PDF/CSV automated | Reports | Reports | Audit-ready reports | Built-in |
+| Deployment | Docker Compose + Helm + sidecar | Cloud + on-prem | Cloud-first | Cloud | Cloud-only |
+| Evidence Integrity | Ed25519 + Merkle + S3 WORM | "Immutable" logs | Basic logging | Basic logging | Microsoft logging |
+| Human Review | Queue UI with SLA | None | None | Workflow-based | None |
+| Anomaly Detection | Statistical baselines on ClickHouse | Limited | Limited | None | Azure ML |
+| VPC-native | Yes (core design) | Optional | No | No | No |
+
+**Key v1.1 differentiators vs competitors:**
+1. Evidence verification UI (no competitor has this)
+2. Human review queue with SLA-based escalation (unique in AI governance)
+3. VPC-native Docker Compose + Helm deployment (CalypsoAI is cloud-first, Purview is cloud-only)
+4. Visual policy builder that compiles to Wasm (fastest policy execution in the market)
 
 ## Sources
 
-- [Gartner AI TRiSM Market Guide 2025](https://www.gartner.com/en/documents/6185655) -- MEDIUM confidence (paywall, summary only)
-- [Lasso Security Enterprise AI Governance](https://www.lasso.security/blog/blog-enterprise-ai-governance) -- HIGH confidence (direct competitor docs)
-- [CalypsoAI Inference Platform](https://calypsoai.com/inference-platform/) -- HIGH confidence (direct competitor docs)
-- [F5 Acquires CalypsoAI ($180M)](https://www.businesswire.com/news/home/20250911293165/en/F5-to-Acquire-CalypsoAI-to-Bring-Advanced-AI-Guardrails-to-Large-Enterprises) -- HIGH confidence (official press release)
-- [Microsoft Purview AI Governance](https://learn.microsoft.com/en-us/purview/ai-microsoft-purview) -- HIGH confidence (official docs)
-- [HiddenLayer AISec Platform](https://hiddenlayer.com/aisec-platform/) -- HIGH confidence (direct competitor docs)
-- [EU AI Act Compliance 2026](https://secureprivacy.ai/blog/eu-ai-act-2026-compliance) -- MEDIUM confidence (third-party summary)
-- [EU AI Act Official Summary](https://artificialintelligenceact.eu/high-level-summary/) -- HIGH confidence (official reference)
-- [Cryptographic Evidence Structures for Regulated AI](https://arxiv.org/abs/2511.17118) -- HIGH confidence (peer-reviewed research)
-- [Credo AI Platform](https://www.credo.ai/product) -- HIGH confidence (direct competitor docs)
-- [Shadow AI: 90% Unapproved Usage](https://www.proofpoint.com/us/threat-reference/shadow-ai) -- MEDIUM confidence (vendor statistic)
-- [Singapore Agentic AI Governance Framework 2026](https://www.mintmcp.com/blog/agentic-ai-goverance-framework) -- MEDIUM confidence (third-party summary)
-- [Lasso MCP Security Gateway](https://www.lasso.security/resources/lasso-releases-first-open-source-security-gateway-for-mcp) -- HIGH confidence (official press release)
-- [OPA/Rego Policy-as-Code Industry Standard](https://www.env0.com/blog/how-policy-as-code-enhances-infrastructure-governance-with-open-policy-agent-opa) -- MEDIUM confidence (industry analysis)
-- [AI DLP Best Practices](https://aimultiple.com/ai-dlp) -- MEDIUM confidence (industry analysis)
-- [Proofpoint Acquires Acuvity for Agentic AI Security](https://www.proofpoint.com/us/newsroom/press-releases/proofpoint-acquires-acuvity-deliver-ai-security-and-governance-across) -- HIGH confidence (official press release)
+- [10 Best AI Governance Platforms for Enterprise Teams in 2026 (Superblocks)](https://www.superblocks.com/blog/ai-governance-platform) -- HIGH confidence
+- [Top 10 AI Security Tools for Enterprises in 2026 (Reco)](https://www.reco.ai/compare/ai-security-tools-for-enterprises) -- HIGH confidence
+- [Enterprise AI Security & Governance Roadmap 2026 CISO Strategy (InfoSecToday)](https://www.infosectoday.io/enterprise-ai-security-governance-roadmap-2026-ciso-strategy/) -- MEDIUM confidence
+- [6 SSO Best Practices in 2026 (Zluri)](https://www.zluri.com/blog/sso-best-practices) -- MEDIUM confidence
+- [What is Enterprise Identity -- SSO & RBAC (Security Boulevard)](https://securityboulevard.com/2026/01/what-is-enterprise-identity-and-why-most-companies-get-sso-rbac-catastrophically-wrong/) -- MEDIUM confidence
+- [Top RBAC Providers for Multi-Tenant SaaS 2025 (WorkOS)](https://workos.com/blog/top-rbac-providers-for-multi-tenant-saas-2025) -- MEDIUM confidence
+- [Human-in-the-Loop AI Review Queues: Workflow Patterns That Scale 2025 (AllDaysTech)](https://alldaystech.com/guides/artificial-intelligence/human-in-the-loop-ai-review-queue-workflows) -- MEDIUM confidence
+- [Designing Human Checkpoints in HITL Workflows (Moxo)](https://www.moxo.com/blog/designing-human-checkpoints-in-hitl-workflow) -- MEDIUM confidence
+- [Securing Microservices Communication with mTLS in Kubernetes (The New Stack)](https://thenewstack.io/securing-microservices-communication-with-mtls-in-kubernetes/) -- HIGH confidence
+- [Enterprise Helm Chart Best Practices for ISVs (Replicated)](https://www.replicated.com/enterprise-helm) -- HIGH confidence
+- [Lasso Security -- Enterprise AI Security Predictions 2026](https://www.lasso.security/blog/enterprise-ai-security-predictions-2026) -- HIGH confidence
+- [CalypsoAI Model Leaderboard](https://calypsoai.com/calypsoai-model-leaderboard/) -- HIGH confidence
+- [SAML SSO in Next.js: Step-by-Step Guide (ITNEXT)](https://itnext.io/saml-sso-in-next-js-a-step-by-step-guide-for-okta-google-microsoft-entra-dbdd215b98d3) -- MEDIUM confidence
+- [BoxyHQ SAML-Jackson for Next.js (BoxyHQ)](https://boxyhq.com/guides/jackson/frameworks/nextjs) -- HIGH confidence (official guide)
+- [Best Compliance Automation Software 2026 (Cynomi)](https://cynomi.com/learn/compliance-automation-tools/) -- MEDIUM confidence
+- [Dashboard Design UX Patterns (Pencil & Paper)](https://www.pencilandpaper.io/articles/ux-pattern-analysis-data-dashboards) -- MEDIUM confidence
+- [Cryptographic Evidence Structures for Regulated AI Workflows (arXiv)](https://arxiv.org/pdf/2511.17118) -- HIGH confidence
