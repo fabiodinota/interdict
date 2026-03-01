@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
-status: unknown
-stopped_at: Phase 7 context gathered
-last_updated: "2026-03-01T22:27:17.174Z"
+status: in-progress
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-01T23:08:26Z"
 progress:
-  total_phases: 1
+  total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
 ---
 
 # Project State
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 ## Current Position
 
 Phase: 7 of 12 (Identity Foundation) -- first phase of v1.1
-Plan: -- (not yet planned)
-Status: Ready to plan
-Last activity: 2026-03-01 -- v1.1 roadmap created (6 phases, 21 requirements mapped)
+Plan: 2 of 3 (Auth middleware macro and API key management endpoints)
+Status: In progress
+Last activity: 2026-03-02 -- Completed 07-01 (schema, permissions, identity seed)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 33% (1/3 plans in Phase 7)
 
 ## Performance Metrics
 
@@ -38,8 +38,12 @@ Progress: [░░░░░░░░░░] 0%
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 0
-- Plans remaining: TBD (plan counts set during phase planning)
+- Plans completed: 1
+- Plans remaining: 2 (Phase 7)
+
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 07    | 01   | 4min     | 2     | 8     |
 
 *Updated after each plan completion*
 
@@ -55,6 +59,10 @@ v1.1 decisions:
 - Roadmap: Docker Compose (Phase 8) before dashboard (Phase 9) so every UI feature can be smoke-tested end-to-end
 - Roadmap: SAML/mTLS/key-rotation (Phase 10) deferred from identity foundation because law firm pilot uses API keys; bank pilot needs SAML
 - Roadmap: Helm/sidecar/CA-cert (Phase 12) last because chart needs stable images and stable mTLS config
+- 07-01: Used flat role_permissions table (role, permission, is_granted) instead of JSON column for queryability
+- 07-01: Permissions do not auto-inherit via the default map; hierarchy is only for role-level comparisons
+- 07-01: Kept existing department_id FK on users as primary department; user_departments join table is authoritative for access scope
+- 07-01: Service accounts assigned super_admin role with is_service flag for internal identification
 
 ### Research Flags
 
@@ -73,7 +81,7 @@ None -- ready for Phase 7 planning.
 
 ## Session Continuity
 
-**Last session:** 2026-03-01T22:27:17.165Z
-**Stopped at:** Phase 7 context gathered
-**Resume file:** .planning/phases/07-identity-foundation/07-CONTEXT.md
-**Next action:** `/gsd:plan-phase 7` to plan Identity Foundation
+**Last session:** 2026-03-01T23:08:26Z
+**Stopped at:** Completed 07-01-PLAN.md
+**Resume file:** .planning/phases/07-identity-foundation/07-01-SUMMARY.md
+**Next action:** `/gsd:execute-phase 07-02` to execute auth middleware and API key endpoints
