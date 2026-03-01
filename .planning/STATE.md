@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 4
 status: unknown
-stopped_at: Completed 06-02-PLAN.md (distribution client and kernel integration)
-last_updated: "2026-03-01T05:27:37.175Z"
+stopped_at: Completed 06-04-PLAN.md (integration tests for Phase 6 success criteria)
+last_updated: "2026-03-01T05:34:51.458Z"
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 27
-  completed_plans: 26
-  percent: 96
+  completed_plans: 27
+  percent: 100
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Last activity: 2026-03-01 -- Plan 06-01 complete (foundational types for policy 
 
 **Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 96%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Last activity: 2026-03-01 -- Plan 06-01 complete (foundational types for policy 
 | Phase 06 P01 | 8m39s | 2 tasks | 10 files |
 | Phase 06 P03 | 4m11s | 2 tasks | 8 files |
 | Phase 06 P02 | 11m21s | 2 tasks | 7 files |
+| Phase 06 P04 | 4m27s | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,9 @@ Recent decisions affecting current work:
 - [Phase 06]: CancellationToken from tokio-util for coordinated shutdown of distribution client, session cleanup, and reconnect backoff
 - [Phase 06]: Session context recorded in handle_connect with anonymous user_id; auth identity wired in Phase 7
 - [Phase 06]: ProxyService.with_distribution() preserves backward compatibility with existing with_pipeline()
+- [Phase 06]: Integration tests validate kernel-side logic at component level without gRPC server
+- [Phase 06]: SC3 hierarchy cascade proven via MergedVerdict::merge for most-restrictive-wins
+- [Phase 06]: Session false-positive test uses high thresholds for non-target escalation patterns to isolate slow-leak behavior
 
 ### Pending Todos
 
@@ -177,6 +181,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-03-01T05:27:37.172Z
-**Stopped At:** Completed 06-02-PLAN.md (distribution client and kernel integration)
+**Last session:** 2026-03-01T05:34:51.456Z
+**Stopped At:** Completed 06-04-PLAN.md (integration tests for Phase 6 success criteria)
 **Resume file:** None
