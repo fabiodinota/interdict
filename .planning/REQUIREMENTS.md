@@ -73,8 +73,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **CTRL-02**: Policy compiler transforms human-readable Rego/YAML rules into compiled Wasm modules
 - [ ] **CTRL-03**: Policy distribution pushes compiled Wasm modules to kernel fleet via gRPC server-streaming (Envoy xDS-style pattern, not polling)
 - [x] **CTRL-04**: Vendor registry API -- CRUD for approved/blocked AI vendors with per-vendor model version allowlists
-- [ ] **CTRL-05**: Regulatory framework mapping engine -- selecting a jurisdiction auto-enables corresponding policy configurations
-- [ ] **CTRL-06**: Pre-built regulatory policy packs for EU AI Act, GDPR, NIST AI RMF, Singapore PDPA, India DPDP, China AI Regs, Canada AIDA/PIPEDA, GCC frameworks
+- [x] **CTRL-05**: Regulatory framework mapping engine -- selecting a jurisdiction auto-enables corresponding policy configurations
+- [x] **CTRL-06**: Pre-built regulatory policy packs for EU AI Act, GDPR, NIST AI RMF, Singapore PDPA, India DPDP, China AI Regs, Canada AIDA/PIPEDA, GCC frameworks
 - [x] **CTRL-07**: Audit trail query API -- searchable, filterable execution history by user, department, vendor, policy decision, time range, violation type
 - [ ] **CTRL-08**: Master key management API for cryptographic signing key rotation across kernel fleet
 - [ ] **CTRL-09**: RBAC with five roles: Super Admin, Compliance Officer, Policy Admin, Department Manager, Read-Only Auditor
@@ -198,8 +198,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTRL-02 | Phase 5 | Complete |
 | CTRL-03 | Phase 6 | Pending |
 | CTRL-04 | Phase 5 | Complete |
-| CTRL-05 | Phase 5 | Pending |
-| CTRL-06 | Phase 5 | Pending |
+| CTRL-05 | Phase 5 | Complete |
+| CTRL-06 | Phase 5 | Complete |
 | CTRL-07 | Phase 5 | Complete |
 | CTRL-08 | Phase 7 | Pending |
 | CTRL-09 | Phase 7 | Pending |
