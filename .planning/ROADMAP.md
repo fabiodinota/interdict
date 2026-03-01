@@ -125,11 +125,13 @@ Plans:
   2. Kernels load the new policy module at runtime without restarting the binary, and subsequent AI requests are evaluated against the updated policy
   3. Policies can be configured per department, per user, and per AI vendor, with an inheritance model where organization defaults cascade to department overrides to team overrides
   4. The kernel tracks session context across multi-turn conversations per user/session, detecting policy violations that emerge across multiple exchanges (e.g., slow-leak data exfiltration)
-**Plans**: TBD
+**Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md — Proto schema, ArcSwap hot-reload PolicySet, hierarchy resolver, session store (Wave 1)
+- [ ] 06-02-PLAN.md — Distribution gRPC client, pipeline refactor to ArcSwap, session wiring, main.rs integration (Wave 2)
+- [ ] 06-03-PLAN.md — Control plane gRPC distribution server, kernel tracker, compiler broadcast (Wave 2)
+- [ ] 06-04-PLAN.md — Integration tests validating all Phase 6 success criteria (Wave 3)
 
 ### Phase 7: Identity, Access & Security
 **Goal**: Enterprise identity integration via SAML 2.0 at the TypeScript API boundary, RBAC with five distinct roles controlling all API and dashboard access, mTLS securing all internal service communication, and cryptographic key management for signing key rotation
@@ -211,7 +213,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 3. PII Detection & Content Inspection | 6/6 | Complete | 2026-02-27 |
 | 4. Evidence Collector | 1/4 | In Progress | - |
 | 5. Control Plane API Core | 0/4 | Planned | - |
-| 6. Policy Distribution & Kernel Integration | 0/2 | Not started | - |
+| 6. Policy Distribution & Kernel Integration | 0/4 | Planned | - |
 | 7. Identity, Access & Security | 0/3 | Not started | - |
 | 8. Dashboard Core | 0/3 | Not started | - |
 | 9. Compliance Reporting & Advanced Dashboard | 0/3 | Not started | - |
