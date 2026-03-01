@@ -48,12 +48,12 @@ Full details archived in `milestones/v1.0-ROADMAP.md`
   2. User with Super Admin role can access all API endpoints; user with Read-Only Auditor role is blocked from write operations
   3. User with Department Manager role querying audit data sees only their own department's records -- cross-department data is invisible
   4. Existing internal service callers (gRPC distribution, compilation worker, integration tests) continue working via service account API keys
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
-- [ ] 07-03: TBD
+- [ ] 07-01-PLAN.md -- Schema, permissions model, and identity seed (Wave 1)
+- [ ] 07-02-PLAN.md -- Auth middleware macro and API key management endpoints (Wave 2)
+- [ ] 07-03-PLAN.md -- Route guards on all modules and department-scoped audit filtering (Wave 3)
 
 ### Phase 8: Container Images & Docker Compose
 **Goal**: Operator can deploy the full Interdict stack on a single server with one command
@@ -147,7 +147,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 5. Control Plane API Core | v1.0 | 6/6 | Complete | 2026-02-28 |
 | 6. Policy Distribution & Kernel Integration | v1.0 | 4/4 | Complete | 2026-03-01 |
 | 6.1 Kernel Integration Wiring | v1.0 | 1/1 | Complete | 2026-03-01 |
-| 7. Identity Foundation | v1.1 | 0/? | Not started | - |
+| 7. Identity Foundation | v1.1 | 0/3 | Planned | - |
 | 8. Container Images & Docker Compose | v1.1 | 0/? | Not started | - |
 | 9. Dashboard Core Views | v1.1 | 0/? | Not started | - |
 | 10. SAML SSO & Security Hardening | v1.1 | 0/? | Not started | - |
@@ -156,4 +156,4 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-01 after v1.1 roadmap creation*
+*Last updated: 2026-03-01 after Phase 7 planning*
