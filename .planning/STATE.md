@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 2
-status: in_progress
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-01T04:13:25Z"
+current_plan: 3
+status: unknown
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-03-01T04:22:52.726Z"
 progress:
-  total_phases: 10
+  total_phases: 5
   completed_phases: 4
-  total_plans: 35
-  completed_plans: 18
-  percent: 51
+  total_plans: 22
+  completed_plans: 19
+  percent: 86
 ---
 
 # Project State
@@ -30,9 +30,9 @@ Plan: 2 of 5 in current phase (next: 05-02)
 Status: 05-01 complete; ready to execute 05-02
 Last activity: 2026-03-01 -- Plan 05-01 complete (project scaffold + schemas + utilities)
 
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 5
-**Progress:** [█---------] 20%
+**Progress:** [█████████░] 86%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Last activity: 2026-03-01 -- Plan 05-01 complete (project scaffold + schemas + u
 | Phase 04 P02 | 5m50s | 2 tasks | 10 files |
 | Phase 04 P04 | 11m56s | 2 tasks | 9 files |
 | Phase 05 P01 | 4m29s | 2 tasks | 17 files |
+| Phase 05 P04 | 4m49s | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,10 @@ Recent decisions affecting current work:
 - [Phase 05]: Wasm stored on filesystem with DB reference (path + SHA-256 hash) per discretion recommendation
 - [Phase 05]: Consolidated shared utilities into single file (errors + envelope + pagination) for simpler imports
 - [Phase 05]: postgres.js pool max: 20 with explicit idle and connect timeouts
+- [Phase 05]: Explicit column list in ClickHouse queries excludes prompt_text and response_text per Invariant 6
+- [Phase 05]: Default 7-day date range filter when no from_date specified for partition pruning
+- [Phase 05]: SSE polling at 2.5-second intervals against ClickHouse for near-real-time audit events
+- [Phase 05]: Batch enrichment with 3 parallel PostgreSQL queries (users, vendors, policies) per page, no N+1
 
 ### Pending Todos
 
@@ -146,6 +151,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-03-01T04:13:25Z
-**Stopped At:** Completed 05-01-PLAN.md
-**Resume file:** .planning/phases/05-control-plane-api-core/05-02-PLAN.md
+**Last session:** 2026-03-01T04:22:52.724Z
+**Stopped At:** Completed 05-04-PLAN.md
+**Resume file:** None
