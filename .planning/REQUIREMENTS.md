@@ -69,10 +69,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Control Plane API
 
-- [ ] **CTRL-01**: Policy CRUD API -- create, read, update, delete policies with Rego/YAML source
-- [ ] **CTRL-02**: Policy compiler transforms human-readable Rego/YAML rules into compiled Wasm modules
+- [x] **CTRL-01**: Policy CRUD API -- create, read, update, delete policies with Rego/YAML source
+- [x] **CTRL-02**: Policy compiler transforms human-readable Rego/YAML rules into compiled Wasm modules
 - [ ] **CTRL-03**: Policy distribution pushes compiled Wasm modules to kernel fleet via gRPC server-streaming (Envoy xDS-style pattern, not polling)
-- [ ] **CTRL-04**: Vendor registry API -- CRUD for approved/blocked AI vendors with per-vendor model version allowlists
+- [x] **CTRL-04**: Vendor registry API -- CRUD for approved/blocked AI vendors with per-vendor model version allowlists
 - [ ] **CTRL-05**: Regulatory framework mapping engine -- selecting a jurisdiction auto-enables corresponding policy configurations
 - [ ] **CTRL-06**: Pre-built regulatory policy packs for EU AI Act, GDPR, NIST AI RMF, Singapore PDPA, India DPDP, China AI Regs, Canada AIDA/PIPEDA, GCC frameworks
 - [x] **CTRL-07**: Audit trail query API -- searchable, filterable execution history by user, department, vendor, policy decision, time range, violation type
@@ -194,10 +194,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVID-08 | Phase 4 | Complete |
 | EVID-09 | Phase 4 | Complete |
 | EVID-10 | Phase 4 | Complete |
-| CTRL-01 | Phase 5 | Pending |
-| CTRL-02 | Phase 5 | Pending |
+| CTRL-01 | Phase 5 | Complete |
+| CTRL-02 | Phase 5 | Complete |
 | CTRL-03 | Phase 6 | Pending |
-| CTRL-04 | Phase 5 | Pending |
+| CTRL-04 | Phase 5 | Complete |
 | CTRL-05 | Phase 5 | Pending |
 | CTRL-06 | Phase 5 | Pending |
 | CTRL-07 | Phase 5 | Complete |

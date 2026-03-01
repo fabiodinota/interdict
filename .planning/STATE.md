@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 3
+current_plan: 4
 status: unknown
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-03-01T04:22:52.726Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-01T04:23:39.591Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 22
-  completed_plans: 19
-  percent: 86
+  completed_plans: 20
+  percent: 91
 ---
 
 # Project State
@@ -30,9 +30,9 @@ Plan: 2 of 5 in current phase (next: 05-02)
 Status: 05-01 complete; ready to execute 05-02
 Last activity: 2026-03-01 -- Plan 05-01 complete (project scaffold + schemas + utilities)
 
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 5
-**Progress:** [█████████░] 86%
+**Progress:** [█████████░] 91%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Last activity: 2026-03-01 -- Plan 05-01 complete (project scaffold + schemas + u
 | Phase 04 P04 | 11m56s | 2 tasks | 9 files |
 | Phase 05 P01 | 4m29s | 2 tasks | 17 files |
 | Phase 05 P04 | 4m49s | 2 tasks | 7 files |
+| Phase 05 P02 | 5m47s | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Recent decisions affecting current work:
 - [Phase 05]: Default 7-day date range filter when no from_date specified for partition pruning
 - [Phase 05]: SSE polling at 2.5-second intervals against ClickHouse for near-real-time audit events
 - [Phase 05]: Batch enrichment with 3 parallel PostgreSQL queries (users, vendors, policies) per page, no N+1
+- [Phase 05]: Service factory pattern: createPolicyService(db) and createVendorService(db) for testability and DI
+- [Phase 05]: OPA subprocess gracefully handles missing binary with descriptive error messages
+- [Phase 05]: Vendor delete is hard-delete (not audit-sensitive); policy delete is soft-delete (audit compliance)
 
 ### Pending Todos
 
@@ -151,6 +155,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-03-01T04:22:52.724Z
-**Stopped At:** Completed 05-04-PLAN.md
+**Last session:** 2026-03-01T04:23:39.589Z
+**Stopped At:** Completed 05-02-PLAN.md
 **Resume file:** None
