@@ -49,6 +49,11 @@ fn entry_to_scoped_policy(entry: &proto::PolicyEntry) -> ScopedPolicy {
         } else {
             Some(entry.rego_source.clone())
         },
+        entrypoint: if entry.entrypoint.is_empty() {
+            None
+        } else {
+            Some(entry.entrypoint.clone())
+        },
         fail_mode: proto_fail_mode_to_config(entry.fail_mode),
         block_response_detail: BlockResponseDetail::Opaque,
         redaction_direction: RedactionDirection::Both,

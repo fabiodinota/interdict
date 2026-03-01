@@ -72,6 +72,16 @@ pub struct PolicyConfig {
     pub name: String,
     /// Path to the Rego source file for Layer 1 evaluation (optional).
     pub rego_source: Option<String>,
+    /// Explicit Rego entrypoint rule path for distributed policies (optional).
+    ///
+    /// When present, `evaluate()` uses this as the Rego rule path instead of
+    /// deriving it from `rego_source` via `rsplit('/')`. This is required for
+    /// distributed policies where `rego_source` contains inline Rego code
+    /// rather than a filesystem path.
+    ///
+    /// Example: `"data.interdict.policy.pol1.verdict"`
+    #[serde(default)]
+    pub entrypoint: Option<String>,
     /// Behavior on evaluation error (default: fail-closed per PLCY-09).
     #[serde(default)]
     pub fail_mode: FailMode,
@@ -128,6 +138,7 @@ mod tests {
             id: "test-policy".to_string(),
             name: "Test Policy".to_string(),
             rego_source: Some("policies/test.rego".to_string()),
+            entrypoint: Some("data.interdict.policy.test.verdict".to_string()),
             fail_mode: FailMode::FailClosed,
             block_response_detail: BlockResponseDetail::Detailed,
             redaction_direction: RedactionDirection::OutboundOnly,
@@ -150,6 +161,10 @@ mod tests {
         );
         assert!(!deserialized.background_l2);
         assert!(deserialized.enabled);
+        assert_eq!(
+            deserialized.entrypoint,
+            Some("data.interdict.policy.test.verdict".to_string())
+        );
     }
 
     #[test]
@@ -167,6 +182,7 @@ mod tests {
         assert_eq!(config.redaction_direction, RedactionDirection::Both);
         assert!(config.background_l2);
         assert!(config.enabled);
+        assert!(config.entrypoint.is_none());
     }
 
     #[test]

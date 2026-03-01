@@ -170,6 +170,30 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Policy pipeline initialized");
 
+    // Phase 6.1 INT-01: Wire ContentInspector into ProxyService
+    let pattern_registry = Arc::new(policy::patterns::PatternRegistry {
+        patterns: policy::patterns::default::default_patterns(),
+        version: 1,
+    });
+    let content_redactor = Arc::new(policy::redaction::RedactionEngine::empty());
+    let content_policy_config = Arc::new(policy::config::PolicyConfig {
+        id: "builtin:content_inspection".to_string(),
+        name: "Content Inspection".to_string(),
+        rego_source: None,
+        entrypoint: None,
+        fail_mode: policy::config::FailMode::FailClosed,
+        block_response_detail: policy::config::BlockResponseDetail::Opaque,
+        redaction_direction: policy::config::RedactionDirection::Both,
+        background_l2: false,
+        enabled: true,
+    });
+    let content_inspector = Arc::new(policy::content_inspection::ContentInspector::new(
+        pattern_registry,
+        content_redactor,
+        content_policy_config,
+    ));
+    tracing::info!("content inspector initialized with default patterns");
+
     // 8c. Initialize PolicySetManager with empty initial set (Phase 6)
     let initial_policy_set = policy::hot_reload::PolicySet {
         regorus_pool: Arc::new(policy::layer1::regorus::RegorusPool::new(
@@ -295,7 +319,8 @@ async fn main() -> anyhow::Result<()> {
         full_text_storage,
         Some(policy_set_manager),
         Some(session_store),
-    );
+    )
+    .with_content_inspector(content_inspector);
 
     // 10. Bind TCP listener
     let listener = tokio::net::TcpListener::bind(&config.proxy.listen_addr).await?;

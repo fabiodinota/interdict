@@ -515,15 +515,28 @@ impl Service<Request<Incoming>> for ProxyService {
                 None
             };
 
-            // If policy_set_manager is present, load the current version for logging
-            if let Some(ref psm) = policy_set_manager {
+            // Phase 6.1 INT-02: Wire live PolicySet into enforcement path.
+            // When PolicySetManager has a non-empty set (version > 0, policies present),
+            // build a request-scoped pipeline from the live set. Otherwise, fall back
+            // to the static pipeline created at startup.
+            let effective_pipeline = if let Some(ref psm) = policy_set_manager {
                 let current = psm.load();
-                tracing::debug!(
-                    policy_version = current.version,
-                    policy_count = current.policies.len(),
-                    "serving request with dynamic policy set"
-                );
-            }
+                if current.version > 0 && !current.policies.is_empty() {
+                    tracing::debug!(
+                        policy_version = current.version,
+                        policy_count = current.policies.len(),
+                        "using live policy set for enforcement"
+                    );
+                    pipeline
+                        .as_ref()
+                        .map(|base| Arc::new(base.with_live_set(&current)))
+                } else {
+                    tracing::debug!("policy set empty (version 0), using static pipeline");
+                    pipeline.clone()
+                }
+            } else {
+                pipeline.clone()
+            };
 
             if req.method() == Method::CONNECT {
                 match handle_connect(
@@ -531,7 +544,7 @@ impl Service<Request<Incoming>> for ProxyService {
                     cert_cache,
                     pool,
                     config,
-                    pipeline,
+                    effective_pipeline,
                     content_inspector,
                     evidence_buffer.clone(),
                     full_text_storage,

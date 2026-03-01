@@ -155,6 +155,7 @@ mod tests {
             id: id.to_string(),
             name: name.to_string(),
             rego_source: Some(format!("policies/{}.rego", id)),
+            entrypoint: None,
             fail_mode: FailMode::FailClosed,
             block_response_detail: BlockResponseDetail::Opaque,
             redaction_direction: RedactionDirection::Both,

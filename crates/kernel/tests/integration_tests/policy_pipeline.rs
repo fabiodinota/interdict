@@ -83,6 +83,7 @@ fn make_policy(id: &str, name: &str, rego_source: &str, fail_mode: FailMode) -> 
         id: id.to_string(),
         name: name.to_string(),
         rego_source: Some(rego_source.to_string()),
+        entrypoint: None,
         fail_mode,
         block_response_detail: BlockResponseDetail::Opaque,
         redaction_direction: RedactionDirection::Both,

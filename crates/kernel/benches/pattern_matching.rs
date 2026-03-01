@@ -119,6 +119,7 @@ fn benchmark_full_inspection(c: &mut Criterion) {
         id: "bench-policy".to_string(),
         name: "Bench Policy".to_string(),
         rego_source: None,
+        entrypoint: None,
         fail_mode: FailMode::FailClosed,
         block_response_detail: BlockResponseDetail::Opaque,
         redaction_direction: RedactionDirection::Both,

@@ -33,6 +33,7 @@ fn make_policy_config() -> PolicyConfig {
         id: "test-policy".to_string(),
         name: "Test Policy".to_string(),
         rego_source: None,
+        entrypoint: None,
         fail_mode: FailMode::FailClosed,
         block_response_detail: BlockResponseDetail::Opaque,
         redaction_direction: RedactionDirection::Both,

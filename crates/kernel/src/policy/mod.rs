@@ -154,6 +154,27 @@ impl PolicyPipeline {
         }
     }
 
+    /// Create a request-scoped pipeline from a hot-reloaded PolicySet.
+    ///
+    /// Shares L2 classifier, L3 review queue, redaction engine, and allowlist
+    /// from the base pipeline. Replaces regorus_pool, wasm_engine, and policies
+    /// with those from the live PolicySet.
+    ///
+    /// Background L2 is not shared (not Clone, analytics-only -- acceptable
+    /// per research open question 1).
+    pub fn with_live_set(&self, policy_set: &hot_reload::PolicySet) -> PolicyPipeline {
+        PolicyPipeline {
+            regorus_pool: policy_set.regorus_pool.clone(),
+            allowlist_policy: self.allowlist_policy.clone(),
+            classifier: self.classifier.clone(),
+            background_l2: None,
+            review_queue: self.review_queue.clone(),
+            redaction_engine: self.redaction_engine.clone(),
+            wasm_engine: policy_set.wasm_engine.clone(),
+            policies: policy_set.policies.clone(),
+        }
+    }
+
     /// Evaluate the full 3-layer policy pipeline for a request.
     ///
     /// # Flow
@@ -191,17 +212,24 @@ impl PolicyPipeline {
                 None => continue, // No Rego source for this policy
             };
 
-            // Build rule path from the Rego source filename convention
-            // Policy files are expected at paths like "policies/vendor.rego"
-            // with package "interdict.policy.<name>" and rule "verdict"
-            let rule = format!(
-                "data.interdict.policy.{}.verdict",
-                rego_source
-                    .trim_end_matches(".rego")
-                    .rsplit('/')
-                    .next()
-                    .unwrap_or("unknown")
-            );
+            // Determine the Rego rule path for evaluation.
+            //
+            // For distributed policies, the entrypoint is explicitly set from
+            // the proto (e.g., "data.interdict.policy.pol1.verdict").
+            // For filesystem-loaded policies, derive from the filename convention:
+            // "policies/vendor.rego" -> "data.interdict.policy.vendor.verdict"
+            let rule = if let Some(ref entrypoint) = policy.entrypoint {
+                entrypoint.clone()
+            } else {
+                format!(
+                    "data.interdict.policy.{}.verdict",
+                    rego_source
+                        .trim_end_matches(".rego")
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or("unknown")
+                )
+            };
 
             let verdict = self
                 .regorus_pool
@@ -497,6 +525,7 @@ mod tests {
             id: "block-evil".to_string(),
             name: "Block Evil AI".to_string(),
             rego_source: Some("policies/block.rego".to_string()),
+            entrypoint: None,
             fail_mode: FailMode::FailClosed,
             block_response_detail: config::BlockResponseDetail::Opaque,
             redaction_direction: config::RedactionDirection::Both,
@@ -525,6 +554,7 @@ mod tests {
             id: "allow-all".to_string(),
             name: "Allow All".to_string(),
             rego_source: Some("policies/allow_all.rego".to_string()),
+            entrypoint: None,
             fail_mode: FailMode::FailClosed,
             block_response_detail: config::BlockResponseDetail::Opaque,
             redaction_direction: config::RedactionDirection::Both,
@@ -585,6 +615,7 @@ mod tests {
             id: "nomatch-policy".to_string(),
             name: "No Match Policy".to_string(),
             rego_source: Some("policies/nomatch.rego".to_string()),
+            entrypoint: None,
             fail_mode: FailMode::FailClosed,
             block_response_detail: config::BlockResponseDetail::Opaque,
             redaction_direction: config::RedactionDirection::Both,
@@ -624,6 +655,7 @@ mod tests {
             id: "nomatch-policy".to_string(),
             name: "No Match Policy".to_string(),
             rego_source: Some("policies/nomatch.rego".to_string()),
+            entrypoint: None,
             fail_mode: FailMode::FailClosed,
             block_response_detail: config::BlockResponseDetail::Opaque,
             redaction_direction: config::RedactionDirection::Both,
@@ -657,6 +689,7 @@ mod tests {
             id: "broken-policy".to_string(),
             name: "Broken Policy".to_string(),
             rego_source: Some("policies/broken.rego".to_string()),
+            entrypoint: None,
             fail_mode: FailMode::FailClosed,
             block_response_detail: config::BlockResponseDetail::Opaque,
             redaction_direction: config::RedactionDirection::Both,
@@ -714,6 +747,7 @@ mod tests {
             id: "broken-policy".to_string(),
             name: "Broken Policy".to_string(),
             rego_source: Some("policies/broken.rego".to_string()),
+            entrypoint: None,
             fail_mode: FailMode::FailOpen,
             block_response_detail: config::BlockResponseDetail::Opaque,
             redaction_direction: config::RedactionDirection::Both,
@@ -799,6 +833,7 @@ mod tests {
                 id: "policy-1-allow".to_string(),
                 name: "Allow Policy 1".to_string(),
                 rego_source: Some("policies/allow1.rego".to_string()),
+                entrypoint: None,
                 fail_mode: FailMode::FailClosed,
                 block_response_detail: config::BlockResponseDetail::Opaque,
                 redaction_direction: config::RedactionDirection::Both,
@@ -809,6 +844,7 @@ mod tests {
                 id: "policy-2-block".to_string(),
                 name: "Block Policy".to_string(),
                 rego_source: Some("policies/block1.rego".to_string()),
+                entrypoint: None,
                 fail_mode: FailMode::FailClosed,
                 block_response_detail: config::BlockResponseDetail::Opaque,
                 redaction_direction: config::RedactionDirection::Both,
@@ -819,6 +855,7 @@ mod tests {
                 id: "policy-3-allow".to_string(),
                 name: "Allow Policy 2".to_string(),
                 rego_source: Some("policies/allow2.rego".to_string()),
+                entrypoint: None,
                 fail_mode: FailMode::FailClosed,
                 block_response_detail: config::BlockResponseDetail::Opaque,
                 redaction_direction: config::RedactionDirection::Both,
