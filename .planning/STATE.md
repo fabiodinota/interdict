@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Not started
-status: unknown
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-01T03:39:10.047Z"
+current_plan: 2
+status: in_progress
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-01T04:13:25Z"
 progress:
-  total_phases: 5
+  total_phases: 10
   completed_phases: 4
-  total_plans: 17
-  completed_plans: 17
-  percent: 100
+  total_plans: 35
+  completed_plans: 18
+  percent: 51
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** Phase 4 in progress -- Evidence collector foundations complete
+**Current focus:** Phase 5 in progress -- Control plane API scaffold complete
 
 ## Current Position
 
-Phase: 4 of 10 (Evidence Collector) -- IN PROGRESS
-Plan: 2 of 4 in current phase (next)
-Status: 04-01 complete; ready to execute 04-02
-Last activity: 2026-02-28 -- Plan 04-01 complete (collector/verifier scaffold + crypto primitives)
+Phase: 5 of 10 (Control Plane API Core) -- IN PROGRESS
+Plan: 2 of 5 in current phase (next: 05-02)
+Status: 05-01 complete; ready to execute 05-02
+Last activity: 2026-03-01 -- Plan 05-01 complete (project scaffold + schemas + utilities)
 
-**Current Plan:** Not started
-**Total Plans in Phase:** 4
-**Progress:** [██████████] 100%
+**Current Plan:** 2
+**Total Plans in Phase:** 5
+**Progress:** [█---------] 20%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Last activity: 2026-02-28 -- Plan 04-01 complete (collector/verifier scaffold + 
 | Phase 04 P03 | 6m8s | 2 tasks | 8 files |
 | Phase 04 P02 | 5m50s | 2 tasks | 10 files |
 | Phase 04 P04 | 11m56s | 2 tasks | 9 files |
+| Phase 05 P01 | 4m29s | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,10 @@ Recent decisions affecting current work:
 - [Phase 04]: bundle_content_bytes zeroes chain/sig metadata to reconstruct original signed content for verification
 - [Phase 04]: Integration tests use interdict_verify proto types to bridge cross-crate type boundary
 - [Phase 04]: interdict-verify prost upgraded from 0.13 to 0.14 for workspace consistency
+- [Phase 05]: TypeBox pinned to 0.34.x (not 0.32.x from research) to match Elysia 1.4.26 t.Module requirement
+- [Phase 05]: Wasm stored on filesystem with DB reference (path + SHA-256 hash) per discretion recommendation
+- [Phase 05]: Consolidated shared utilities into single file (errors + envelope + pagination) for simpler imports
+- [Phase 05]: postgres.js pool max: 20 with explicit idle and connect timeouts
 
 ### Pending Todos
 
@@ -141,6 +146,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-03-01T03:39:10.044Z
-**Stopped At:** Phase 5 context gathered
-**Resume file:** .planning/phases/05-control-plane-api-core/05-CONTEXT.md
+**Last session:** 2026-03-01T04:13:25Z
+**Stopped At:** Completed 05-01-PLAN.md
+**Resume file:** .planning/phases/05-control-plane-api-core/05-02-PLAN.md

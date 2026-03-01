@@ -78,8 +78,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **CTRL-07**: Audit trail query API -- searchable, filterable execution history by user, department, vendor, policy decision, time range, violation type
 - [ ] **CTRL-08**: Master key management API for cryptographic signing key rotation across kernel fleet
 - [ ] **CTRL-09**: RBAC with five roles: Super Admin, Compliance Officer, Policy Admin, Department Manager, Read-Only Auditor
-- [ ] **CTRL-10**: PostgreSQL for configuration, policies (Rego source + compiled Wasm blobs), users, RBAC, vendor registry, regulatory mappings
-- [ ] **CTRL-11**: ClickHouse for high-volume audit log analytics, anomaly detection queries, and compliance reporting data
+- [x] **CTRL-10**: PostgreSQL for configuration, policies (Rego source + compiled Wasm blobs), users, RBAC, vendor registry, regulatory mappings
+- [x] **CTRL-11**: ClickHouse for high-volume audit log analytics, anomaly detection queries, and compliance reporting data
 - [ ] **CTRL-12**: SAML 2.0 integration for enterprise IdPs (Okta, Azure AD) -- verify SAML assertions at API boundary, pass verified identity claims downstream
 
 ### Dashboard
@@ -203,8 +203,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTRL-07 | Phase 5 | Pending |
 | CTRL-08 | Phase 7 | Pending |
 | CTRL-09 | Phase 7 | Pending |
-| CTRL-10 | Phase 5 | Pending |
-| CTRL-11 | Phase 5 | Pending |
+| CTRL-10 | Phase 5 | Complete |
+| CTRL-11 | Phase 5 | Complete |
 | CTRL-12 | Phase 7 | Pending |
 | DASH-01 | Phase 8 | Pending |
 | DASH-02 | Phase 8 | Pending |
