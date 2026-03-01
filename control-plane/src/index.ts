@@ -15,6 +15,10 @@ import { startCompilationWorker } from "./modules/compiler/worker";
 import { vendorsModule } from "./modules/vendors";
 import { regulatoryModule } from "./modules/regulatory";
 import { auditModule } from "./modules/audit";
+import {
+  startDistributionServer,
+  stopDistributionServer,
+} from "./modules/distribution";
 
 const config = getConfig();
 
@@ -24,6 +28,7 @@ const MODULES = [
   "vendors",
   "regulatory",
   "audit",
+  "distribution",
 ] as const;
 
 const app = new Elysia()
@@ -77,6 +82,16 @@ const app = new Elysia()
   .use(auditModule)
   .listen(config.port);
 
+// Start gRPC distribution server for pushing policy updates to kernels
+const grpcServer = startDistributionServer(
+  db,
+  config.grpcPort,
+  config.grpcMaxMessageSize
+);
+console.log(
+  `[control-plane] gRPC distribution server running on port ${config.grpcPort}`
+);
+
 // Start the background compilation worker
 startCompilationWorker(db, config.wasmStorageDir);
 
@@ -84,5 +99,21 @@ console.log(
   `[control-plane] Interdict Control Plane running on port ${config.port}`
 );
 console.log(`[control-plane] Modules loaded: ${MODULES.join(", ")}`);
+
+// Graceful shutdown: stop gRPC server on process exit
+const shutdown = async (signal: string) => {
+  console.log(`[control-plane] Received ${signal}, shutting down...`);
+  try {
+    await stopDistributionServer(grpcServer);
+  } catch (err: any) {
+    console.error(
+      `[control-plane] Error stopping gRPC server: ${err.message}`
+    );
+  }
+  process.exit(0);
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
 
 export { app };

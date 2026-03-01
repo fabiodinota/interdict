@@ -14,7 +14,8 @@ import { $ } from "bun";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
-import { policyVersions } from "../../db/schema/policies";
+import { policies, policyVersions } from "../../db/schema/policies";
+import { broadcastUpdate } from "../distribution/tracker";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -219,6 +220,60 @@ export function startCompilationWorker(
               wasmSizeBytes: result.wasmSizeBytes,
             })
             .where(eq(policyVersions.id, version.id));
+
+          // Broadcast delta update to connected kernels
+          try {
+            // Look up the policy name for the update message
+            const policyRows = await db
+              .select({ name: policies.name })
+              .from(policies)
+              .where(eq(policies.id, version.policyId))
+              .limit(1);
+
+            const policyName = policyRows[0]?.name ?? version.policyId;
+
+            // Read compiled wasm bytes from filesystem
+            let wasmBytes = Buffer.alloc(0);
+            if (result.wasmPath) {
+              const wasmFile = Bun.file(result.wasmPath);
+              if (await wasmFile.exists()) {
+                wasmBytes = Buffer.from(await wasmFile.arrayBuffer());
+              }
+            }
+
+            broadcastUpdate({
+              version: version.version,
+              type: 1, // DELTA
+              policies: [
+                {
+                  policy_id: version.policyId,
+                  name: policyName,
+                  version: version.version,
+                  wasm_bytes: wasmBytes,
+                  wasm_hash: result.wasmHash ?? "",
+                  rego_source: version.regoSource,
+                  entrypoint: version.entrypoint,
+                  scope: {
+                    org_id: "",       // v1: org-level default
+                    dept_id: "",      // Phase 7: per-department scope
+                    team_id: "",      // Phase 7: per-team scope
+                    vendor_ids: [],
+                  },
+                  fail_mode: 0, // FAIL_CLOSED default
+                },
+              ],
+              removed_policy_ids: [],
+            });
+
+            console.log(
+              `[compiler] Broadcasting policy update for ${version.policyId} v${version.version} to connected kernels`
+            );
+          } catch (broadcastErr: any) {
+            // Broadcast failure should not fail the compilation
+            console.error(
+              `[compiler] Failed to broadcast update for ${version.policyId}: ${broadcastErr.message}`
+            );
+          }
         } else {
           await db
             .update(policyVersions)
