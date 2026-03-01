@@ -93,8 +93,7 @@ fn shared_env() -> &'static (Runtime, BenchState) {
             let allowlist = Arc::new(middleware::allowlist::VendorAllowlist::from_config(
                 &config.allowlist,
             ));
-            let proxy_service =
-                ProxyService::new(cert_cache.clone(), pool.clone(), config.clone());
+            let proxy_service = ProxyService::new(cert_cache.clone(), pool.clone(), config.clone());
 
             // Spawn proxy
             tokio::spawn(async move {
@@ -123,11 +122,9 @@ fn shared_env() -> &'static (Runtime, BenchState) {
             let (server_config, backend_addr, backend_listener) =
                 create_tls_server_with_ca(&ca_cert_pem, &ca_key_pem, "127.0.0.1").await;
 
-            let body =
-                Bytes::from(r#"{"id":"bench","choices":[{"message":{"content":"ok"}}]}"#);
+            let body = Bytes::from(r#"{"id":"bench","choices":[{"message":{"content":"ok"}}]}"#);
             tokio::spawn(async move {
-                let tls_acceptor =
-                    tokio_rustls::TlsAcceptor::from(Arc::new(server_config));
+                let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(server_config));
                 loop {
                     let (stream, _) = match backend_listener.accept().await {
                         Ok(r) => r,
@@ -234,17 +231,12 @@ fn bench_proxy_throughput(c: &mut Criterion) {
                         let cfg = client_config.clone();
                         let port = state.backend_port;
                         handles.push(tokio::spawn(async move {
-                            send_proxied_request(addr, &cfg, "127.0.0.1", port, "/v1/bench")
-                                .await
+                            send_proxied_request(addr, &cfg, "127.0.0.1", port, "/v1/bench").await
                         }));
                     }
                     for h in handles {
-                        match h.await {
-                            Ok(Ok(status)) => assert_eq!(status, StatusCode::OK),
-                            // Transient connection errors under concurrent load are
-                            // acceptable in benchmarks — the proxy handled the request,
-                            // but the test client's TLS teardown raced with the read.
-                            Ok(Err(_)) | Err(_) => {}
+                        if let Ok(Ok(status)) = h.await {
+                            assert_eq!(status, StatusCode::OK);
                         }
                     }
                 });
@@ -283,7 +275,6 @@ fn bench_proxy_memory(c: &mut Criterion) {
             }
         });
     });
-
 
     group.finish();
 }
@@ -325,8 +316,7 @@ async fn create_tls_server_with_ca(
     let ee_cert = ee_params.signed_by(&ee_key, &ca_cert, &ca_key).unwrap();
 
     let cert_chain = vec![ee_cert.into()];
-    let private_key =
-        rustls::pki_types::PrivatePkcs8KeyDer::from(ee_key.serialized_der().to_vec());
+    let private_key = rustls::pki_types::PrivatePkcs8KeyDer::from(ee_key.serialized_der().to_vec());
 
     let server_config = rustls::ServerConfig::builder()
         .with_no_client_auth()
