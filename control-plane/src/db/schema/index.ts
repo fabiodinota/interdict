@@ -5,4 +5,22 @@
  * This is the single import point for Drizzle ORM schema access.
  */
 
-// Stub: populated in Task 2 with full schema exports
+// Policies
+export {
+  compilationStatusEnum,
+  policies,
+  policyVersions,
+} from "./policies";
+
+// Vendors
+export { vendors, vendorModels } from "./vendors";
+
+// Regulatory frameworks
+export {
+  frameworks,
+  frameworkPolicies,
+  frameworkActivations,
+} from "./regulatory";
+
+// Organization
+export { departments, teams, users } from "./organization";
