@@ -306,7 +306,11 @@ default verdict := {{"action": "allow"}}
             .await
             .expect("snapshot should succeed");
 
-        let closed_policy = policy_set.policies.iter().find(|p| p.id == "closed").unwrap();
+        let closed_policy = policy_set
+            .policies
+            .iter()
+            .find(|p| p.id == "closed")
+            .unwrap();
         assert_eq!(closed_policy.fail_mode, FailMode::FailClosed);
 
         let open_policy = policy_set.policies.iter().find(|p| p.id == "open").unwrap();
@@ -335,7 +339,12 @@ default verdict := {{"action": "allow"}}
         // Start with one policy
         let initial = apply_snapshot(
             1,
-            &[make_policy_entry("pol1", "Policy 1", &sample_rego("pol1"), 0)],
+            &[make_policy_entry(
+                "pol1",
+                "Policy 1",
+                &sample_rego("pol1"),
+                0,
+            )],
             &wasm,
             &hconfig,
         )
@@ -347,7 +356,12 @@ default verdict := {{"action": "allow"}}
         let update = proto::PolicyUpdate {
             version: 2,
             r#type: proto::policy_update::UpdateType::Delta as i32,
-            policies: vec![make_policy_entry("pol2", "Policy 2", &sample_rego("pol2"), 0)],
+            policies: vec![make_policy_entry(
+                "pol2",
+                "Policy 2",
+                &sample_rego("pol2"),
+                0,
+            )],
             removed_policy_ids: vec![],
         };
 
@@ -429,7 +443,12 @@ default verdict := {{"action": "allow"}}
 
         let initial = apply_snapshot(
             1,
-            &[make_policy_entry("pol1", "Old Policy 1", &sample_rego("pol1"), 0)],
+            &[make_policy_entry(
+                "pol1",
+                "Old Policy 1",
+                &sample_rego("pol1"),
+                0,
+            )],
             &wasm,
             &hconfig,
         )
@@ -440,7 +459,12 @@ default verdict := {{"action": "allow"}}
         let update = proto::PolicyUpdate {
             version: 2,
             r#type: proto::policy_update::UpdateType::Delta as i32,
-            policies: vec![make_policy_entry("pol1", "New Policy 1", &sample_rego("pol1"), 1)],
+            policies: vec![make_policy_entry(
+                "pol1",
+                "New Policy 1",
+                &sample_rego("pol1"),
+                1,
+            )],
             removed_policy_ids: vec![],
         };
 

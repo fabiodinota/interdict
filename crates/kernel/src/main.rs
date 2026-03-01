@@ -77,14 +77,13 @@ async fn main() -> anyhow::Result<()> {
     let config = Arc::new(config);
 
     // 8b. Initialize Policy Pipeline (Phase 2)
-    let pipeline = {
-        // Create WasmEngine with pooling allocator (proves PLCY-01)
-        let wasm_engine = Arc::new(
-            policy::wasm_engine::WasmEngine::new(&config.policy)
-                .expect("WasmEngine creation should succeed"),
-        );
-        tracing::info!("Wasmtime engine with pooling allocator initialized");
+    let wasm_engine = Arc::new(
+        policy::wasm_engine::WasmEngine::new(&config.policy)
+            .expect("WasmEngine creation should succeed"),
+    );
+    tracing::info!("Wasmtime engine with pooling allocator initialized");
 
+    let pipeline = {
         // Create Regorus engine template and pool
         // Load policies from the configured directory (if any exist)
         let regorus_template = regorus::Engine::new();
@@ -164,19 +163,57 @@ async fn main() -> anyhow::Result<()> {
             background_l2,
             review_queue,
             redaction_engine,
-            wasm_engine,
+            wasm_engine.clone(),
             policies,
         ))
     };
 
     tracing::info!("Policy pipeline initialized");
 
+    // 8c. Initialize PolicySetManager with empty initial set (Phase 6)
+    let initial_policy_set = policy::hot_reload::PolicySet {
+        regorus_pool: Arc::new(policy::layer1::regorus::RegorusPool::new(
+            &regorus::Engine::new(),
+            1,
+        )),
+        wasm_engine: wasm_engine.clone(),
+        hierarchy: policy::hierarchy::HierarchyResolver::new(vec![]),
+        policies: vec![],
+        version: 0,
+        content_hashes: std::collections::HashMap::new(),
+    };
+    let policy_set_manager = Arc::new(policy::hot_reload::PolicySetManager::new(
+        initial_policy_set,
+    ));
+
+    tracing::info!("PolicySetManager initialized (version 0, empty)");
+
+    // 8d. Initialize SessionStore (Phase 6)
+    let dist_config = &config.policy.distribution;
+    let session_config = policy::session::SessionConfig {
+        max_sessions: dist_config.session_max_entries,
+        session_ttl: Duration::from_secs(dist_config.session_ttl_secs),
+        cleanup_interval: Duration::from_secs(dist_config.session_cleanup_interval_secs),
+        ..policy::session::SessionConfig::default()
+    };
+    let session_store = Arc::new(policy::session::SessionStore::new(session_config));
+
+    tracing::info!(
+        max_sessions = dist_config.session_max_entries,
+        ttl_secs = dist_config.session_ttl_secs,
+        cleanup_interval_secs = dist_config.session_cleanup_interval_secs,
+        "session store initialized"
+    );
+
     let evidence_collector_addr = std::env::var("INTERDICT_EVIDENCE_COLLECTOR_ADDR")
         .unwrap_or_else(|_| "http://[::1]:50051".to_string());
     let full_text_storage = std::env::var("INTERDICT_EVIDENCE_FULL_TEXT_STORAGE")
         .map(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
         .unwrap_or(false);
-    let kernel_id = uuid::Uuid::new_v4().to_string();
+    let kernel_id = dist_config
+        .kernel_id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let (evidence_buffer, evidence_flusher_handle) =
         evidence::EvidenceBuffer::new(evidence_collector_addr.clone(), kernel_id.clone());
     let evidence_buffer = Arc::new(evidence_buffer);
@@ -188,15 +225,76 @@ async fn main() -> anyhow::Result<()> {
         "evidence pipeline initialized"
     );
 
+    // 8e. Spawn distribution client if configured (Phase 6)
+    let cancel_token = tokio_util::sync::CancellationToken::new();
+    let distribution_handle = if let Some(ref distribution_addr) = dist_config.distribution_addr {
+        let hierarchy_config = policy::hierarchy::HierarchyConfig {
+            org_id: dist_config.org_id.clone(),
+            dept_id: dist_config.dept_id.clone(),
+            team_id: dist_config.team_id.clone(),
+        };
+
+        let client = policy::distribution::client::DistributionClient::new(
+            distribution_addr.clone(),
+            kernel_id.clone(),
+            hierarchy_config,
+            policy_set_manager.clone(),
+            wasm_engine.clone(),
+            Duration::from_secs(dist_config.disconnect_timeout_secs),
+            dist_config.disconnect_mode.clone(),
+            cancel_token.clone(),
+        );
+
+        let handle = client.run();
+        tracing::info!(
+            addr = %distribution_addr,
+            org_id = %dist_config.org_id,
+            "distribution client active, subscribing to policy updates"
+        );
+        Some(handle)
+    } else {
+        tracing::info!(
+            "no distribution_addr configured, running in standalone mode (static policies)"
+        );
+        None
+    };
+
+    // 8f. Spawn session cleanup background task (Phase 6)
+    // KERN-13: bounded timer, respects shutdown signal
+    let session_cleanup_cancel = cancel_token.clone();
+    let session_store_cleanup = session_store.clone();
+    let cleanup_interval = Duration::from_secs(dist_config.session_cleanup_interval_secs);
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(cleanup_interval);
+        loop {
+            tokio::select! {
+                _ = interval.tick() => {
+                    session_store_cleanup.cleanup_expired();
+                }
+                _ = session_cleanup_cancel.cancelled() => {
+                    tracing::debug!("session cleanup task shutting down");
+                    break;
+                }
+            }
+        }
+    });
+
+    tracing::info!(
+        interval_secs = dist_config.session_cleanup_interval_secs,
+        "session cleanup background task started"
+    );
+
     // 9. Build the Tower service stack
     //    Request flow: RequestIdLayer -> AllowlistLayer -> ProxyService
-    let proxy_service = proxy::ProxyService::with_pipeline(
+    let proxy_service = proxy::ProxyService::with_distribution(
         cert_cache.clone(),
         pool.clone(),
         config.clone(),
         pipeline,
         evidence_buffer.clone(),
         full_text_storage,
+        Some(policy_set_manager),
+        Some(session_store),
     );
 
     // 10. Bind TCP listener
@@ -287,6 +385,16 @@ async fn main() -> anyhow::Result<()> {
     }
 
     tracing::info!("kernel proxy shutdown complete");
+
+    // Stop distribution client and session cleanup (Phase 6)
+    cancel_token.cancel();
+    if let Some(handle) = distribution_handle {
+        match tokio::time::timeout(Duration::from_secs(5), handle).await {
+            Ok(Ok(())) => tracing::info!("distribution client stopped"),
+            Ok(Err(err)) => tracing::warn!(error = %err, "distribution client join failed"),
+            Err(_) => tracing::warn!("distribution client shutdown timed out"),
+        }
+    }
 
     drop(proxy_service);
     drop(evidence_buffer);

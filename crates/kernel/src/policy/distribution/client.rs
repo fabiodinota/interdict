@@ -133,10 +133,7 @@ impl DistributionClient {
             let sleep_secs = (backoff_secs + jitter).max(0.0);
             let sleep_duration = Duration::from_secs_f64(sleep_secs);
 
-            tracing::debug!(
-                backoff_secs = sleep_secs,
-                "waiting before reconnect"
-            );
+            tracing::debug!(backoff_secs = sleep_secs, "waiting before reconnect");
 
             tokio::select! {
                 _ = tokio::time::sleep(sleep_duration) => {}
@@ -152,9 +149,7 @@ impl DistributionClient {
     }
 
     /// Connect to the control plane and subscribe to the policy update stream.
-    async fn connect_and_subscribe(
-        &self,
-    ) -> anyhow::Result<tonic::Streaming<proto::PolicyUpdate>> {
+    async fn connect_and_subscribe(&self) -> anyhow::Result<tonic::Streaming<proto::PolicyUpdate>> {
         let endpoint = Endpoint::from_shared(self.addr.clone())?
             .connect_timeout(Duration::from_secs(5))
             .timeout(self.disconnect_timeout);
@@ -237,9 +232,7 @@ impl DistributionClient {
                 if let Err(ref e) = delta_result {
                     let err_msg = e.to_string();
                     if err_msg.contains("version gap") {
-                        tracing::warn!(
-                            "version gap detected, will reconnect for full snapshot"
-                        );
+                        tracing::warn!("version gap detected, will reconnect for full snapshot");
                         // Send NACK for version gap
                         self.send_ack(update_version, false, &err_msg).await;
                         return;

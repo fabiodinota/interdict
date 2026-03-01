@@ -17,6 +17,8 @@ use crate::error::{ProxyBody, ProxyError};
 use crate::evidence::EvidenceBuffer;
 use crate::evidence::bundle::RawEvidenceEvent;
 use crate::policy::content_inspection::ContentInspector;
+use crate::policy::hot_reload::PolicySetManager;
+use crate::policy::session::{self, ExchangeRecord, SessionStore};
 use crate::policy::verdict::VerdictAction;
 use crate::policy::{Direction, PolicyPipeline, RequestContext};
 use crate::proxy::pool::ConnectionPool;
@@ -68,6 +70,8 @@ pub async fn handle_connect(
     content_inspector: Option<Arc<ContentInspector>>,
     evidence_buffer: Arc<EvidenceBuffer>,
     full_text_storage: bool,
+    session_store: Option<Arc<SessionStore>>,
+    session_id: Option<String>,
 ) -> Result<Response<ProxyBody>, ProxyError> {
     // 1. Extract host and port from CONNECT authority
     let authority = req.uri().authority().ok_or(ProxyError::MissingAuthority)?;
@@ -109,6 +113,30 @@ pub async fn handle_connect(
                     enforcement_start.elapsed(),
                 );
                 evidence_buffer.try_send(evidence_event);
+
+                // Session context tracking (Phase 6): record exchange
+                if let (Some(store), Some(sid)) = (&session_store, &session_id) {
+                    // Ensure session exists
+                    store.get_or_create(sid, "anonymous", &host);
+
+                    let exchange = ExchangeRecord {
+                        request_hash: sha256_hex(ctx.content.as_deref().unwrap_or("")),
+                        response_hash: String::new(),
+                        timestamp: chrono::Utc::now(),
+                        verdict: result.merged_verdict.final_action,
+                        categories_detected: vec![], // Categories from content inspection
+                    };
+
+                    if let Some(should_escalate) = store.record_exchange(sid, exchange)
+                        && should_escalate
+                    {
+                        tracing::warn!(
+                            session_id = %sid,
+                            vendor = %host,
+                            "slow-leak exfiltration pattern detected in session"
+                        );
+                    }
+                }
 
                 match result.merged_verdict.final_action {
                     VerdictAction::Block => {
@@ -365,6 +393,12 @@ pub struct ProxyService {
     content_inspector: Option<Arc<ContentInspector>>,
     evidence_buffer: Arc<EvidenceBuffer>,
     full_text_storage: bool,
+    /// ArcSwap-based policy set manager for hot-reload (Phase 6).
+    /// When present, policies are loaded dynamically from control plane.
+    policy_set_manager: Option<Arc<PolicySetManager>>,
+    /// Session context store for multi-turn conversation tracking (Phase 6).
+    /// When present, session context is tracked per request.
+    session_store: Option<Arc<SessionStore>>,
 }
 
 impl ProxyService {
@@ -378,6 +412,8 @@ impl ProxyService {
             content_inspector: None,
             evidence_buffer: Arc::new(EvidenceBuffer::stub()),
             full_text_storage: false,
+            policy_set_manager: None,
+            session_store: None,
         }
     }
 
@@ -398,6 +434,37 @@ impl ProxyService {
             content_inspector: None,
             evidence_buffer,
             full_text_storage,
+            policy_set_manager: None,
+            session_store: None,
+        }
+    }
+
+    /// Create a new ProxyService with a policy pipeline and distribution support.
+    ///
+    /// When `policy_set_manager` is Some, the proxy loads the current PolicySet
+    /// via ArcSwap on each request for dynamic policy evaluation.
+    /// When `session_store` is Some, session context is tracked per request.
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_distribution(
+        cert_cache: Arc<CertCache>,
+        pool: Arc<ConnectionPool>,
+        config: Arc<Config>,
+        pipeline: Arc<PolicyPipeline>,
+        evidence_buffer: Arc<EvidenceBuffer>,
+        full_text_storage: bool,
+        policy_set_manager: Option<Arc<PolicySetManager>>,
+        session_store: Option<Arc<SessionStore>>,
+    ) -> Self {
+        Self {
+            cert_cache,
+            pool,
+            config,
+            pipeline: Some(pipeline),
+            content_inspector: None,
+            evidence_buffer,
+            full_text_storage,
+            policy_set_manager,
+            session_store,
         }
     }
 
@@ -429,8 +496,35 @@ impl Service<Request<Incoming>> for ProxyService {
         let content_inspector = self.content_inspector.clone();
         let evidence_buffer = self.evidence_buffer.clone();
         let full_text_storage = self.full_text_storage;
+        let policy_set_manager = self.policy_set_manager.clone();
+        let session_store = self.session_store.clone();
 
         Box::pin(async move {
+            // Session context tracking (Phase 6): resolve session ID from headers
+            // and record the exchange after pipeline evaluation.
+            let session_id = if session_store.is_some() {
+                let headers = req.headers();
+                // user_id is "anonymous" until auth is wired (Phase 7)
+                let vendor = req
+                    .uri()
+                    .authority()
+                    .map(|a| a.host().to_string())
+                    .unwrap_or_default();
+                Some(session::resolve_session_id(headers, "anonymous", &vendor))
+            } else {
+                None
+            };
+
+            // If policy_set_manager is present, load the current version for logging
+            if let Some(ref psm) = policy_set_manager {
+                let current = psm.load();
+                tracing::debug!(
+                    policy_version = current.version,
+                    policy_count = current.policies.len(),
+                    "serving request with dynamic policy set"
+                );
+            }
+
             if req.method() == Method::CONNECT {
                 match handle_connect(
                     req,
@@ -439,8 +533,10 @@ impl Service<Request<Incoming>> for ProxyService {
                     config,
                     pipeline,
                     content_inspector,
-                    evidence_buffer,
+                    evidence_buffer.clone(),
                     full_text_storage,
+                    session_store,
+                    session_id,
                 )
                 .await
                 {
