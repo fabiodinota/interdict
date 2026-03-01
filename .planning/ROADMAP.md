@@ -18,6 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Evidence Collector** - Separate Rust binary producing SHA-256 hash chains, Ed25519 signatures, Merkle trees, and S3 WORM anchoring with correct ClickHouse batching
 - [ ] **Phase 5: Control Plane API Core** - Bun + Elysia API with policy CRUD, Rego-to-Wasm compiler, vendor registry, regulatory framework mappings, and database schemas
 - [ ] **Phase 6: Policy Distribution & Kernel Integration** - gRPC xDS-style push from control plane to kernel fleet with hot-reload, session context tracking, and fail-closed/open behavior
+- [ ] **Phase 6.1: Kernel Integration Wiring** - INSERTED — Wire ContentInspector and live PolicySet into kernel binary entry points, closing 2 P0 integration gaps from v1.0 audit
 - [ ] **Phase 7: Identity, Access & Security** - SAML 2.0 at the TypeScript boundary, RBAC with five roles, mTLS between all components, and signing key management
 - [ ] **Phase 8: Dashboard Core** - Next.js policy builder, audit trail search, vendor management, and real-time violation statistics
 - [ ] **Phase 9: Compliance Reporting & Advanced Dashboard** - Compliance report generation, evidence verification UI, human review queue, anomaly detection views, and department-level policy management
@@ -133,6 +134,21 @@ Plans:
 - [ ] 06-03-PLAN.md — Control plane gRPC distribution server, kernel tracker, compiler broadcast (Wave 2)
 - [ ] 06-04-PLAN.md — Integration tests validating all Phase 6 success criteria (Wave 3)
 
+### Phase 6.1: Kernel Integration Wiring (INSERTED — Gap Closure)
+**Goal**: Wire ContentInspector and live PolicySet into the kernel binary entry points so that PII detection and hot-reloaded policies are active at runtime, closing the 2 P0 integration gaps identified in the v1.0 milestone audit
+**Depends on**: Phase 3 (ContentInspector), Phase 6 (PolicySetManager hot-reload)
+**Requirements**: PII-01, PII-02, PII-03, PII-04, PII-05, PII-06, KERN-05, KERN-06, PLCY-11, PLCY-06, CTRL-03
+**Gap Closure**: Closes INT-01, INT-02, FLOW-01, FLOW-02 from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. ContentInspector is instantiated with PatternRegistry in main.rs and passed to ProxyService via `.with_content_inspector()`, so handle_connect() branches to inspecting_relay_outbound() instead of zero-copy relay
+  2. PolicySetManager.load() is wired into the enforcement path in handle_connect(), replacing the static empty PolicyPipeline with live policies from the swapped PolicySet
+  3. An integration test demonstrates PII redaction in a proxied request through the running binary (not just unit-tested in isolation)
+  4. An integration test demonstrates that a policy update received via distribution client is enforced on the next request
+**Plans**: TBD
+
+Plans:
+- [ ] 06.1-01-PLAN.md — Wire ContentInspector + live PolicySet into kernel entry points, integration tests
+
 ### Phase 7: Identity, Access & Security
 **Goal**: Enterprise identity integration via SAML 2.0 at the TypeScript API boundary, RBAC with five distinct roles controlling all API and dashboard access, mTLS securing all internal service communication, and cryptographic key management for signing key rotation
 **Depends on**: Phase 5 (control plane API exists)
@@ -204,7 +220,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 6.1 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -214,6 +230,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 4. Evidence Collector | 1/4 | In Progress | - |
 | 5. Control Plane API Core | 0/4 | Planned | - |
 | 6. Policy Distribution & Kernel Integration | 0/4 | Planned | - |
+| 6.1 Kernel Integration Wiring (Gap Closure) | 0/1 | Planned | - |
 | 7. Identity, Access & Security | 0/3 | Not started | - |
 | 8. Dashboard Core | 0/3 | Not started | - |
 | 9. Compliance Reporting & Advanced Dashboard | 0/3 | Not started | - |
