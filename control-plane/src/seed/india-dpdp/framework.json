@@ -1,0 +1,37 @@
+{
+  "slug": "india-dpdp",
+  "name": "India DPDP Act",
+  "description": "Digital Personal Data Protection Act 2023 (India) - Comprehensive data protection legislation governing the processing of digital personal data in India",
+  "jurisdiction": "IN",
+  "version": "2023",
+  "policies": [
+    {
+      "file": "policies/consent-requirement.rego",
+      "requirement_ref": "Section 6 - Consent",
+      "requirement_description": "Personal data shall only be processed for a lawful purpose after obtaining the free, specific, informed, and unambiguous consent of the Data Principal.",
+      "is_required": true,
+      "sort_order": 1
+    },
+    {
+      "file": "policies/purpose-limitation.rego",
+      "requirement_ref": "Section 5 - Purpose limitation",
+      "requirement_description": "Personal data may only be processed for a lawful purpose for which the Data Principal has given consent, or for certain legitimate uses.",
+      "is_required": true,
+      "sort_order": 2
+    },
+    {
+      "file": "policies/data-erasure.rego",
+      "requirement_ref": "Section 12 - Right of erasure",
+      "requirement_description": "The Data Principal has the right to erasure of personal data, and Data Fiduciaries must erase personal data when it is no longer needed for the stated purpose.",
+      "is_required": true,
+      "sort_order": 3
+    },
+    {
+      "file": "policies/breach-notification.rego",
+      "requirement_ref": "Section 8 - Data breach notification",
+      "requirement_description": "In the event of a personal data breach, the Data Fiduciary shall notify the Board and each affected Data Principal.",
+      "is_required": true,
+      "sort_order": 4
+    }
+  ]
+}

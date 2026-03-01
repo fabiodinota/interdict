@@ -1,0 +1,37 @@
+{
+  "slug": "nist-ai-rmf",
+  "name": "NIST AI Risk Management Framework",
+  "description": "National Institute of Standards and Technology AI Risk Management Framework (AI RMF 1.0) - Voluntary framework for managing risks in the design, development, use, and evaluation of AI systems",
+  "jurisdiction": "US",
+  "version": "2023",
+  "policies": [
+    {
+      "file": "policies/govern-ai-risk.rego",
+      "requirement_ref": "GOVERN 1.0 - Governance and oversight",
+      "requirement_description": "Policies, processes, procedures, and practices across the organization related to the mapping, measuring, and managing of AI risk are in place, transparent, and implemented effectively.",
+      "is_required": true,
+      "sort_order": 1
+    },
+    {
+      "file": "policies/map-ai-impact.rego",
+      "requirement_ref": "MAP 1.0 - Context and risk identification",
+      "requirement_description": "Context is established and understood, and AI risks related to the AI system are identified and documented.",
+      "is_required": true,
+      "sort_order": 2
+    },
+    {
+      "file": "policies/measure-performance.rego",
+      "requirement_ref": "MEASURE 1.0 - Risk measurement and monitoring",
+      "requirement_description": "AI risks are measured quantitatively or qualitatively, and the results are documented, including uncertainty and error rates.",
+      "is_required": true,
+      "sort_order": 3
+    },
+    {
+      "file": "policies/manage-ai-risk.rego",
+      "requirement_ref": "MANAGE 1.0 - Risk response and recovery",
+      "requirement_description": "AI risks are prioritized and acted upon. Responses are developed, implemented, and monitored to maximize benefits and minimize negative impacts.",
+      "is_required": true,
+      "sort_order": 4
+    }
+  ]
+}

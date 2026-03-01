@@ -1,0 +1,37 @@
+{
+  "slug": "singapore-pdpa",
+  "name": "Singapore PDPA",
+  "description": "Personal Data Protection Act 2012 (Singapore) - Governs the collection, use, disclosure, and care of personal data in Singapore, with provisions for AI and automated decision-making",
+  "jurisdiction": "SG",
+  "version": "2012",
+  "policies": [
+    {
+      "file": "policies/consent-obligation.rego",
+      "requirement_ref": "Sections 13-17 - Consent obligation",
+      "requirement_description": "An organisation shall not collect, use, or disclose personal data about an individual unless the individual gives or is deemed to have given consent.",
+      "is_required": true,
+      "sort_order": 1
+    },
+    {
+      "file": "policies/purpose-limitation.rego",
+      "requirement_ref": "Section 18 - Purpose limitation obligation",
+      "requirement_description": "An organisation may collect, use, or disclose personal data only for purposes that a reasonable person would consider appropriate in the circumstances.",
+      "is_required": true,
+      "sort_order": 2
+    },
+    {
+      "file": "policies/access-correction.rego",
+      "requirement_ref": "Sections 21-22 - Access and correction obligations",
+      "requirement_description": "An organisation shall provide individuals with access to their personal data and the ability to correct errors or omissions.",
+      "is_required": true,
+      "sort_order": 3
+    },
+    {
+      "file": "policies/data-protection.rego",
+      "requirement_ref": "Section 24 - Protection obligation",
+      "requirement_description": "An organisation shall protect personal data in its possession or under its control by making reasonable security arrangements.",
+      "is_required": true,
+      "sort_order": 4
+    }
+  ]
+}
