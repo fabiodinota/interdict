@@ -25,7 +25,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **KERN-07**: Kernel achieves <10ms p99 latency overhead (target <5ms) on proxied AI requests
 - [x] **KERN-08**: Kernel handles >10,000 requests/second per instance under sustained load
 - [x] **KERN-09**: Kernel steady-state RAM usage stays under 128MB with <100m CPU idle, <500m burst
-- [ ] **KERN-10**: Kernel maintains session context across multi-turn conversations per user/session, detecting policy violations that emerge across multiple exchanges
+- [x] **KERN-10**: Kernel maintains session context across multi-turn conversations per user/session, detecting policy violations that emerge across multiple exchanges
 - [x] **KERN-11**: Kernel checks vendor allowlist before forwarding any outbound AI request, blocking non-approved vendors
 - [x] **KERN-12**: Kernel manages multiple HTTP/2 connections per AI vendor backend to avoid single-connection stream saturation
 - [x] **KERN-13**: Kernel uses bounded tokio channels (no unbounded channels) with explicit capacity limits on all internal communication
@@ -47,11 +47,11 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PLCY-03**: Layer 1 deterministic rules use Regorus (Rust-native Rego interpreter) for policy evaluation without external OPA dependency
 - [x] **PLCY-04**: Layer 2 lightweight NLP classifier (quantized ONNX model via tract) handles intent classification and ambiguous cases (<10ms)
 - [ ] **PLCY-05**: Layer 3 async human review queue routes genuinely ambiguous high-stakes decisions to compliance officers with configurable SLA
-- [ ] **PLCY-06**: Policy modules can be hot-reloaded at runtime without restarting the kernel binary
+- [x] **PLCY-06**: Policy modules can be hot-reloaded at runtime without restarting the kernel binary
 - [x] **PLCY-07**: Policies support three enforcement actions: block (reject request), allow (pass through), redact (modify and pass)
-- [ ] **PLCY-08**: Policies are configurable per department, per user, and per AI vendor
+- [x] **PLCY-08**: Policies are configurable per department, per user, and per AI vendor
 - [x] **PLCY-09**: Fail-closed / fail-open is a per-policy configuration flag controlling behavior when the kernel encounters errors
-- [ ] **PLCY-10**: Department-level policy segmentation with inheritance model: organization defaults -> department overrides -> team overrides
+- [x] **PLCY-10**: Department-level policy segmentation with inheritance model: organization defaults -> department overrides -> team overrides
 - [x] **PLCY-11**: Prompt injection and jailbreak detection via Layer 2 NLP classifier identifies direct/indirect injection attacks and prompt leaking attempts
 
 ### Cryptographic Audit Pipeline
@@ -162,7 +162,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KERN-07 | Phase 1 | Complete |
 | KERN-08 | Phase 1 | Complete |
 | KERN-09 | Phase 1 | Complete |
-| KERN-10 | Phase 6 | Pending |
+| KERN-10 | Phase 6 | Complete |
 | KERN-11 | Phase 2 | Complete |
 | KERN-12 | Phase 1 | Complete |
 | KERN-13 | Phase 1 | Complete |
@@ -178,11 +178,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLCY-03 | Phase 2 | Complete |
 | PLCY-04 | Phase 2 | Complete |
 | PLCY-05 | Phase 9 | Pending |
-| PLCY-06 | Phase 6 | Pending |
+| PLCY-06 | Phase 6 | Complete |
 | PLCY-07 | Phase 2 | Complete |
-| PLCY-08 | Phase 6 | Pending |
+| PLCY-08 | Phase 6 | Complete |
 | PLCY-09 | Phase 2 | Complete |
-| PLCY-10 | Phase 6 | Pending |
+| PLCY-10 | Phase 6 | Complete |
 | PLCY-11 | Phase 3 | Complete |
 | EVID-01 | Phase 4 | Complete |
 | EVID-02 | Phase 4 | Complete |

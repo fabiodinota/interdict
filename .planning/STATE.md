@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Not started
-status: unknown
-stopped_at: Completed 05-06-PLAN.md (regulatory framework gap closure)
-last_updated: "2026-03-01T05:01:22.698Z"
+current_plan: 2
+status: in_progress
+stopped_at: Completed 06-01-PLAN.md (foundational types for policy distribution)
+last_updated: "2026-03-01T05:11:30.000Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 27
-  completed_plans: 23
-  percent: 85
+  completed_plans: 24
+  percent: 89
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** Phase 5 in progress -- Control plane API scaffold complete
+**Current focus:** Phase 6 in progress -- Policy distribution kernel integration
 
 ## Current Position
 
-Phase: 5 of 10 (Control Plane API Core) -- IN PROGRESS
-Plan: 4 of 5 in current phase (next: 05-04)
-Status: 05-03 complete; ready to execute 05-04
-Last activity: 2026-03-01 -- Plan 05-03 complete (regulatory framework API + seed packs)
+Phase: 6 of 10 (Policy Distribution & Kernel Integration) -- IN PROGRESS
+Plan: 2 of 4 in current phase (next: 06-02)
+Status: 06-01 complete; ready to execute 06-02
+Last activity: 2026-03-01 -- Plan 06-01 complete (foundational types for policy distribution)
 
-**Current Plan:** Not started
-**Total Plans in Phase:** 5
-**Progress:** [█████████░] 85%
+**Current Plan:** 2
+**Total Plans in Phase:** 4
+**Progress:** [████████░░] 89%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Last activity: 2026-03-01 -- Plan 05-03 complete (regulatory framework API + see
 | Phase 05 P03 | 6m54s | 2 tasks | 18 files |
 | Phase 05 P05 | 1m48s | 1 tasks | 1 files |
 | Phase 05 P06 | 6m15s | 2 tasks | 31 files |
+| Phase 06 P01 | 8m39s | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,11 @@ Recent decisions affecting current work:
 - [Phase 05]: startCompilationWorker called with db and config.wasmStorageDir after .listen() for proper startup order
 - [Phase 05]: Each Rego policy uses dual verdict rules (primary + contextual) matching existing eu-ai-act/gdpr depth
 - [Phase 05]: Jurisdiction-scoped exemption markers per framework for fine-grained policy control without cross-framework conflicts
+- [06-01]: ArcSwap::store for atomic swap (not compare_and_swap) since distribution client is sole writer
+- [06-01]: HierarchyResolver distributes policies into org/dept/team buckets at construction; resolve gathers at query time
+- [06-01]: SessionStore uses DashMap for lock-free concurrent access with Instant-based LRU eviction
+- [06-01]: resolve_session_id uses dual approach: explicit header when cooperative, sha256(user+vendor)+time_bucket when not
+- [06-01]: DetectionState tracks three escalation signals: diverse categories, high-volume redactions, cumulative risk score
 
 ### Pending Todos
 
@@ -163,6 +169,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-03-01T04:54:57.372Z
-**Stopped At:** Completed 05-06-PLAN.md (regulatory framework gap closure)
+**Last session:** 2026-03-01T05:11:30Z
+**Stopped At:** Completed 06-01-PLAN.md (foundational types for policy distribution)
 **Resume file:** None
