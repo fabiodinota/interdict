@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: in-progress
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-01T23:08:26Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-03-01T23:15:48Z"
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 ## Current Position
 
 Phase: 7 of 12 (Identity Foundation) -- first phase of v1.1
-Plan: 2 of 3 (Auth middleware macro and API key management endpoints)
+Plan: 3 of 3 (Route guards and module wiring)
 Status: In progress
-Last activity: 2026-03-02 -- Completed 07-01 (schema, permissions, identity seed)
+Last activity: 2026-03-02 -- Completed 07-02 (auth middleware macro and API key endpoints)
 
-Progress: [███░░░░░░░] 33% (1/3 plans in Phase 7)
+Progress: [██████░░░░] 67% (2/3 plans in Phase 7)
 
 ## Performance Metrics
 
@@ -38,12 +38,13 @@ Progress: [███░░░░░░░] 33% (1/3 plans in Phase 7)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 1
-- Plans remaining: 2 (Phase 7)
+- Plans completed: 2
+- Plans remaining: 1 (Phase 7)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 07    | 01   | 4min     | 2     | 8     |
+| 07    | 02   | 4min     | 2     | 6     |
 
 *Updated after each plan completion*
 
@@ -63,6 +64,10 @@ v1.1 decisions:
 - 07-01: Permissions do not auto-inherit via the default map; hierarchy is only for role-level comparisons
 - 07-01: Kept existing department_id FK on users as primary department; user_departments join table is authoritative for access scope
 - 07-01: Service accounts assigned super_admin role with is_service flag for internal identification
+- 07-02: Used Elysia named macro .macro("auth", ...) with resolve pattern for per-route auth injection
+- 07-02: Handler ctx typed as any because macro resolve types don't propagate through TS type system
+- 07-02: Auth service created inside resolve/derive (not plugin level) to use decorated store.db
+- 07-02: lastUsedAt updated fire-and-forget to avoid adding latency to auth hot path
 
 ### Research Flags
 
@@ -81,7 +86,7 @@ None -- ready for Phase 7 planning.
 
 ## Session Continuity
 
-**Last session:** 2026-03-01T23:08:26Z
-**Stopped at:** Completed 07-01-PLAN.md
-**Resume file:** .planning/phases/07-identity-foundation/07-01-SUMMARY.md
-**Next action:** `/gsd:execute-phase 07-02` to execute auth middleware and API key endpoints
+**Last session:** 2026-03-01T23:15:48Z
+**Stopped at:** Completed 07-02-PLAN.md
+**Resume file:** .planning/phases/07-identity-foundation/07-02-SUMMARY.md
+**Next action:** `/gsd:execute-phase 07-03` to execute route guards and module wiring
