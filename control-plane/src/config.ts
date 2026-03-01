@@ -12,6 +12,8 @@ export interface Config {
   clickhouseDatabase: string;
   wasmStorageDir: string;
   opaBinaryPath: string;
+  grpcPort: number;
+  grpcMaxMessageSize: number;
 }
 
 function requireEnv(name: string, fallback?: string): string {
@@ -46,10 +48,19 @@ export function loadConfig(): Config {
     clickhouseDatabase: requireEnv("CLICKHOUSE_DATABASE", "interdict"),
     wasmStorageDir: requireEnv("WASM_STORAGE_DIR", "./data/wasm"),
     opaBinaryPath: requireEnv("OPA_BINARY_PATH", "opa"),
+    grpcPort: parseInt(process.env.INTERDICT_GRPC_PORT ?? "50052", 10),
+    grpcMaxMessageSize: parseInt(
+      process.env.INTERDICT_GRPC_MAX_MESSAGE_SIZE ?? String(16 * 1024 * 1024),
+      10
+    ),
   };
 
   if (isNaN(config.port) || config.port < 1 || config.port > 65535) {
     throw new Error(`Invalid PORT value: ${process.env.PORT}`);
+  }
+
+  if (isNaN(config.grpcPort) || config.grpcPort < 1 || config.grpcPort > 65535) {
+    throw new Error(`Invalid INTERDICT_GRPC_PORT value: ${process.env.INTERDICT_GRPC_PORT}`);
   }
 
   checkOpaBinary(config.opaBinaryPath);
