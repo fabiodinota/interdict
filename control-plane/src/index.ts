@@ -9,8 +9,22 @@ import { Elysia } from "elysia";
 import { getConfig } from "./config";
 import { db } from "./db/postgres";
 import { clickhouse } from "./db/clickhouse";
+import { policiesModule } from "./modules/policies";
+import { compilerModule } from "./modules/compiler";
+import { startCompilationWorker } from "./modules/compiler/worker";
+import { vendorsModule } from "./modules/vendors";
+import { regulatoryModule } from "./modules/regulatory";
+import { auditModule } from "./modules/audit";
 
 const config = getConfig();
+
+const MODULES = [
+  "policies",
+  "compiler",
+  "vendors",
+  "regulatory",
+  "audit",
+] as const;
 
 const app = new Elysia()
   .decorate("db", db)
@@ -56,10 +70,19 @@ const app = new Elysia()
     status: "ok",
     timestamp: Date.now(),
   }))
+  .use(policiesModule)
+  .use(compilerModule)
+  .use(vendorsModule)
+  .use(regulatoryModule)
+  .use(auditModule)
   .listen(config.port);
+
+// Start the background compilation worker
+startCompilationWorker(db, config.wasmStorageDir);
 
 console.log(
   `[control-plane] Interdict Control Plane running on port ${config.port}`
 );
+console.log(`[control-plane] Modules loaded: ${MODULES.join(", ")}`);
 
 export { app };
