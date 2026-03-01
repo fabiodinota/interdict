@@ -1,0 +1,44 @@
+{
+  "slug": "gdpr",
+  "name": "GDPR",
+  "description": "General Data Protection Regulation (EU) 2016/679 - Protection of natural persons with regard to the processing of personal data and the free movement of such data",
+  "jurisdiction": "EU",
+  "version": "2016",
+  "policies": [
+    {
+      "file": "policies/purpose-limitation.rego",
+      "requirement_ref": "Article 5(1)(b) - Purpose limitation",
+      "requirement_description": "Personal data shall be collected for specified, explicit and legitimate purposes and not further processed in a manner incompatible with those purposes.",
+      "is_required": true,
+      "sort_order": 1
+    },
+    {
+      "file": "policies/data-minimization.rego",
+      "requirement_ref": "Article 5(1)(c) - Data minimisation",
+      "requirement_description": "Personal data shall be adequate, relevant and limited to what is necessary in relation to the purposes for which they are processed.",
+      "is_required": true,
+      "sort_order": 2
+    },
+    {
+      "file": "policies/consent-verification.rego",
+      "requirement_ref": "Articles 6-7 - Lawfulness of processing and conditions for consent",
+      "requirement_description": "Processing shall be lawful only if the data subject has given consent or another lawful basis applies. Consent must be freely given, specific, informed and unambiguous.",
+      "is_required": true,
+      "sort_order": 3
+    },
+    {
+      "file": "policies/right-to-erasure.rego",
+      "requirement_ref": "Article 17 - Right to erasure (right to be forgotten)",
+      "requirement_description": "The data subject shall have the right to obtain erasure of personal data without undue delay where specific grounds apply.",
+      "is_required": true,
+      "sort_order": 4
+    },
+    {
+      "file": "policies/dpia-required.rego",
+      "requirement_ref": "Article 35 - Data protection impact assessment",
+      "requirement_description": "Where processing is likely to result in a high risk to rights and freedoms, a data protection impact assessment shall be carried out prior to processing.",
+      "is_required": true,
+      "sort_order": 5
+    }
+  ]
+}
