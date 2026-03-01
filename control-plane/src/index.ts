@@ -9,6 +9,8 @@ import { Elysia } from "elysia";
 import { getConfig } from "./config";
 import { db } from "./db/postgres";
 import { clickhouse } from "./db/clickhouse";
+import { authPlugin } from "./modules/auth/middleware";
+import { authModule } from "./modules/auth";
 import { policiesModule } from "./modules/policies";
 import { compilerModule } from "./modules/compiler";
 import { startCompilationWorker } from "./modules/compiler/worker";
@@ -23,6 +25,7 @@ import {
 const config = getConfig();
 
 const MODULES = [
+  "auth",
   "policies",
   "compiler",
   "vendors",
@@ -75,6 +78,8 @@ const app = new Elysia()
     status: "ok",
     timestamp: Date.now(),
   }))
+  .use(authPlugin)
+  .use(authModule)
   .use(policiesModule)
   .use(compilerModule)
   .use(vendorsModule)

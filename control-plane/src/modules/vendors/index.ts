@@ -16,115 +16,121 @@ import {
 } from "./model";
 import { createVendorService } from "./service";
 import { apiResponse, paginatedResponse } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
 
 export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
+  .use(authPlugin)
   .derive(({ store }) => {
     const db = (store as any).db;
     return { vendorService: createVendorService(db) };
   })
 
-  // POST / -- Create vendor
+  // POST / -- Create vendor (Policy Admin+)
   .post(
     "/",
-    async ({ body, vendorService, set }) => {
-      const result = await vendorService.create(body);
-      set.status = 201;
+    async (ctx: any) => {
+      const result = await ctx.vendorService.create(ctx.body);
+      ctx.set.status = 201;
       return apiResponse(result);
     },
-    { body: CreateVendorBody }
+    { auth: ["policy_admin"], body: CreateVendorBody }
   )
 
-  // GET / -- List vendors with optional status filter
+  // GET / -- List vendors with optional status filter (Read-Only Auditor+)
   .get(
     "/",
-    async ({ query, vendorService }) => {
-      const pageSize = query.page_size
-        ? Number(query.page_size)
+    async (ctx: any) => {
+      const pageSize = ctx.query.page_size
+        ? Number(ctx.query.page_size)
         : undefined;
-      const { items, nextCursor } = await vendorService.list(
-        query.cursor,
+      const { items, nextCursor } = await ctx.vendorService.list(
+        ctx.query.cursor,
         pageSize,
-        query.status
+        ctx.query.status
       );
       return paginatedResponse(items, nextCursor);
     },
-    { query: VendorListQuery }
+    { auth: ["read_only_auditor"], query: VendorListQuery }
   )
 
-  // GET /:id -- Get vendor with models
+  // GET /:id -- Get vendor with models (Read-Only Auditor+)
   .get(
     "/:id",
-    async ({ params, vendorService }) => {
-      const result = await vendorService.getById(params.id);
+    async (ctx: any) => {
+      const result = await ctx.vendorService.getById(ctx.params.id);
       return apiResponse(result);
     },
-    { params: t.Object({ id: t.String() }) }
+    { auth: ["read_only_auditor"], params: t.Object({ id: t.String() }) }
   )
 
-  // PUT /:id -- Update vendor
+  // PUT /:id -- Update vendor (Policy Admin+)
   .put(
     "/:id",
-    async ({ params, body, vendorService }) => {
-      const result = await vendorService.update(params.id, body);
+    async (ctx: any) => {
+      const result = await ctx.vendorService.update(ctx.params.id, ctx.body);
       return apiResponse(result);
     },
     {
+      auth: ["policy_admin"],
       params: t.Object({ id: t.String() }),
       body: UpdateVendorBody,
     }
   )
 
-  // DELETE /:id -- Delete vendor
+  // DELETE /:id -- Delete vendor (Policy Admin+)
   .delete(
     "/:id",
-    async ({ params, vendorService, set }) => {
-      await vendorService.delete(params.id);
-      set.status = 204;
+    async (ctx: any) => {
+      await ctx.vendorService.delete(ctx.params.id);
+      ctx.set.status = 204;
       return;
     },
-    { params: t.Object({ id: t.String() }) }
+    { auth: ["policy_admin"], params: t.Object({ id: t.String() }) }
   )
 
-  // POST /:id/models -- Add model to vendor
+  // POST /:id/models -- Add model to vendor (Policy Admin+)
   .post(
     "/:id/models",
-    async ({ params, body, vendorService, set }) => {
-      const result = await vendorService.addModel(params.id, body);
-      set.status = 201;
+    async (ctx: any) => {
+      const result = await ctx.vendorService.addModel(ctx.params.id, ctx.body);
+      ctx.set.status = 201;
       return apiResponse(result);
     },
     {
+      auth: ["policy_admin"],
       params: t.Object({ id: t.String() }),
       body: CreateModelBody,
     }
   )
 
-  // PUT /:id/models/:modelId -- Update model status
+  // PUT /:id/models/:modelId -- Update model status (Policy Admin+)
   .put(
     "/:id/models/:modelId",
-    async ({ params, body, vendorService }) => {
-      const result = await vendorService.updateModel(
-        params.id,
-        params.modelId,
-        body
+    async (ctx: any) => {
+      const result = await ctx.vendorService.updateModel(
+        ctx.params.id,
+        ctx.params.modelId,
+        ctx.body
       );
       return apiResponse(result);
     },
     {
+      auth: ["policy_admin"],
       params: t.Object({ id: t.String(), modelId: t.String() }),
       body: UpdateModelBody,
     }
   )
 
-  // DELETE /:id/models/:modelId -- Remove model
+  // DELETE /:id/models/:modelId -- Remove model (Policy Admin+)
   .delete(
     "/:id/models/:modelId",
-    async ({ params, vendorService, set }) => {
-      await vendorService.removeModel(params.id, params.modelId);
-      set.status = 204;
+    async (ctx: any) => {
+      await ctx.vendorService.removeModel(ctx.params.id, ctx.params.modelId);
+      ctx.set.status = 204;
       return;
     },
     {
+      auth: ["policy_admin"],
       params: t.Object({ id: t.String(), modelId: t.String() }),
     }
   );

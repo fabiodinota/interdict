@@ -22,42 +22,45 @@ import {
   apiResponse,
   paginatedResponse,
 } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
 
 export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
+  .use(authPlugin)
   // ---------------------------------------------------------------------------
   // Derive AuditService from decorated db and clickhouse
   // ---------------------------------------------------------------------------
   .derive(({ store }) => {
-    const ctx = store as { db: any; clickhouse: any };
+    const s = store as { db: any; clickhouse: any };
     return {
-      auditService: new AuditService(ctx.clickhouse, ctx.db),
+      auditService: new AuditService(s.clickhouse, s.db),
     };
   })
 
   // ---------------------------------------------------------------------------
-  // GET /search -- Main audit trail search endpoint
+  // GET /search -- Main audit trail search endpoint (Read-Only Auditor+)
   // ---------------------------------------------------------------------------
   .get(
     "/search",
-    async ({ query, auditService }) => {
+    async (ctx: any) => {
       const filters = {
-        vendor: query.vendor,
-        department: query.department,
-        actor_identity: query.actor,
-        policy_action: query.policy_action,
-        from_date: query.from_date,
-        to_date: query.to_date,
-        kernel_id: query.kernel_id,
+        vendor: ctx.query.vendor,
+        department: ctx.query.department,
+        actor_identity: ctx.query.actor,
+        policy_action: ctx.query.policy_action,
+        from_date: ctx.query.from_date,
+        to_date: ctx.query.to_date,
+        kernel_id: ctx.query.kernel_id,
       };
 
-      const pageSize = query.page_size
-        ? parseInt(String(query.page_size), 10)
+      const pageSize = ctx.query.page_size
+        ? parseInt(String(ctx.query.page_size), 10)
         : undefined;
 
-      const result = await auditService.search(
+      const result = await ctx.auditService.search(
         filters,
-        query.cursor,
-        pageSize
+        ctx.query.cursor,
+        pageSize,
+        ctx.user.departmentIds
       );
 
       return paginatedResponse(
@@ -67,25 +70,28 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
       );
     },
     {
+      auth: ["read_only_auditor"],
       query: AuditQueryParams,
     }
   )
 
   // ---------------------------------------------------------------------------
-  // GET /stream -- SSE streaming endpoint for real-time audit events
+  // GET /stream -- SSE streaming endpoint for real-time audit events (Read-Only Auditor+)
   // ---------------------------------------------------------------------------
   .get(
     "/stream",
-    async function* ({ query, auditService }: any) {
+    async function* (ctx: any) {
       const pollIntervalMs = 2500; // Poll every 2.5 seconds
       let lastTimestamp = new Date().toISOString();
 
       const filters = {
-        vendor: query.vendor,
-        department: query.department,
-        actor_identity: query.actor,
-        policy_action: query.policy_action,
+        vendor: ctx.query.vendor,
+        department: ctx.query.department,
+        actor_identity: ctx.query.actor,
+        policy_action: ctx.query.policy_action,
       };
+
+      const departmentIds = ctx.user.departmentIds;
 
       // Yield initial connection event
       yield {
@@ -99,9 +105,10 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
       // Poll loop
       while (true) {
         try {
-          const events = await auditService.streamEvents(
+          const events = await ctx.auditService.streamEvents(
             lastTimestamp,
-            filters
+            filters,
+            departmentIds
           );
 
           for (const event of events) {
@@ -125,6 +132,7 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
       }
     },
     {
+      auth: ["read_only_auditor"],
       query: t.Object({
         vendor: t.Optional(t.String()),
         department: t.Optional(t.String()),
@@ -141,54 +149,60 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   )
 
   // ---------------------------------------------------------------------------
-  // GET /stats/violations -- Hourly violation time series
+  // GET /stats/violations -- Hourly violation time series (Read-Only Auditor+)
+  // Note: Per-department scoping deferred to Phase 11 advanced views
   // ---------------------------------------------------------------------------
   .get(
     "/stats/violations",
-    async ({ query, auditService }) => {
-      const data = await auditService.getHourlyViolations(
-        query.from,
-        query.to
+    async (ctx: any) => {
+      const data = await ctx.auditService.getHourlyViolations(
+        ctx.query.from,
+        ctx.query.to
       );
       return apiResponse(data);
     },
     {
+      auth: ["read_only_auditor"],
       query: HourlyViolationsQuery,
     }
   )
 
   // ---------------------------------------------------------------------------
-  // GET /stats/vendor-usage -- Vendor usage time series
+  // GET /stats/vendor-usage -- Vendor usage time series (Read-Only Auditor+)
+  // Note: Per-department scoping deferred to Phase 11 advanced views
   // ---------------------------------------------------------------------------
   .get(
     "/stats/vendor-usage",
-    async ({ query, auditService }) => {
-      const data = await auditService.getVendorUsage(
-        query.from,
-        query.to,
-        query.vendor
+    async (ctx: any) => {
+      const data = await ctx.auditService.getVendorUsage(
+        ctx.query.from,
+        ctx.query.to,
+        ctx.query.vendor
       );
       return apiResponse(data);
     },
     {
+      auth: ["read_only_auditor"],
       query: VendorUsageQuery,
     }
   )
 
   // ---------------------------------------------------------------------------
-  // GET /stats/department-summary -- Department summary time series
+  // GET /stats/department-summary -- Department summary time series (Read-Only Auditor+)
   // ---------------------------------------------------------------------------
   .get(
     "/stats/department-summary",
-    async ({ query, auditService }) => {
-      const data = await auditService.getDepartmentSummary(
-        query.from,
-        query.to,
-        query.department
+    async (ctx: any) => {
+      const data = await ctx.auditService.getDepartmentSummary(
+        ctx.query.from,
+        ctx.query.to,
+        ctx.query.department,
+        ctx.user.departmentIds
       );
       return apiResponse(data);
     },
     {
+      auth: ["read_only_auditor"],
       query: DepartmentSummaryQuery,
     }
   );

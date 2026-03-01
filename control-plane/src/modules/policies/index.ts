@@ -20,107 +20,111 @@ import {
   paginatedResponse,
   ValidationError,
 } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
 
 export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
+  .use(authPlugin)
   .derive(({ store }) => {
     const db = (store as any).db;
     return { policyService: createPolicyService(db) };
   })
 
-  // POST / -- Create policy
+  // POST / -- Create policy (Policy Admin+)
   .post(
     "/",
-    async ({ body, policyService, set }) => {
+    async (ctx: any) => {
       // Pre-validate Rego syntax
-      const validation = await validateRego(body.rego_source);
+      const validation = await validateRego(ctx.body.rego_source);
       if (!validation.valid) {
         throw new ValidationError("Invalid Rego syntax", validation.errors);
       }
 
-      const result = await policyService.create(body);
-      set.status = 201;
+      const result = await ctx.policyService.create(ctx.body);
+      ctx.set.status = 201;
       return apiResponse(result);
     },
-    { body: CreatePolicyBody }
+    { auth: ["policy_admin"], body: CreatePolicyBody }
   )
 
-  // GET / -- List active policies
+  // GET / -- List active policies (Read-Only Auditor+)
   .get(
     "/",
-    async ({ query, policyService }) => {
-      const pageSize = query.page_size
-        ? Number(query.page_size)
+    async (ctx: any) => {
+      const pageSize = ctx.query.page_size
+        ? Number(ctx.query.page_size)
         : undefined;
-      const { items, nextCursor } = await policyService.list(
-        query.cursor,
+      const { items, nextCursor } = await ctx.policyService.list(
+        ctx.query.cursor,
         pageSize
       );
       return paginatedResponse(items, nextCursor);
     },
-    { query: PolicyListQuery }
+    { auth: ["read_only_auditor"], query: PolicyListQuery }
   )
 
-  // GET /:id -- Get policy by ID
+  // GET /:id -- Get policy by ID (Read-Only Auditor+)
   .get(
     "/:id",
-    async ({ params, policyService }) => {
-      const result = await policyService.getById(params.id);
+    async (ctx: any) => {
+      const result = await ctx.policyService.getById(ctx.params.id);
       return apiResponse(result);
     },
-    { params: t.Object({ id: t.String() }) }
+    { auth: ["read_only_auditor"], params: t.Object({ id: t.String() }) }
   )
 
-  // PUT /:id -- Update policy (creates new version)
+  // PUT /:id -- Update policy (creates new version) (Policy Admin+)
   .put(
     "/:id",
-    async ({ params, body, policyService }) => {
+    async (ctx: any) => {
       // Pre-validate Rego syntax
-      const validation = await validateRego(body.rego_source);
+      const validation = await validateRego(ctx.body.rego_source);
       if (!validation.valid) {
         throw new ValidationError("Invalid Rego syntax", validation.errors);
       }
 
-      const result = await policyService.update(params.id, body);
+      const result = await ctx.policyService.update(ctx.params.id, ctx.body);
       return apiResponse(result);
     },
     {
+      auth: ["policy_admin"],
       params: t.Object({ id: t.String() }),
       body: UpdatePolicyBody,
     }
   )
 
-  // DELETE /:id -- Soft-delete policy
+  // DELETE /:id -- Soft-delete policy (Policy Admin+)
   .delete(
     "/:id",
-    async ({ params, policyService, set }) => {
-      await policyService.delete(params.id);
-      set.status = 204;
+    async (ctx: any) => {
+      await ctx.policyService.delete(ctx.params.id);
+      ctx.set.status = 204;
       return;
     },
-    { params: t.Object({ id: t.String() }) }
+    { auth: ["policy_admin"], params: t.Object({ id: t.String() }) }
   )
 
-  // GET /:id/versions -- Version history
+  // GET /:id/versions -- Version history (Read-Only Auditor+)
   .get(
     "/:id/versions",
-    async ({ params, policyService }) => {
-      const versions = await policyService.getVersionHistory(params.id);
+    async (ctx: any) => {
+      const versions = await ctx.policyService.getVersionHistory(ctx.params.id);
       return apiResponse(versions);
     },
-    { params: t.Object({ id: t.String() }) }
+    { auth: ["read_only_auditor"], params: t.Object({ id: t.String() }) }
   )
 
-  // POST /:id/restore/:versionId -- Restore a previous version
+  // POST /:id/restore/:versionId -- Restore a previous version (Policy Admin+)
   .post(
     "/:id/restore/:versionId",
-    async ({ params, policyService }) => {
-      const result = await policyService.restoreVersion(
-        params.id,
-        params.versionId
+    async (ctx: any) => {
+      const result = await ctx.policyService.restoreVersion(
+        ctx.params.id,
+        ctx.params.versionId
       );
       return apiResponse(result);
     },
     {
+      auth: ["policy_admin"],
       params: t.Object({
         id: t.String(),
         versionId: t.String(),

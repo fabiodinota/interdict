@@ -25,6 +25,7 @@ import {
   ActivateFrameworkBody,
   TogglePolicyBody,
 } from "./model";
+import { authPlugin } from "../auth/middleware";
 
 /**
  * Create a Drizzle-backed regulatory service.
@@ -32,11 +33,13 @@ import {
  * these functions use Drizzle ORM directly for production database access.
  */
 export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
+  .use(authPlugin)
+
   /**
-   * GET /frameworks - List all frameworks with activation status
+   * GET /frameworks - List all frameworks with activation status (Read-Only Auditor+)
    */
-  .get("/frameworks", async ({ store }) => {
-    const db = (store as Record<string, unknown>).db as any;
+  .get("/frameworks", async (ctx: any) => {
+    const db = (ctx.store as Record<string, unknown>).db as any;
 
     // Query all frameworks
     const allFrameworks = await db.select().from(frameworks).orderBy(frameworks.name);
@@ -82,15 +85,16 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
     );
 
     return apiResponse(result);
-  })
+  }, { auth: ["read_only_auditor"] })
 
   /**
-   * GET /frameworks/:slug - Get framework details with policies
+   * GET /frameworks/:slug - Get framework details with policies (Read-Only Auditor+)
    */
   .get(
     "/frameworks/:slug",
-    async ({ params, store }) => {
-      const db = (store as Record<string, unknown>).db as any;
+    async (ctx: any) => {
+      const db = (ctx.store as Record<string, unknown>).db as any;
+      const params = ctx.params;
 
       const fwRows = await db
         .select()
@@ -172,6 +176,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
       });
     },
     {
+      auth: ["read_only_auditor"],
       params: t.Object({
         slug: t.String(),
       }),
@@ -179,12 +184,14 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   )
 
   /**
-   * POST /frameworks/:slug/activate - Activate a framework
+   * POST /frameworks/:slug/activate - Activate a framework (Policy Admin+)
    */
   .post(
     "/frameworks/:slug/activate",
-    async ({ params, body, store }) => {
-      const db = (store as Record<string, unknown>).db as any;
+    async (ctx: any) => {
+      const db = (ctx.store as Record<string, unknown>).db as any;
+      const params = ctx.params;
+      const body = ctx.body;
 
       const fwRows = await db
         .select()
@@ -222,6 +229,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
       return apiResponse({ status: "activated", frameworkId: fw.id });
     },
     {
+      auth: ["policy_admin"],
       params: t.Object({ slug: t.String() }),
       body: t.Optional(ActivateFrameworkBody),
     }
@@ -232,8 +240,9 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    */
   .post(
     "/frameworks/:slug/deactivate",
-    async ({ params, store }) => {
-      const db = (store as Record<string, unknown>).db as any;
+    async (ctx: any) => {
+      const db = (ctx.store as Record<string, unknown>).db as any;
+      const params = ctx.params;
 
       const fwRows = await db
         .select()
@@ -274,6 +283,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
       return apiResponse({ status: "deactivated", frameworkId: fw.id });
     },
     {
+      auth: ["policy_admin"],
       params: t.Object({ slug: t.String() }),
     }
   )
@@ -283,8 +293,10 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    */
   .put(
     "/frameworks/:slug/policies/:policyId/toggle",
-    async ({ params, body, store }) => {
-      const db = (store as Record<string, unknown>).db as any;
+    async (ctx: any) => {
+      const db = (ctx.store as Record<string, unknown>).db as any;
+      const params = ctx.params;
+      const body = ctx.body;
 
       // Verify framework exists
       const fwRows = await db
@@ -326,6 +338,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
       });
     },
     {
+      auth: ["policy_admin"],
       params: t.Object({
         slug: t.String(),
         policyId: t.String(),
@@ -337,8 +350,8 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   /**
    * GET /active-policies - Get all currently active policy IDs (additive merge)
    */
-  .get("/active-policies", async ({ store }) => {
-    const db = (store as Record<string, unknown>).db as any;
+  .get("/active-policies", async (ctx: any) => {
+    const db = (ctx.store as Record<string, unknown>).db as any;
 
     // 1. Get all directly active custom policies (not in any framework)
     const allActivePolicies = await db
@@ -390,4 +403,4 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
     ];
 
     return apiResponse({ policyIds: mergedIds, count: mergedIds.length });
-  });
+  }, { auth: ["read_only_auditor"] });
