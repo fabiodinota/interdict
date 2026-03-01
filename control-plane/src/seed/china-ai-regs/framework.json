@@ -1,0 +1,37 @@
+{
+  "slug": "china-ai-regs",
+  "name": "China AI Regulations",
+  "description": "Comprehensive regulatory framework for artificial intelligence in China, including the Algorithmic Recommendation Management Provisions, Deep Synthesis Provisions, and Generative AI Measures",
+  "jurisdiction": "CN",
+  "version": "2023",
+  "policies": [
+    {
+      "file": "policies/algorithm-transparency.rego",
+      "requirement_ref": "Algorithmic Recommendation Provisions Articles 4-6 - Algorithm transparency",
+      "requirement_description": "Providers of algorithmic recommendation services must inform users of the basic principles, purposes, and main operating mechanisms of the algorithm.",
+      "is_required": true,
+      "sort_order": 1
+    },
+    {
+      "file": "policies/content-labeling.rego",
+      "requirement_ref": "Deep Synthesis Provisions Article 7 - AI content labeling",
+      "requirement_description": "Content generated or edited using deep synthesis technology must be conspicuously labeled to avoid public confusion.",
+      "is_required": true,
+      "sort_order": 2
+    },
+    {
+      "file": "policies/user-rights.rego",
+      "requirement_ref": "Generative AI Measures Article 9 - User rights and obligations",
+      "requirement_description": "Generative AI service providers must clearly inform users of the AI-generated nature of content and protect user rights including the right to opt out.",
+      "is_required": true,
+      "sort_order": 3
+    },
+    {
+      "file": "policies/data-compliance.rego",
+      "requirement_ref": "PIPL Articles 13-14 - Personal information processing compliance",
+      "requirement_description": "Processing of personal information must be based on the individual's consent or other lawful conditions, with clear and reasonable purpose.",
+      "is_required": true,
+      "sort_order": 4
+    }
+  ]
+}

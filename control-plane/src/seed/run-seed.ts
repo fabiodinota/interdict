@@ -1,7 +1,7 @@
 /**
  * Seed Script - Regulatory Framework Policy Packs
  *
- * Loads EU AI Act and GDPR framework definitions with their Rego policies
+ * Loads all regulatory framework definitions with their Rego policies
  * into PostgreSQL on first deployment. Idempotent -- skips frameworks that
  * already exist by slug.
  *
@@ -35,7 +35,16 @@ interface FrameworkDef {
   policies: FrameworkPolicyDef[];
 }
 
-const SEED_DIRS = ["eu-ai-act", "gdpr"];
+const SEED_DIRS = [
+  "eu-ai-act",
+  "gdpr",
+  "nist-ai-rmf",
+  "singapore-pdpa",
+  "india-dpdp",
+  "china-ai-regs",
+  "canada-aida-pipeda",
+  "gcc",
+];
 
 async function seedFramework(frameworkDir: string): Promise<void> {
   const baseDir = path.join(import.meta.dir, frameworkDir);

@@ -1,0 +1,37 @@
+{
+  "slug": "canada-aida-pipeda",
+  "name": "Canada AIDA/PIPEDA",
+  "description": "Artificial Intelligence and Data Act (AIDA) and Personal Information Protection and Electronic Documents Act (PIPEDA) - Canadian framework for AI governance and personal data protection",
+  "jurisdiction": "CA",
+  "version": "2022",
+  "policies": [
+    {
+      "file": "policies/accountability.rego",
+      "requirement_ref": "PIPEDA Principle 1 - Accountability",
+      "requirement_description": "An organization is responsible for personal information under its control. A designated individual shall be accountable for compliance.",
+      "is_required": true,
+      "sort_order": 1
+    },
+    {
+      "file": "policies/transparency-explanation.rego",
+      "requirement_ref": "AIDA Section 7 - Transparency and explanation",
+      "requirement_description": "Persons responsible for high-impact AI systems must publish plain-language descriptions of the system, its intended uses, and measures to mitigate risks.",
+      "is_required": true,
+      "sort_order": 2
+    },
+    {
+      "file": "policies/consent-knowledge.rego",
+      "requirement_ref": "PIPEDA Principle 3 - Consent and knowledge",
+      "requirement_description": "The knowledge and consent of the individual are required for the collection, use, or disclosure of personal information, except where inappropriate.",
+      "is_required": true,
+      "sort_order": 3
+    },
+    {
+      "file": "policies/harm-mitigation.rego",
+      "requirement_ref": "AIDA Section 8 - Risk assessment and harm mitigation",
+      "requirement_description": "Persons responsible for high-impact AI systems must establish measures to identify, assess, and mitigate risks of harm or biased output.",
+      "is_required": true,
+      "sort_order": 4
+    }
+  ]
+}

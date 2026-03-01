@@ -1,0 +1,37 @@
+{
+  "slug": "gcc",
+  "name": "GCC Data Protection Frameworks",
+  "description": "Gulf Cooperation Council data protection and AI governance frameworks, including UAE Federal Decree-Law No. 45/2021 on Personal Data Protection and Saudi Arabia PDPL",
+  "jurisdiction": "GCC",
+  "version": "2021",
+  "policies": [
+    {
+      "file": "policies/data-localization.rego",
+      "requirement_ref": "UAE PDPL Article 22 / Saudi PDPL Article 29 - Data localization",
+      "requirement_description": "Personal data may be subject to localization requirements. Transfer outside the jurisdiction requires adequate protection measures or explicit consent.",
+      "is_required": true,
+      "sort_order": 1
+    },
+    {
+      "file": "policies/consent-processing.rego",
+      "requirement_ref": "UAE PDPL Articles 5-6 - Consent for processing",
+      "requirement_description": "Processing of personal data is only permitted with the clear and explicit consent of the data subject, or under specific lawful conditions.",
+      "is_required": true,
+      "sort_order": 2
+    },
+    {
+      "file": "policies/cross-border-transfer.rego",
+      "requirement_ref": "Saudi PDPL Article 29 - Cross-border data transfer",
+      "requirement_description": "Personal data shall not be transferred outside the Kingdom unless adequate protections are in place and the transfer serves a purpose consistent with the original collection.",
+      "is_required": true,
+      "sort_order": 3
+    },
+    {
+      "file": "policies/ai-governance.rego",
+      "requirement_ref": "UAE National AI Strategy 2031 - AI governance principles",
+      "requirement_description": "AI systems must be developed and deployed in accordance with ethical principles, transparency requirements, and human oversight standards.",
+      "is_required": true,
+      "sort_order": 4
+    }
+  ]
+}
