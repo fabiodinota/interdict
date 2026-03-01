@@ -20,6 +20,7 @@ import type { ClickHouseAuditRow } from "./model";
 export interface AuditTrailFilters {
   vendor?: string;
   department?: string;
+  department_ids?: string[]; // Multi-department IN clause (from user's department assignments)
   actor_identity?: string;
   policy_action?: string;
   from_date?: string;
@@ -138,6 +139,12 @@ export async function queryAuditTrail(
     params.kernel_id = filters.kernel_id;
   }
 
+  // Multi-department scoping (from user's department assignments)
+  if (filters.department_ids && filters.department_ids.length > 0) {
+    conditions.push("department IN {dept_ids:Array(String)}");
+    params.dept_ids = filters.department_ids;
+  }
+
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const query = `SELECT ${AUDIT_COLUMNS} FROM evidence_bundles ${where} ORDER BY timestamp DESC, bundle_id DESC LIMIT {limit:UInt32}`;
@@ -224,12 +231,14 @@ export async function queryVendorUsage(
 
 /**
  * Query mv_department_summary for per-department per-action counts.
+ * Supports optional department_ids for multi-department IN clause filtering.
  */
 export async function queryDepartmentSummary(
   client: ClickHouseClient,
   from: string,
   to: string,
-  department?: string
+  department?: string,
+  departmentIds?: string[]
 ): Promise<unknown[]> {
   const conditions = ["hour >= {from:DateTime}", "hour <= {to:DateTime}"];
   const params: Record<string, unknown> = { from, to };
@@ -237,6 +246,12 @@ export async function queryDepartmentSummary(
   if (department) {
     conditions.push("department = {department:String}");
     params.department = department;
+  }
+
+  // Multi-department scoping (from user's department assignments)
+  if (departmentIds && departmentIds.length > 0) {
+    conditions.push("department IN {dept_ids:Array(String)}");
+    params.dept_ids = departmentIds;
   }
 
   const where = `WHERE ${conditions.join(" AND ")}`;
