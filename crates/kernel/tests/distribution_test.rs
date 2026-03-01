@@ -11,9 +11,7 @@ use kernel::config::PolicyEngineConfig;
 use kernel::policy::config::{BlockResponseDetail, FailMode, PolicyConfig, RedactionDirection};
 use kernel::policy::distribution::proto;
 use kernel::policy::distribution::snapshot::{apply_delta, apply_snapshot};
-use kernel::policy::hierarchy::{
-    HierarchyConfig, HierarchyResolver, PolicyScope, ScopedPolicy,
-};
+use kernel::policy::hierarchy::{HierarchyConfig, HierarchyResolver, PolicyScope, ScopedPolicy};
 use kernel::policy::hot_reload::{PolicySet, PolicySetManager};
 use kernel::policy::layer1::regorus::RegorusPool;
 use kernel::policy::verdict::{MergedVerdict, PolicyVerdict, VerdictAction};
@@ -22,9 +20,7 @@ use kernel::policy::wasm_engine::WasmEngine;
 // ── Helpers ───────────────────────────────────────────────────────────
 
 fn test_wasm_engine() -> Arc<WasmEngine> {
-    Arc::new(
-        WasmEngine::new(&PolicyEngineConfig::default()).expect("WasmEngine should create"),
-    )
+    Arc::new(WasmEngine::new(&PolicyEngineConfig::default()).expect("WasmEngine should create"))
 }
 
 fn test_hierarchy_config() -> HierarchyConfig {
@@ -162,14 +158,7 @@ async fn test_sc1_full_snapshot_updates_policy_set() {
     // Build snapshot with 2 policies (one org-level, one dept-level)
     let entries = vec![
         make_scoped_policy_entry("org_policy", "Org Policy", "acme", "", "", vec![]),
-        make_scoped_policy_entry(
-            "dept_policy",
-            "Dept Policy",
-            "acme",
-            "legal",
-            "",
-            vec![],
-        ),
+        make_scoped_policy_entry("dept_policy", "Dept Policy", "acme", "legal", "", vec![]),
     ];
 
     let wasm = test_wasm_engine();
@@ -271,10 +260,7 @@ async fn test_sc2_hot_reload_new_policy_evaluated() {
 
     // Assert result is now Block — proves SC2
     assert_eq!(verdict.action, VerdictAction::Block);
-    assert_eq!(
-        verdict.reason,
-        Some("blocked_by_policy".to_string())
-    );
+    assert_eq!(verdict.reason, Some("blocked_by_policy".to_string()));
 }
 
 // ── SC3: Hierarchy cascade — org+dept+team with most-restrictive-wins ─
@@ -416,7 +402,12 @@ async fn test_delta_add_policy() {
     // Start with 1 policy
     let initial = apply_snapshot(
         1,
-        &[make_policy_entry("pol1", "Policy 1", &sample_rego("pol1"), 0)],
+        &[make_policy_entry(
+            "pol1",
+            "Policy 1",
+            &sample_rego("pol1"),
+            0,
+        )],
         &wasm,
         &hconfig,
     )
@@ -428,7 +419,12 @@ async fn test_delta_add_policy() {
     let update = proto::PolicyUpdate {
         version: 2,
         r#type: proto::policy_update::UpdateType::Delta as i32,
-        policies: vec![make_policy_entry("pol2", "Policy 2", &sample_rego("pol2"), 0)],
+        policies: vec![make_policy_entry(
+            "pol2",
+            "Policy 2",
+            &sample_rego("pol2"),
+            0,
+        )],
         removed_policy_ids: vec![],
     };
 
