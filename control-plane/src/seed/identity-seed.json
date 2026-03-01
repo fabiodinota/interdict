@@ -1,0 +1,57 @@
+{
+  "departments": [
+    { "name": "engineering", "displayName": "Engineering" },
+    { "name": "legal", "displayName": "Legal" },
+    { "name": "compliance", "displayName": "Compliance" },
+    { "name": "finance", "displayName": "Finance" }
+  ],
+  "users": [
+    {
+      "email": "admin@interdict.local",
+      "displayName": "System Administrator",
+      "role": "super_admin",
+      "departments": []
+    },
+    {
+      "email": "compliance-officer@interdict.local",
+      "displayName": "Compliance Officer",
+      "role": "compliance_officer",
+      "departments": []
+    },
+    {
+      "email": "policy-admin@interdict.local",
+      "displayName": "Policy Administrator",
+      "role": "policy_admin",
+      "departments": []
+    },
+    {
+      "email": "eng-manager@interdict.local",
+      "displayName": "Engineering Manager",
+      "role": "department_manager",
+      "departments": ["engineering"]
+    },
+    {
+      "email": "auditor@interdict.local",
+      "displayName": "Read-Only Auditor",
+      "role": "read_only_auditor",
+      "departments": []
+    }
+  ],
+  "serviceAccounts": [
+    {
+      "email": "distribution-service@interdict.internal",
+      "displayName": "Policy Distribution Service"
+    },
+    {
+      "email": "collector-service@interdict.internal",
+      "displayName": "Evidence Collector Service"
+    }
+  ],
+  "defaultPermissions": {
+    "read_only_auditor": ["audit:read", "stats:read"],
+    "department_manager": ["audit:read", "stats:read", "policies:read", "department:manage"],
+    "policy_admin": ["audit:read", "stats:read", "policies:read", "policies:write", "vendors:read", "vendors:write", "regulatory:read", "regulatory:write"],
+    "compliance_officer": ["audit:read", "stats:read", "policies:read", "policies:write", "vendors:read", "vendors:write", "regulatory:read", "regulatory:write", "reports:generate", "reviews:manage"],
+    "super_admin": ["*"]
+  }
+}

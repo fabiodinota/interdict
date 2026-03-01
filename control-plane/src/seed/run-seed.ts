@@ -1,22 +1,296 @@
 /**
- * Seed Script - Regulatory Framework Policy Packs
+ * Seed Script - Identity Bootstrap & Regulatory Framework Policy Packs
  *
- * Loads all regulatory framework definitions with their Rego policies
- * into PostgreSQL on first deployment. Idempotent -- skips frameworks that
- * already exist by slug.
+ * Seeds identity data (departments, users, service accounts, API keys,
+ * role permissions) and regulatory framework definitions with Rego policies
+ * into PostgreSQL on first deployment. Idempotent -- skips records that
+ * already exist.
+ *
+ * Identity seed runs FIRST (departments/users must exist before regulatory
+ * data for future FK references).
  *
  * Usage: bun run src/seed/run-seed.ts
  */
 
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import { db } from "../db/postgres";
 import {
   frameworks,
   frameworkPolicies,
   policies,
   policyVersions,
+  departments,
+  users,
+  apiKeys,
+  userDepartments,
+  rolePermissions,
 } from "../db/schema/index";
 import path from "path";
+
+// ---------------------------------------------------------------------------
+// Identity Seed Types
+// ---------------------------------------------------------------------------
+
+interface IdentitySeedData {
+  departments: Array<{ name: string; displayName: string }>;
+  users: Array<{
+    email: string;
+    displayName: string;
+    role: string;
+    departments: string[];
+  }>;
+  serviceAccounts: Array<{
+    email: string;
+    displayName: string;
+  }>;
+  defaultPermissions: Record<string, string[]>;
+}
+
+// ---------------------------------------------------------------------------
+// Identity Seeding
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates an API key with the ik_live_ prefix.
+ * Returns plaintext (shown once), SHA-256 hash (stored), and display prefix.
+ */
+function generateApiKey(): { plaintext: string; hash: string; prefix: string } {
+  const random = randomBytes(32).toString("base64url");
+  const plaintext = `ik_live_${random}`;
+
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(plaintext);
+  const hash = hasher.digest("hex");
+
+  const prefix = plaintext.substring(0, 16); // "ik_live_XXXXXXXX"
+
+  return { plaintext, hash, prefix };
+}
+
+/**
+ * Seeds identity data: departments, users, service accounts, API keys,
+ * user-department memberships, and default role permissions.
+ *
+ * Idempotent: skips existing records by unique key (name/email/role+permission).
+ * API keys are only generated for users that have no existing keys.
+ *
+ * IMPORTANT: API key plaintext is printed to stdout exactly once during seed.
+ * Per CLAUDE.md Invariant 6, keys MUST NOT be logged after this point.
+ */
+async function seedIdentity(): Promise<void> {
+  console.log("[seed] Starting identity seed...");
+
+  const seedPath = path.join(import.meta.dir, "identity-seed.json");
+  const seedJson = await Bun.file(seedPath).text();
+  const seedData: IdentitySeedData = JSON.parse(seedJson);
+
+  // 1. Seed departments
+  console.log(`[seed] Seeding ${seedData.departments.length} departments...`);
+  const departmentMap = new Map<string, string>(); // name -> id
+
+  for (const dept of seedData.departments) {
+    const existing = await db
+      .select({ id: departments.id })
+      .from(departments)
+      .where(eq(departments.name, dept.name))
+      .limit(1);
+
+    if (existing.length > 0) {
+      departmentMap.set(dept.name, existing[0].id);
+      console.log(`[seed]   Department '${dept.name}' already exists, skipping`);
+      continue;
+    }
+
+    const [inserted] = await db
+      .insert(departments)
+      .values({
+        name: dept.name,
+        displayName: dept.displayName,
+      })
+      .returning({ id: departments.id });
+
+    departmentMap.set(dept.name, inserted.id);
+    console.log(`[seed]   Department created: ${dept.displayName} (id=${inserted.id})`);
+  }
+
+  // 2. Seed users (human)
+  console.log(`[seed] Seeding ${seedData.users.length} users...`);
+  const generatedKeys: Array<{ email: string; key: string }> = [];
+
+  for (const userData of seedData.users) {
+    const existing = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, userData.email))
+      .limit(1);
+
+    let userId: string;
+
+    if (existing.length > 0) {
+      userId = existing[0].id;
+      console.log(`[seed]   User '${userData.email}' already exists, skipping insert`);
+    } else {
+      const [inserted] = await db
+        .insert(users)
+        .values({
+          email: userData.email,
+          displayName: userData.displayName,
+          role: userData.role,
+          isService: false,
+          isActive: true,
+        })
+        .returning({ id: users.id });
+
+      userId = inserted.id;
+      console.log(`[seed]   User created: ${userData.email} (role=${userData.role})`);
+    }
+
+    // Insert user-department memberships
+    for (const deptName of userData.departments) {
+      const deptId = departmentMap.get(deptName);
+      if (!deptId) {
+        console.warn(`[seed]   WARNING: Department '${deptName}' not found for user '${userData.email}'`);
+        continue;
+      }
+
+      const existingLink = await db
+        .select({ userId: userDepartments.userId })
+        .from(userDepartments)
+        .where(
+          and(
+            eq(userDepartments.userId, userId),
+            eq(userDepartments.departmentId, deptId),
+          ),
+        )
+        .limit(1);
+
+      if (existingLink.length === 0) {
+        await db.insert(userDepartments).values({
+          userId,
+          departmentId: deptId,
+        });
+        console.log(`[seed]   Linked user '${userData.email}' to department '${deptName}'`);
+      }
+    }
+
+    // Generate API key if user has none
+    const existingKeys = await db
+      .select({ id: apiKeys.id })
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, userId))
+      .limit(1);
+
+    if (existingKeys.length === 0) {
+      const { plaintext, hash, prefix } = generateApiKey();
+      await db.insert(apiKeys).values({
+        userId,
+        keyHash: hash,
+        keyPrefix: prefix,
+        label: "Initial seed key",
+        isActive: true,
+      });
+      generatedKeys.push({ email: userData.email, key: plaintext });
+    }
+  }
+
+  // 3. Seed service accounts
+  console.log(`[seed] Seeding ${seedData.serviceAccounts.length} service accounts...`);
+
+  for (const svc of seedData.serviceAccounts) {
+    const existing = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, svc.email))
+      .limit(1);
+
+    let userId: string;
+
+    if (existing.length > 0) {
+      userId = existing[0].id;
+      console.log(`[seed]   Service account '${svc.email}' already exists, skipping insert`);
+    } else {
+      const [inserted] = await db
+        .insert(users)
+        .values({
+          email: svc.email,
+          displayName: svc.displayName,
+          role: "super_admin",
+          isService: true,
+          isActive: true,
+        })
+        .returning({ id: users.id });
+
+      userId = inserted.id;
+      console.log(`[seed]   Service account created: ${svc.email}`);
+    }
+
+    // Generate API key if service account has none
+    const existingKeys = await db
+      .select({ id: apiKeys.id })
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, userId))
+      .limit(1);
+
+    if (existingKeys.length === 0) {
+      const { plaintext, hash, prefix } = generateApiKey();
+      await db.insert(apiKeys).values({
+        userId,
+        keyHash: hash,
+        keyPrefix: prefix,
+        label: "Service account seed key",
+        isActive: true,
+      });
+      generatedKeys.push({ email: svc.email, key: plaintext });
+    }
+  }
+
+  // 4. Seed default role permissions
+  console.log("[seed] Seeding default role permissions...");
+
+  for (const [role, perms] of Object.entries(seedData.defaultPermissions)) {
+    for (const permission of perms) {
+      const existing = await db
+        .select({ id: rolePermissions.id })
+        .from(rolePermissions)
+        .where(
+          and(
+            eq(rolePermissions.role, role),
+            eq(rolePermissions.permission, permission),
+          ),
+        )
+        .limit(1);
+
+      if (existing.length === 0) {
+        await db.insert(rolePermissions).values({
+          role,
+          permission,
+          isGranted: true,
+        });
+      }
+    }
+    console.log(`[seed]   Role '${role}': ${perms.length} permissions seeded`);
+  }
+
+  // 5. Print generated API keys (plaintext shown EXACTLY ONCE)
+  if (generatedKeys.length > 0) {
+    console.log("");
+    console.log("=".repeat(72));
+    console.log("  GENERATED API KEYS (shown once -- save these securely)");
+    console.log("=".repeat(72));
+    for (const { email, key } of generatedKeys) {
+      console.log(`  [seed] API Key for ${email}: ${key}`);
+    }
+    console.log("=".repeat(72));
+    console.log("");
+  }
+
+  console.log("[seed] Identity seed complete.");
+}
+
+// ---------------------------------------------------------------------------
+// Regulatory Framework Seeding (unchanged from Phase 5)
+// ---------------------------------------------------------------------------
 
 interface FrameworkPolicyDef {
   file: string;
@@ -147,7 +421,20 @@ async function seedFramework(frameworkDir: string): Promise<void> {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
 async function main(): Promise<void> {
+  // --- Phase 1: Identity seed (must run first) ---
+  try {
+    await seedIdentity();
+  } catch (error) {
+    console.error("[seed] ERROR in identity seed:", error);
+    process.exit(1);
+  }
+
+  // --- Phase 2: Regulatory framework seed ---
   console.log("[seed] Starting regulatory framework seed...");
   console.log(`[seed] Seed directories: ${SEED_DIRS.join(", ")}`);
 
