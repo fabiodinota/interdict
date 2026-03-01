@@ -1,0 +1,30 @@
+{
+  "name": "interdict-control-plane",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "elysia": "^1.4.0",
+    "drizzle-orm": "^0.45.0",
+    "drizzle-typebox": "^0.2.0",
+    "postgres": "^3.4.0",
+    "@clickhouse/client": "^1.8.0",
+    "@sinclair/typebox": "^0.34.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.0",
+    "typescript": "^5.7.0",
+    "@types/bun": "^1.1.0"
+  },
+  "overrides": {
+    "@sinclair/typebox": "^0.34.0"
+  }
+}

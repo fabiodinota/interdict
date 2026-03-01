@@ -1,0 +1,68 @@
+/**
+ * Control Plane Configuration
+ *
+ * Loads and validates environment variables at startup.
+ * Checks for required vars and warns about optional dependencies.
+ */
+
+export interface Config {
+  port: number;
+  databaseUrl: string;
+  clickhouseUrl: string;
+  clickhouseDatabase: string;
+  wasmStorageDir: string;
+  opaBinaryPath: string;
+}
+
+function requireEnv(name: string, fallback?: string): string {
+  const value = process.env[name] ?? fallback;
+  if (!value) {
+    throw new Error(`Required environment variable ${name} is not set`);
+  }
+  return value;
+}
+
+function checkOpaBinary(path: string): void {
+  const resolved = Bun.which(path);
+  if (!resolved) {
+    console.warn(
+      `[config] WARNING: OPA binary not found in PATH (searched for '${path}'). ` +
+        `Policy compilation will fail until OPA is installed. ` +
+        `Install from https://www.openpolicyagent.org/docs/latest/#running-opa`
+    );
+  } else {
+    console.log(`[config] OPA binary found at: ${resolved}`);
+  }
+}
+
+export function loadConfig(): Config {
+  const config: Config = {
+    port: parseInt(process.env.PORT ?? "3000", 10),
+    databaseUrl: requireEnv(
+      "DATABASE_URL",
+      "postgres://interdict:interdict@localhost:5432/interdict"
+    ),
+    clickhouseUrl: requireEnv("CLICKHOUSE_URL", "http://localhost:8123"),
+    clickhouseDatabase: requireEnv("CLICKHOUSE_DATABASE", "interdict"),
+    wasmStorageDir: requireEnv("WASM_STORAGE_DIR", "./data/wasm"),
+    opaBinaryPath: requireEnv("OPA_BINARY_PATH", "opa"),
+  };
+
+  if (isNaN(config.port) || config.port < 1 || config.port > 65535) {
+    throw new Error(`Invalid PORT value: ${process.env.PORT}`);
+  }
+
+  checkOpaBinary(config.opaBinaryPath);
+
+  return config;
+}
+
+/** Singleton config instance, loaded once at startup */
+let _config: Config | null = null;
+
+export function getConfig(): Config {
+  if (!_config) {
+    _config = loadConfig();
+  }
+  return _config;
+}
