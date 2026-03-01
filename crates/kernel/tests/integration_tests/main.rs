@@ -18,3 +18,4 @@ mod connect_tunnel;
 mod connection_pool;
 mod policy_pipeline;
 mod streaming;
+mod wiring;

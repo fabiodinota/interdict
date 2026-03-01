@@ -35,6 +35,9 @@ pub struct TestProxy {
     pub ca_cert_pem: String,
     /// The test CA key PEM (needed for creating mock backends).
     pub ca_key_pem: String,
+    /// Optional handle to the PolicySetManager for tests that need .swap().
+    #[allow(dead_code)]
+    pub policy_set_manager: Option<Arc<kernel::policy::hot_reload::PolicySetManager>>,
     /// Shutdown signal sender.
     shutdown_tx: tokio::sync::watch::Sender<bool>,
     /// Server task handle.
@@ -49,6 +52,10 @@ pub struct TestProxyConfig {
     pub max_request_queue: usize,
     pub connect_timeout_ms: u64,
     pub stream_timeout_ms: u64,
+    /// Optional content inspector for PII detection in CONNECT tunnels.
+    pub content_inspector: Option<Arc<kernel::policy::content_inspection::ContentInspector>>,
+    /// Optional policy set manager for hot-reload enforcement.
+    pub policy_set_manager: Option<Arc<kernel::policy::hot_reload::PolicySetManager>>,
 }
 
 impl Default for TestProxyConfig {
@@ -60,6 +67,8 @@ impl Default for TestProxyConfig {
             max_request_queue: 1024,
             connect_timeout_ms: 10_000,
             stream_timeout_ms: 300_000,
+            content_inspector: None,
+            policy_set_manager: None,
         }
     }
 }
@@ -127,7 +136,77 @@ impl TestProxy {
         let allowlist = Arc::new(middleware::allowlist::VendorAllowlist::from_config(
             &config.allowlist,
         ));
-        let proxy_service = ProxyService::new(cert_cache.clone(), pool.clone(), config.clone());
+
+        // Clone PSM Arc before moving into ProxyService (tests need the handle)
+        let psm_handle = test_config.policy_set_manager.clone();
+
+        let proxy_service = if test_config.policy_set_manager.is_some() {
+            // Build a minimal PolicyPipeline for tests that need enforcement
+            let regorus_pool = Arc::new(kernel::policy::layer1::regorus::RegorusPool::new(
+                &regorus::Engine::new(),
+                1,
+            ));
+            let allowlist_policy = Arc::new(
+                kernel::policy::layer1::allowlist::VendorAllowlistPolicy::new(allowlist.clone()),
+            );
+            let classifier = Arc::new(kernel::policy::layer2::classifier::Classifier::stub(
+                vec![
+                    "allow".into(),
+                    "block".into(),
+                    "redact".into(),
+                    "uncertain".into(),
+                ],
+                "uncertain".into(),
+            ));
+            let redaction_engine = Arc::new(kernel::policy::redaction::RedactionEngine::empty());
+            let review_store = Arc::new(
+                kernel::policy::layer3::store::ReviewQueueStore::new(":memory:")
+                    .expect("in-memory review store"),
+            );
+            let review_queue = Arc::new(kernel::policy::layer3::queue::ReviewQueue::new(
+                review_store,
+                100,
+                Duration::from_secs(30),
+            ));
+            let wasm_engine = Arc::new(
+                kernel::policy::wasm_engine::WasmEngine::new(
+                    &kernel::config::PolicyEngineConfig::default(),
+                )
+                .expect("WasmEngine"),
+            );
+            let pipeline = Arc::new(kernel::policy::PolicyPipeline::new(
+                regorus_pool,
+                allowlist_policy,
+                classifier,
+                None,
+                review_queue,
+                redaction_engine,
+                wasm_engine,
+                vec![],
+            ));
+            let evidence_buffer = Arc::new(kernel::evidence::EvidenceBuffer::stub());
+
+            let mut svc = ProxyService::with_distribution(
+                cert_cache.clone(),
+                pool.clone(),
+                config.clone(),
+                pipeline,
+                evidence_buffer,
+                false,
+                test_config.policy_set_manager,
+                None,
+            );
+            if let Some(inspector) = test_config.content_inspector {
+                svc = svc.with_content_inspector(inspector);
+            }
+            svc
+        } else {
+            let mut svc = ProxyService::new(cert_cache.clone(), pool.clone(), config.clone());
+            if let Some(inspector) = test_config.content_inspector {
+                svc = svc.with_content_inspector(inspector);
+            }
+            svc
+        };
 
         // KERN-13: watch channel is bounded (single value)
         let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
@@ -170,6 +249,7 @@ impl TestProxy {
             ca_cert_der,
             ca_cert_pem,
             ca_key_pem,
+            policy_set_manager: psm_handle,
             shutdown_tx,
             _server_handle: server_handle,
         }
