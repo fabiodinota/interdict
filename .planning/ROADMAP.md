@@ -2,38 +2,141 @@
 
 ## Overview
 
-Interdict.io is built in 10 phases that progress from a working streaming proxy kernel through policy enforcement, evidence integrity, control plane management, and finally pilot delivery. The first four phases deliver the Rust data plane (kernel + evidence collector) with all critical pitfalls addressed from day one. Phases 5-7 build the TypeScript control plane with policy distribution, identity, and access control. Phases 8-9 deliver the dashboard and compliance reporting surface. Phase 10 packages everything for the law firm pilot deployment. Every phase delivers a coherent, verifiable capability that the next phase builds on.
+Interdict.io v1.1 (Pilot Ready) converts the working v1.0 data plane and control plane API into a product that enterprises can deploy and use. Six phases deliver identity and access control, container packaging, a 10-view compliance dashboard, security hardening (SAML, mTLS, key rotation), and Kubernetes deployment -- everything needed for two pilot customers (law firm via Docker Compose, bank via Helm). Phase numbering continues from v1.0 (which ended at Phase 6.1).
 
 ## Milestones
 
-- ✅ **v1.0 MVP** — Phases 1-6.1 (shipped 2026-03-01)
-- 📋 **v1.1** — Phases 7-10 (planned)
+- ✅ **v1.0 MVP** -- Phases 1-6.1 (shipped 2026-03-01)
+- 🚧 **v1.1 Pilot Ready** -- Phases 7-12 (in progress)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 MVP (Phases 1-6.1) — SHIPPED 2026-03-01</summary>
+<summary>v1.0 MVP (Phases 1-6.1) -- SHIPPED 2026-03-01</summary>
 
-- [x] Phase 1: Kernel Proxy Foundation (3/3 plans) — completed 2026-02-26
-- [x] Phase 2: Policy Engine (4/4 plans) — completed 2026-02-26
-- [x] Phase 3: PII Detection & Content Inspection (6/6 plans) — completed 2026-02-27
-- [x] Phase 4: Evidence Collector (4/4 plans) — completed 2026-02-28
-- [x] Phase 5: Control Plane API Core (6/6 plans) — completed 2026-02-28
-- [x] Phase 6: Policy Distribution & Kernel Integration (4/4 plans) — completed 2026-03-01
-- [x] Phase 6.1: Kernel Integration Wiring (1/1 plan, INSERTED) — completed 2026-03-01
+- [x] Phase 1: Kernel Proxy Foundation (3/3 plans) -- completed 2026-02-26
+- [x] Phase 2: Policy Engine (4/4 plans) -- completed 2026-02-26
+- [x] Phase 3: PII Detection & Content Inspection (6/6 plans) -- completed 2026-02-27
+- [x] Phase 4: Evidence Collector (4/4 plans) -- completed 2026-02-28
+- [x] Phase 5: Control Plane API Core (6/6 plans) -- completed 2026-02-28
+- [x] Phase 6: Policy Distribution & Kernel Integration (4/4 plans) -- completed 2026-03-01
+- [x] Phase 6.1: Kernel Integration Wiring (1/1 plan, INSERTED) -- completed 2026-03-01
 
 Full details archived in `milestones/v1.0-ROADMAP.md`
 
 </details>
 
-### 📋 Next Milestone (Planned)
+### v1.1 Pilot Ready (Phases 7-12)
 
-- [ ] **Phase 7: Identity, Access & Security** — SAML 2.0 at the TypeScript boundary, RBAC with five roles, mTLS between all components, and signing key management
-- [ ] **Phase 8: Dashboard Core** — Next.js policy builder, audit trail search, vendor management, and real-time violation statistics
-- [ ] **Phase 9: Compliance Reporting & Advanced Dashboard** — Compliance report generation, evidence verification UI, human review queue, anomaly detection views, and department-level policy management
-- [ ] **Phase 10: Infrastructure & Pilot Delivery** — Docker Compose stack, Helm chart, K8s sidecar manifest, container images, CA cert onboarding, and law firm pilot readiness
+**Milestone Goal:** Make Interdict.io deployable and usable by pilot customers -- a CISO can log in via SSO, configure policies through a dashboard, review audit trails, and IT can deploy via Docker Compose or Helm.
+
+- [ ] **Phase 7: Identity Foundation** -- API key auth, 5-role RBAC with route guards and data-level scoping
+- [ ] **Phase 8: Container Images & Docker Compose** -- Multi-stage Dockerfiles for all services, one-command pilot deployment
+- [ ] **Phase 9: Dashboard Core Views** -- Next.js dashboard with 6 core compliance officer views
+- [ ] **Phase 10: SAML SSO & Security Hardening** -- Enterprise SSO, mTLS between all components, evidence signing key rotation
+- [ ] **Phase 11: Advanced Dashboard Views** -- Evidence verification, human review queue, department policies, anomaly detection
+- [ ] **Phase 12: Kubernetes Deployment** -- Helm chart, sidecar manifests, CA certificate onboarding
+
+## Phase Details
+
+### Phase 7: Identity Foundation
+**Goal**: Users can authenticate and are restricted to role-appropriate features and data
+**Depends on**: Phase 6.1 (v1.0 complete)
+**Requirements**: IDENT-02, IDENT-03, IDENT-04
+**Success Criteria** (what must be TRUE):
+  1. User can authenticate to the control plane API using an API key and receive a session with role claims
+  2. User with Super Admin role can access all API endpoints; user with Read-Only Auditor role is blocked from write operations
+  3. User with Department Manager role querying audit data sees only their own department's records -- cross-department data is invisible
+  4. Existing internal service callers (gRPC distribution, compilation worker, integration tests) continue working via service account API keys
+**Plans**: TBD
+
+Plans:
+- [ ] 07-01: TBD
+- [ ] 07-02: TBD
+- [ ] 07-03: TBD
+
+### Phase 8: Container Images & Docker Compose
+**Goal**: Operator can deploy the full Interdict stack on a single server with one command
+**Depends on**: Phase 7
+**Requirements**: DEPLOY-01, DEPLOY-02
+**Success Criteria** (what must be TRUE):
+  1. All four service images (kernel, control plane API, dashboard, evidence collector) build successfully via multi-stage Dockerfiles and are published to a container registry
+  2. Running `docker compose up` on a fresh machine brings up the entire stack with health checks passing for all services
+  3. An `env.example` file documents every configuration variable, serving as the single source of truth shared between Docker Compose and future Helm deployment
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01: TBD
+- [ ] 08-02: TBD
+
+### Phase 9: Dashboard Core Views
+**Goal**: Compliance officer can manage policies, review audit trails, and generate reports through a visual dashboard
+**Depends on**: Phase 7 (RBAC), Phase 8 (deployable stack for end-to-end testing)
+**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06
+**Success Criteria** (what must be TRUE):
+  1. Compliance officer can create a new governance policy through the Policy Builder UI without writing any Rego code, and the policy compiles to a valid Wasm module
+  2. Compliance officer can search and filter AI interactions by time range, department, vendor, and policy decision in the Audit Trail dashboard with server-side pagination
+  3. Compliance officer can view real-time violation statistics (by type, department, vendor, time period) on the dashboard home screen with charts that auto-refresh
+  4. Compliance officer can approve/block AI vendors and select regulatory jurisdictions, with changes reflected in the kernel's enforcement within seconds
+  5. Compliance officer can generate a PDF or CSV compliance report covering a specified date range
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: TBD
+- [ ] 09-02: TBD
+- [ ] 09-03: TBD
+- [ ] 09-04: TBD
+
+### Phase 10: SAML SSO & Security Hardening
+**Goal**: Enterprise users can authenticate via their corporate identity provider, and all internal communication is mutually authenticated and encrypted
+**Depends on**: Phase 7 (auth middleware skeleton), Phase 8 (Docker Compose for integration testing)
+**Requirements**: IDENT-01, IDENT-05, IDENT-06
+**Success Criteria** (what must be TRUE):
+  1. User can log in via SAML 2.0 SSO through Okta or Azure AD and land in the dashboard with correct role assignment
+  2. All gRPC channels between kernel, control plane, and evidence collector use mTLS -- connections without valid client certificates are rejected
+  3. Admin can rotate the Ed25519 evidence signing key and the system continues to verify both old (pre-rotation) and new (post-rotation) evidence bundles without breaking the hash chain
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01: TBD
+- [ ] 10-02: TBD
+- [ ] 10-03: TBD
+
+### Phase 11: Advanced Dashboard Views
+**Goal**: Auditors can independently verify evidence integrity, compliance officers can manage escalations and anomalies, and department managers can customize their team's policies
+**Depends on**: Phase 9 (dashboard infrastructure), Phase 10 (key rotation for evidence verification)
+**Requirements**: DASH-07, DASH-08, DASH-09, DASH-10
+**Success Criteria** (what must be TRUE):
+  1. Auditor can select any evidence bundle in the UI and verify its hash chain integrity, Ed25519 signature, and Merkle proof -- with a clear pass/fail result
+  2. Compliance officer can view Layer 3 escalated interactions in the Human Review Queue and approve or reject them with mandatory reasoning, with SLA countdown timers visible
+  3. Department Manager can view inherited policies for their department and override specific settings through the Department Policy Management UI
+  4. Compliance officer can view anomaly detection alerts showing volume spikes, off-hours usage, vendor switching, and topic drift against statistical baselines
+**Plans**: TBD
+
+Plans:
+- [ ] 11-01: TBD
+- [ ] 11-02: TBD
+- [ ] 11-03: TBD
+
+### Phase 12: Kubernetes Deployment
+**Goal**: Operator can deploy Interdict on Kubernetes via Helm chart or as a sidecar, and onboard client machines to trust the proxy CA
+**Depends on**: Phase 8 (container images), Phase 10 (mTLS configuration)
+**Requirements**: DEPLOY-03, DEPLOY-04, DEPLOY-05
+**Success Criteria** (what must be TRUE):
+  1. Operator can deploy the full Interdict stack on a Kubernetes cluster using `helm install` with configurable values for pilot and enterprise environments
+  2. Operator can deploy the kernel as a sidecar container in the same pod as an AI application, with the sidecar intercepting all outbound AI traffic
+  3. Operator can run a platform-specific script (macOS, Windows, Linux) to install the Interdict CA certificate on client machines for explicit proxy mode
+**Plans**: TBD
+
+Plans:
+- [ ] 12-01: TBD
+- [ ] 12-02: TBD
+- [ ] 12-03: TBD
 
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -44,11 +147,13 @@ Full details archived in `milestones/v1.0-ROADMAP.md`
 | 5. Control Plane API Core | v1.0 | 6/6 | Complete | 2026-02-28 |
 | 6. Policy Distribution & Kernel Integration | v1.0 | 4/4 | Complete | 2026-03-01 |
 | 6.1 Kernel Integration Wiring | v1.0 | 1/1 | Complete | 2026-03-01 |
-| 7. Identity, Access & Security | — | 0/3 | Not started | - |
-| 8. Dashboard Core | — | 0/3 | Not started | - |
-| 9. Compliance Reporting & Advanced Dashboard | — | 0/3 | Not started | - |
-| 10. Infrastructure & Pilot Delivery | — | 0/3 | Not started | - |
+| 7. Identity Foundation | v1.1 | 0/? | Not started | - |
+| 8. Container Images & Docker Compose | v1.1 | 0/? | Not started | - |
+| 9. Dashboard Core Views | v1.1 | 0/? | Not started | - |
+| 10. SAML SSO & Security Hardening | v1.1 | 0/? | Not started | - |
+| 11. Advanced Dashboard Views | v1.1 | 0/? | Not started | - |
+| 12. Kubernetes Deployment | v1.1 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-01 after v1.0 milestone*
+*Last updated: 2026-03-01 after v1.1 roadmap creation*

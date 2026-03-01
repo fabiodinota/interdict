@@ -1,7 +1,7 @@
 # Requirements: Interdict.io
 
 **Defined:** 2026-03-01
-**Core Value:** Every AI action an employee takes is routed through a policy-enforcing kernel — logged, signed, and regulatorily mapped — before it reaches any model
+**Core Value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
 
 ## v1.1 Requirements
 
@@ -13,10 +13,10 @@ Requirements for Pilot Ready milestone. Each maps to roadmap phases.
 - [ ] **IDENT-02**: User can authenticate via API key for programmatic access
 - [ ] **IDENT-03**: User is assigned one of five roles (Super Admin, Compliance Officer, Policy Admin, Department Manager, Read-Only Auditor) that restricts accessible features and data
 - [ ] **IDENT-04**: User with Department Manager role can only view data for their own department
-- [ ] **IDENT-05**: All internal component communication (kernel ↔ control plane, kernel ↔ evidence collector) is encrypted and mutually authenticated via mTLS
+- [ ] **IDENT-05**: All internal component communication (kernel <-> control plane, kernel <-> evidence collector) is encrypted and mutually authenticated via mTLS
 - [ ] **IDENT-06**: Admin can rotate Ed25519 evidence signing keys without breaking verification of previously signed evidence bundles
 
-### Dashboard — Core Views
+### Dashboard -- Core Views
 
 - [ ] **DASH-01**: Compliance officer can create, edit, enable/disable governance policies through a visual Policy Builder UI (no Rego knowledge required)
 - [ ] **DASH-02**: Compliance officer can search and filter all AI interactions and policy decisions in an Audit Trail dashboard
@@ -25,7 +25,7 @@ Requirements for Pilot Ready milestone. Each maps to roadmap phases.
 - [ ] **DASH-05**: Compliance officer can select regulatory jurisdictions and see corresponding policy configurations enabled through a Regulatory Framework Selector
 - [ ] **DASH-06**: Compliance officer can generate PDF/CSV compliance reports for regulators, legal teams, and risk departments
 
-### Dashboard — Advanced Views
+### Dashboard -- Advanced Views
 
 - [ ] **DASH-07**: Auditor can independently verify evidence bundle hash chain integrity, Ed25519 signatures, and Merkle proofs through an Evidence Verification UI
 - [ ] **DASH-08**: Compliance officer can review, approve, or reject Layer 3 escalated AI interactions through a Human Review Queue with configurable SLA timers
@@ -82,33 +82,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IDENT-01 | — | Pending |
-| IDENT-02 | — | Pending |
-| IDENT-03 | — | Pending |
-| IDENT-04 | — | Pending |
-| IDENT-05 | — | Pending |
-| IDENT-06 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| DASH-04 | — | Pending |
-| DASH-05 | — | Pending |
-| DASH-06 | — | Pending |
-| DASH-07 | — | Pending |
-| DASH-08 | — | Pending |
-| DASH-09 | — | Pending |
-| DASH-10 | — | Pending |
-| DEPLOY-01 | — | Pending |
-| DEPLOY-02 | — | Pending |
-| DEPLOY-03 | — | Pending |
-| DEPLOY-04 | — | Pending |
-| DEPLOY-05 | — | Pending |
+| IDENT-01 | Phase 10 | Pending |
+| IDENT-02 | Phase 7 | Pending |
+| IDENT-03 | Phase 7 | Pending |
+| IDENT-04 | Phase 7 | Pending |
+| IDENT-05 | Phase 10 | Pending |
+| IDENT-06 | Phase 10 | Pending |
+| DASH-01 | Phase 9 | Pending |
+| DASH-02 | Phase 9 | Pending |
+| DASH-03 | Phase 9 | Pending |
+| DASH-04 | Phase 9 | Pending |
+| DASH-05 | Phase 9 | Pending |
+| DASH-06 | Phase 9 | Pending |
+| DASH-07 | Phase 11 | Pending |
+| DASH-08 | Phase 11 | Pending |
+| DASH-09 | Phase 11 | Pending |
+| DASH-10 | Phase 11 | Pending |
+| DEPLOY-01 | Phase 8 | Pending |
+| DEPLOY-02 | Phase 8 | Pending |
+| DEPLOY-03 | Phase 12 | Pending |
+| DEPLOY-04 | Phase 12 | Pending |
+| DEPLOY-05 | Phase 12 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after initial definition*
+*Last updated: 2026-03-01 after v1.1 roadmap creation*
