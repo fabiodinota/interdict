@@ -19,8 +19,8 @@ max_request_queue = 1024
 [tls]
 # Deployment-unique CA certificate and key used for TLS interception.
 # The CA must be installed on client machines for HTTPS inspection to work.
-ca_cert_path = "/etc/interdict/ca.crt"
-ca_key_path = "/etc/interdict/ca.key"
+ca_cert_path = "./ca.crt"
+ca_key_path = "./ca.key"
 
 [pool]
 # HTTP/2 connection pool settings per vendor backend.
