@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Not started
+current_plan: 1
 status: unknown
-stopped_at: Completed 06-04-PLAN.md (integration tests for Phase 6 success criteria)
-last_updated: "2026-03-01T05:40:34.971Z"
+stopped_at: Completed 06.1-01-PLAN.md
+last_updated: "2026-03-01T15:49:39.643Z"
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 27
-  completed_plans: 27
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 28
+  completed_plans: 28
   percent: 100
 ---
 
@@ -25,13 +25,13 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 
 ## Current Position
 
-Phase: 6 of 10 (Policy Distribution & Kernel Integration) -- IN PROGRESS
-Plan: 2 of 4 in current phase (next: 06-02)
-Status: 06-01 complete; ready to execute 06-02
-Last activity: 2026-03-01 -- Plan 06-01 complete (foundational types for policy distribution)
+Phase: 6.1 of 10 (Kernel Integration Wiring -- Gap Closure) -- COMPLETE
+Plan: 1 of 1 in current phase (complete)
+Status: 06.1-01 complete; Phase 6.1 complete -- INT-01 and INT-02 gaps closed
+Last activity: 2026-03-01 -- Plan 06.1-01 complete (ContentInspector + live PolicySet wired into kernel)
 
-**Current Plan:** Not started
-**Total Plans in Phase:** 4
+**Current Plan:** 1
+**Total Plans in Phase:** 1
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
@@ -70,6 +70,7 @@ Last activity: 2026-03-01 -- Plan 06-01 complete (foundational types for policy 
 | Phase 06 P03 | 4m11s | 2 tasks | 8 files |
 | Phase 06 P02 | 11m21s | 2 tasks | 7 files |
 | Phase 06 P04 | 4m27s | 2 tasks | 2 files |
+| Phase 06.1 P01 | 11m42s | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -170,6 +171,10 @@ Recent decisions affecting current work:
 - [Phase 06]: Integration tests validate kernel-side logic at component level without gRPC server
 - [Phase 06]: SC3 hierarchy cascade proven via MergedVerdict::merge for most-restrictive-wins
 - [Phase 06]: Session false-positive test uses high thresholds for non-target escalation patterns to isolate slow-leak behavior
+- [Phase 06.1]: PolicyConfig.entrypoint optional field for distributed policy Rego rule paths (falls back to rsplit derivation for filesystem)
+- [Phase 06.1]: with_live_set() shares L2/L3/redaction/allowlist from base pipeline, replaces regorus_pool/wasm_engine/policies from PolicySet
+- [Phase 06.1]: effective_pipeline in call(): PSM version > 0 AND policies non-empty triggers live set; otherwise static fallback
+- [Phase 06.1]: TestProxy with_config() uses ProxyService::with_distribution() when policy_set_manager is provided
 
 ### Pending Todos
 
@@ -181,6 +186,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-03-01T05:34:51.456Z
-**Stopped At:** Completed 06-04-PLAN.md (integration tests for Phase 6 success criteria)
+**Last session:** 2026-03-01T15:49:35.489Z
+**Stopped At:** Completed 06.1-01-PLAN.md
 **Resume file:** None

@@ -20,8 +20,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **KERN-02**: Proxy decodes and handles Server-Sent Events (SSE) streaming responses from AI vendors
 - [x] **KERN-03**: Proxy decodes and handles gRPC streaming for enterprise AI services
 - [x] **KERN-04**: Proxy decodes and handles WebSocket connections for real-time AI applications
-- [ ] **KERN-05**: Sliding window token buffer holds 5-10 tokens back for multi-token pattern detection in streaming responses
-- [ ] **KERN-06**: Kernel can sever a streaming connection mid-response and replace content with `[REDACTED BY INTERDICT POLICY: {RULE_NAME}]`
+- [x] **KERN-05**: Sliding window token buffer holds 5-10 tokens back for multi-token pattern detection in streaming responses
+- [x] **KERN-06**: Kernel can sever a streaming connection mid-response and replace content with `[REDACTED BY INTERDICT POLICY: {RULE_NAME}]`
 - [x] **KERN-07**: Kernel achieves <10ms p99 latency overhead (target <5ms) on proxied AI requests
 - [x] **KERN-08**: Kernel handles >10,000 requests/second per instance under sustained load
 - [x] **KERN-09**: Kernel steady-state RAM usage stays under 128MB with <100m CPU idle, <500m burst
@@ -33,12 +33,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### PII & Sensitive Data
 
-- [ ] **PII-01**: Kernel detects and redacts personally identifiable information (names, emails, phone numbers, addresses, SSNs) in AI prompts before they reach the vendor
-- [ ] **PII-02**: Kernel detects and redacts financial data (credit card numbers, bank accounts, SWIFT codes, deal values) in AI prompts
-- [ ] **PII-03**: Kernel detects and redacts secrets and credentials (AWS keys, API tokens, private keys) in AI prompts
-- [ ] **PII-04**: Kernel detects and redacts PII/sensitive data in streaming AI responses using the sliding window buffer
-- [ ] **PII-05**: Kernel supports custom pattern definitions per enterprise (client names, matter numbers, case codes, ISIN numbers) loaded from policy configuration
-- [ ] **PII-06**: Redaction replaces detected content with category-tagged placeholders (e.g., `[PII:NAME]`, `[FINANCIAL:CARD]`) rather than blocking the entire request
+- [x] **PII-01**: Kernel detects and redacts personally identifiable information (names, emails, phone numbers, addresses, SSNs) in AI prompts before they reach the vendor
+- [x] **PII-02**: Kernel detects and redacts financial data (credit card numbers, bank accounts, SWIFT codes, deal values) in AI prompts
+- [x] **PII-03**: Kernel detects and redacts secrets and credentials (AWS keys, API tokens, private keys) in AI prompts
+- [x] **PII-04**: Kernel detects and redacts PII/sensitive data in streaming AI responses using the sliding window buffer
+- [x] **PII-05**: Kernel supports custom pattern definitions per enterprise (client names, matter numbers, case codes, ISIN numbers) loaded from policy configuration
+- [x] **PII-06**: Redaction replaces detected content with category-tagged placeholders (e.g., `[PII:NAME]`, `[FINANCIAL:CARD]`) rather than blocking the entire request
 
 ### Policy Engine
 
@@ -47,12 +47,12 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PLCY-03**: Layer 1 deterministic rules use Regorus (Rust-native Rego interpreter) for policy evaluation without external OPA dependency
 - [x] **PLCY-04**: Layer 2 lightweight NLP classifier (quantized ONNX model via tract) handles intent classification and ambiguous cases (<10ms)
 - [ ] **PLCY-05**: Layer 3 async human review queue routes genuinely ambiguous high-stakes decisions to compliance officers with configurable SLA
-- [ ] **PLCY-06**: Policy modules can be hot-reloaded at runtime without restarting the kernel binary
+- [x] **PLCY-06**: Policy modules can be hot-reloaded at runtime without restarting the kernel binary
 - [x] **PLCY-07**: Policies support three enforcement actions: block (reject request), allow (pass through), redact (modify and pass)
 - [x] **PLCY-08**: Policies are configurable per department, per user, and per AI vendor
 - [x] **PLCY-09**: Fail-closed / fail-open is a per-policy configuration flag controlling behavior when the kernel encounters errors
 - [x] **PLCY-10**: Department-level policy segmentation with inheritance model: organization defaults -> department overrides -> team overrides
-- [ ] **PLCY-11**: Prompt injection and jailbreak detection via Layer 2 NLP classifier identifies direct/indirect injection attacks and prompt leaking attempts
+- [x] **PLCY-11**: Prompt injection and jailbreak detection via Layer 2 NLP classifier identifies direct/indirect injection attacks and prompt leaking attempts
 
 ### Cryptographic Audit Pipeline
 
@@ -71,7 +71,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **CTRL-01**: Policy CRUD API -- create, read, update, delete policies with Rego/YAML source
 - [x] **CTRL-02**: Policy compiler transforms human-readable Rego/YAML rules into compiled Wasm modules
-- [ ] **CTRL-03**: Policy distribution pushes compiled Wasm modules to kernel fleet via gRPC server-streaming (Envoy xDS-style pattern, not polling)
+- [x] **CTRL-03**: Policy distribution pushes compiled Wasm modules to kernel fleet via gRPC server-streaming (Envoy xDS-style pattern, not polling)
 - [x] **CTRL-04**: Vendor registry API -- CRUD for approved/blocked AI vendors with per-vendor model version allowlists
 - [x] **CTRL-05**: Regulatory framework mapping engine -- selecting a jurisdiction auto-enables corresponding policy configurations
 - [x] **CTRL-06**: Pre-built regulatory policy packs for EU AI Act, GDPR, NIST AI RMF, Singapore PDPA, India DPDP, China AI Regs, Canada AIDA/PIPEDA, GCC frameworks
@@ -157,8 +157,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KERN-02 | Phase 1 | Complete |
 | KERN-03 | Phase 1 | Complete |
 | KERN-04 | Phase 1 | Complete |
-| KERN-05 | Phase 6.1 | Pending |
-| KERN-06 | Phase 6.1 | Pending |
+| KERN-05 | Phase 6.1 | Complete |
+| KERN-06 | Phase 6.1 | Complete |
 | KERN-07 | Phase 1 | Complete |
 | KERN-08 | Phase 1 | Complete |
 | KERN-09 | Phase 1 | Complete |
@@ -167,23 +167,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KERN-12 | Phase 1 | Complete |
 | KERN-13 | Phase 1 | Complete |
 | KERN-14 | Phase 4 | Complete |
-| PII-01 | Phase 6.1 | Pending |
-| PII-02 | Phase 6.1 | Pending |
-| PII-03 | Phase 6.1 | Pending |
-| PII-04 | Phase 6.1 | Pending |
-| PII-05 | Phase 6.1 | Pending |
-| PII-06 | Phase 6.1 | Pending |
+| PII-01 | Phase 6.1 | Complete |
+| PII-02 | Phase 6.1 | Complete |
+| PII-03 | Phase 6.1 | Complete |
+| PII-04 | Phase 6.1 | Complete |
+| PII-05 | Phase 6.1 | Complete |
+| PII-06 | Phase 6.1 | Complete |
 | PLCY-01 | Phase 2 | Complete |
 | PLCY-02 | Phase 2 | Complete |
 | PLCY-03 | Phase 2 | Complete |
 | PLCY-04 | Phase 2 | Complete |
 | PLCY-05 | Phase 9 | Pending |
-| PLCY-06 | Phase 6.1 | Pending |
+| PLCY-06 | Phase 6.1 | Complete |
 | PLCY-07 | Phase 2 | Complete |
 | PLCY-08 | Phase 6 | Complete |
 | PLCY-09 | Phase 2 | Complete |
 | PLCY-10 | Phase 6 | Complete |
-| PLCY-11 | Phase 6.1 | Pending |
+| PLCY-11 | Phase 6.1 | Complete |
 | EVID-01 | Phase 4 | Complete |
 | EVID-02 | Phase 4 | Complete |
 | EVID-03 | Phase 4 | Complete |
@@ -196,7 +196,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVID-10 | Phase 4 | Complete |
 | CTRL-01 | Phase 5 | Complete |
 | CTRL-02 | Phase 5 | Complete |
-| CTRL-03 | Phase 6.1 | Pending |
+| CTRL-03 | Phase 6.1 | Complete |
 | CTRL-04 | Phase 5 | Complete |
 | CTRL-05 | Phase 5 | Complete |
 | CTRL-06 | Phase 5 | Complete |

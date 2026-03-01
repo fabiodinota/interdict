@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Evidence Collector** - Separate Rust binary producing SHA-256 hash chains, Ed25519 signatures, Merkle trees, and S3 WORM anchoring with correct ClickHouse batching
 - [ ] **Phase 5: Control Plane API Core** - Bun + Elysia API with policy CRUD, Rego-to-Wasm compiler, vendor registry, regulatory framework mappings, and database schemas
 - [ ] **Phase 6: Policy Distribution & Kernel Integration** - gRPC xDS-style push from control plane to kernel fleet with hot-reload, session context tracking, and fail-closed/open behavior
-- [ ] **Phase 6.1: Kernel Integration Wiring** - INSERTED — Wire ContentInspector and live PolicySet into kernel binary entry points, closing 2 P0 integration gaps from v1.0 audit
+- [x] **Phase 6.1: Kernel Integration Wiring** - INSERTED — Wire ContentInspector and live PolicySet into kernel binary entry points, closing 2 P0 integration gaps from v1.0 audit
 - [ ] **Phase 7: Identity, Access & Security** - SAML 2.0 at the TypeScript boundary, RBAC with five roles, mTLS between all components, and signing key management
 - [ ] **Phase 8: Dashboard Core** - Next.js policy builder, audit trail search, vendor management, and real-time violation statistics
 - [ ] **Phase 9: Compliance Reporting & Advanced Dashboard** - Compliance report generation, evidence verification UI, human review queue, anomaly detection views, and department-level policy management
@@ -147,7 +147,7 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 06.1-01-PLAN.md — Wire ContentInspector + live PolicySet into kernel entry points, integration tests
+- [x] 06.1-01-PLAN.md — Wire ContentInspector + live PolicySet into kernel entry points, integration tests
 
 ### Phase 7: Identity, Access & Security
 **Goal**: Enterprise identity integration via SAML 2.0 at the TypeScript API boundary, RBAC with five distinct roles controlling all API and dashboard access, mTLS securing all internal service communication, and cryptographic key management for signing key rotation
@@ -230,7 +230,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 6.1 -> 7 -> 8 -> 
 | 4. Evidence Collector | 1/4 | In Progress | - |
 | 5. Control Plane API Core | 0/4 | Planned | - |
 | 6. Policy Distribution & Kernel Integration | 0/4 | Planned | - |
-| 6.1 Kernel Integration Wiring (Gap Closure) | 0/1 | Planned | - |
+| 6.1 Kernel Integration Wiring (Gap Closure) | 1/1 | Complete | 2026-03-01 |
 | 7. Identity, Access & Security | 0/3 | Not started | - |
 | 8. Dashboard Core | 0/3 | Not started | - |
 | 9. Compliance Reporting & Advanced Dashboard | 0/3 | Not started | - |
