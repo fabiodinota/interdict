@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package interdict.policy.v1;
+
+// Policy distribution service using xDS-style server-streaming.
+// Control plane pushes policy updates to kernel fleet in real-time.
+service PolicyDistribution {
+  // Subscribe to policy updates. Returns a server-stream of PolicyUpdate messages.
+  // Initial connect sends full snapshot; subsequent updates are deltas.
+  rpc Subscribe(SubscribeRequest) returns (stream PolicyUpdate);
+
+  // Acknowledge receipt and loading of a policy version.
+  // Kernel sends ACK on successful load, NACK with error on failure.
+  rpc Acknowledge(AckRequest) returns (AckResponse);
+}
+
+// Request to subscribe to policy updates for this kernel instance.
+message SubscribeRequest {
+  // Unique identifier for this kernel instance.
+  string kernel_id = 1;
+  // Current policy version known to the kernel. 0 = request full snapshot.
+  uint64 current_version = 2;
+  // Organization ID for hierarchy-aware policy filtering.
+  string org_id = 3;
+  // Department ID (optional) for hierarchy-aware policy filtering.
+  string dept_id = 4;
+  // Team ID (optional) for hierarchy-aware policy filtering.
+  string team_id = 5;
+}
+
+// A policy update pushed from the control plane to a kernel.
+message PolicyUpdate {
+  // Monotonic version counter (higher = newer).
+  uint64 version = 1;
+  // Type of update.
+  UpdateType type = 2;
+  // Policies included in this update (new or changed).
+  repeated PolicyEntry policies = 3;
+  // Policy IDs removed in this update (delta only).
+  repeated string removed_policy_ids = 4;
+
+  enum UpdateType {
+    // Full replacement of all policies.
+    FULL_SNAPSHOT = 0;
+    // Incremental changes since last version.
+    DELTA = 1;
+  }
+}
+
+// A single policy entry in a policy update.
+message PolicyEntry {
+  // Unique identifier for this policy.
+  string policy_id = 1;
+  // Human-readable policy name.
+  string name = 2;
+  // Policy version (monotonic per policy).
+  uint64 version = 3;
+  // Compiled Wasm module bytes (optional, may be empty for Rego-only policies).
+  bytes wasm_bytes = 4;
+  // SHA-256 hash of wasm_bytes for integrity verification.
+  string wasm_hash = 5;
+  // Rego source code (optional, may be empty for Wasm-only policies).
+  string rego_source = 6;
+  // Rego entrypoint rule path (e.g., "data.interdict.policy.vendor.verdict").
+  string entrypoint = 7;
+  // Scope determines which hierarchy levels this policy applies to.
+  PolicyScope scope = 8;
+  // Behavior on evaluation error.
+  FailMode fail_mode = 9;
+
+  enum FailMode {
+    // Error -> Block. Conservative, security-first default.
+    FAIL_CLOSED = 0;
+    // Error -> Allow. Use only for non-critical policies.
+    FAIL_OPEN = 1;
+  }
+}
+
+// Defines the organizational scope a policy applies to.
+message PolicyScope {
+  // Organization this policy belongs to (required).
+  string org_id = 1;
+  // Department scope (empty = org-wide).
+  string dept_id = 2;
+  // Team scope (empty = dept-wide or org-wide).
+  string team_id = 3;
+  // Vendor-specific scoping (empty = all vendors).
+  repeated string vendor_ids = 4;
+}
+
+// Acknowledgement of a policy version by a kernel.
+message AckRequest {
+  // Kernel instance that processed the update.
+  string kernel_id = 1;
+  // Version being acknowledged.
+  uint64 version = 2;
+  // True if policies were successfully loaded.
+  bool accepted = 3;
+  // Error message if not accepted (NACK).
+  string error_message = 4;
+}
+
+// Response to an acknowledgement.
+message AckResponse {
+  // True if the ack was recorded by the control plane.
+  bool acknowledged = 1;
+}

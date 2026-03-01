@@ -8,7 +8,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_server(false)
         .build_client(true)
         .compile_protos(
-            &["../../proto/interdict/evidence/v1/evidence.proto"],
+            &[
+                "../../proto/interdict/evidence/v1/evidence.proto",
+                "../../proto/interdict/policy/v1/policy_distribution.proto",
+            ],
             &["../../proto/"],
         )?;
 

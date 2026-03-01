@@ -15,11 +15,15 @@
 
 pub mod config;
 pub mod content_inspection;
+pub mod distribution;
+pub mod hierarchy;
+pub mod hot_reload;
 pub mod layer1;
 pub mod layer2;
 pub mod layer3;
 pub mod patterns;
 pub mod redaction;
+pub mod session;
 pub mod streaming;
 pub mod verdict;
 pub mod wasm_engine;
