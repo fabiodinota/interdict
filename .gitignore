@@ -28,10 +28,11 @@ dist/
 .claude/mcp/*.key
 .claude/mcp/*.pem
 
-# Secrets
+# Secrets and local certs
 *.pem
 *.key
 *.p12
+*.crt
 credentials.json
 
 # Logs
@@ -40,6 +41,9 @@ credentials.json
 # Coverage
 coverage/
 .nyc_output/
+
+# Runtime data
+data/
 
 # Build artifacts
 *.wasm
