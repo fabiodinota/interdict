@@ -99,7 +99,7 @@ Plans:
 - [ ] 04-04-PLAN.md — verifier implementation and end-to-end validation
 
 ### Phase 5: Control Plane API Core
-**Goal**: The Bun + Elysia API manages policies (CRUD with Rego/YAML source), compiles them to Wasm modules, manages the vendor registry, maps regulatory frameworks to policy configurations, and provides searchable audit trail queries against ClickHouse
+**Goal**: The Bun + Elysia API manages policies (CRUD with Rego source), compiles them to Wasm modules via OPA CLI, manages the vendor registry with per-model granularity, maps regulatory frameworks to policy configurations, and provides searchable audit trail queries against ClickHouse with SSE streaming
 **Depends on**: Phase 4 (ClickHouse schema and evidence data available)
 **Requirements**: CTRL-01, CTRL-02, CTRL-04, CTRL-05, CTRL-06, CTRL-07, CTRL-10, CTRL-11
 **Success Criteria** (what must be TRUE):
@@ -108,12 +108,13 @@ Plans:
   3. Selecting a regulatory jurisdiction (e.g., EU AI Act) via the API auto-enables the corresponding pre-built policy configurations covering that framework's requirements
   4. The audit trail query API returns searchable, filterable execution history by user, department, vendor, policy decision, time range, and violation type with sub-second response times
   5. PostgreSQL stores configuration, policies, users, and vendor registry; ClickHouse stores high-volume audit logs and analytics data; the two are never confused
-**Plans**: TBD
+**Plans**: 4 plans in 2 waves
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
-- [ ] 05-03: TBD
+- [ ] 05-01-PLAN.md -- Project scaffold, database schemas (PostgreSQL + ClickHouse client), shared utilities (Wave 1)
+- [ ] 05-02-PLAN.md -- Policy CRUD with version history, async Rego-to-Wasm compiler, vendor registry (Wave 2)
+- [ ] 05-03-PLAN.md -- Regulatory framework engine, seed EU AI Act and GDPR policy packs (Wave 2)
+- [ ] 05-04-PLAN.md -- Audit trail queries, SSE streaming, aggregate endpoints (Wave 2)
 
 ### Phase 6: Policy Distribution & Kernel Integration
 **Goal**: The control plane pushes compiled Wasm policy modules to the kernel fleet in real-time via gRPC server-streaming (Envoy xDS-style), kernels hot-reload policies without restart, and session context enables multi-turn policy enforcement
@@ -209,7 +210,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 2. Policy Engine | 4/4 | Complete | 2026-02-26 |
 | 3. PII Detection & Content Inspection | 6/6 | Complete | 2026-02-27 |
 | 4. Evidence Collector | 1/4 | In Progress | - |
-| 5. Control Plane API Core | 0/3 | Not started | - |
+| 5. Control Plane API Core | 0/4 | Planned | - |
 | 6. Policy Distribution & Kernel Integration | 0/2 | Not started | - |
 | 7. Identity, Access & Security | 0/3 | Not started | - |
 | 8. Dashboard Core | 0/3 | Not started | - |
