@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: in-progress
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-02T01:02:00.000Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-02T01:08:00.000Z"
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -19,16 +19,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** v1.1 Pilot Ready -- Phase 8 in progress (container images)
+**Current focus:** v1.1 Pilot Ready -- Phase 8 COMPLETE, ready for Phase 9
 
 ## Current Position
 
-Phase: 8 of 12 (Container Images & Docker Compose) -- IN PROGRESS
-Plan: 1 of 2 (Dockerfiles and entrypoints) -- COMPLETE
-Status: 08-01 complete, 08-02 remaining
-Last activity: 2026-03-02 -- Completed 08-01 (Dockerfiles, entrypoints, env.example, .dockerignore)
+Phase: 8 of 12 (Container Images & Docker Compose) -- COMPLETE
+Plan: 2 of 2 (Docker Compose orchestration) -- COMPLETE
+Status: All plans complete
+Last activity: 2026-03-02 -- Completed 08-02 (docker-compose.yml, from_env config, health ordering)
 
-Progress: [█████-----] 50% (1/2 plans in Phase 8)
+Progress: [██████████] 100% (2/2 plans in Phase 8)
 
 ## Performance Metrics
 
@@ -38,8 +38,8 @@ Progress: [█████-----] 50% (1/2 plans in Phase 8)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 4
-- Plans remaining: 1 (Phase 8 in progress)
+- Plans completed: 5
+- Plans remaining: 0 (Phase 8 complete)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -47,6 +47,7 @@ Progress: [█████-----] 50% (1/2 plans in Phase 8)
 | 07    | 02   | 4min     | 2     | 6     |
 | 07    | 03   | 7min     | 2     | 7     |
 | 08    | 01   | 3min     | 2     | 11    |
+| 08    | 02   | 3min     | 2     | 3     |
 
 *Updated after each plan completion*
 
@@ -80,6 +81,9 @@ v1.1 decisions:
 - 08-01: OPA pinned to v1.4.2 via Dockerfile ARG for reproducible builds
 - 08-01: No HEALTHCHECK in Rust Dockerfiles (TLS proxy/gRPC); health checks at compose level only
 - 08-01: cmake installed in kernel builder stage for aws-lc-rs compilation
+- 08-02: Removed env_file from kernel service -- explicit environment block prevents unexpected variable leaking
+- 08-02: Rust 2024 edition requires unsafe blocks for env var mutation in tests; run with --test-threads=1
+- 08-02: Dashboard exposed on port 8080 for dev convenience; minio-init uses $$ shell escaping for runtime vars
 
 ### Research Flags
 
@@ -94,11 +98,11 @@ None yet.
 
 ### Blockers/Concerns
 
-None -- Phase 8 in progress.
+None -- Phase 8 complete.
 
 ## Session Continuity
 
-**Last session:** 2026-03-02T01:02:00.000Z
-**Stopped at:** Completed 08-01-PLAN.md
-**Resume file:** .planning/phases/08-container-images-docker-compose/08-01-SUMMARY.md
-**Next action:** Execute 08-02 (Docker Compose, volumes, health checks)
+**Last session:** 2026-03-02T01:08:00.000Z
+**Stopped at:** Completed 08-02-PLAN.md
+**Resume file:** .planning/phases/08-container-images-docker-compose/08-02-SUMMARY.md
+**Next action:** Phase 8 complete. Next: Phase 9 (Dashboard) or Phase 10 (Advanced Auth)
