@@ -63,11 +63,11 @@ Plans:
   1. All four service images (kernel, control plane API, dashboard, evidence collector) build successfully via multi-stage Dockerfiles and are published to a container registry
   2. Running `docker compose up` on a fresh machine brings up the entire stack with health checks passing for all services
   3. An `env.example` file documents every configuration variable, serving as the single source of truth shared between Docker Compose and future Helm deployment
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
+- [ ] 08-01-PLAN.md -- Multi-stage Dockerfiles, entrypoint scripts, TOML template, env.example, .dockerignore (Wave 1)
+- [ ] 08-02-PLAN.md -- Evidence collector env var config, Docker Compose orchestration (Wave 2)
 
 ### Phase 9: Dashboard Core Views
 **Goal**: Compliance officer can manage policies, review audit trails, and generate reports through a visual dashboard
@@ -148,7 +148,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 6. Policy Distribution & Kernel Integration | v1.0 | 4/4 | Complete | 2026-03-01 |
 | 6.1 Kernel Integration Wiring | v1.0 | 1/1 | Complete | 2026-03-01 |
 | 7. Identity Foundation | v1.1 | Complete    | 2026-03-01 | - |
-| 8. Container Images & Docker Compose | v1.1 | 0/? | Not started | - |
+| 8. Container Images & Docker Compose | v1.1 | 0/2 | Planned | - |
 | 9. Dashboard Core Views | v1.1 | 0/? | Not started | - |
 | 10. SAML SSO & Security Hardening | v1.1 | 0/? | Not started | - |
 | 11. Advanced Dashboard Views | v1.1 | 0/? | Not started | - |
@@ -156,4 +156,4 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-02 after Phase 7 Plan 02 completion*
+*Last updated: 2026-03-02 after Phase 8 planning*
