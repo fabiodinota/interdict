@@ -1,0 +1,36 @@
+# Build artifacts
+target/
+node_modules/
+dist/
+.bun/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Development / planning files
+.claude/
+.planning/
+.git/
+
+# Environment / secrets (never send to Docker daemon)
+.env
+.env.*
+!env.example
+*.key
+*.pem
+*.crt
+*.p12
+credentials.json
+
+# Runtime data
+data/
+logs/
+coverage/
+
+# Existing local config (containers use templates)
+interdict.toml
+ca.crt
+ca.key
