@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
         .json()
         .init();
 
-    let cfg = CollectorConfig::default();
+    let cfg = CollectorConfig::from_env();
 
     info!(
         grpc_listen_addr = %cfg.grpc_listen_addr,

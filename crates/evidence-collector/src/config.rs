@@ -38,13 +38,77 @@ impl Default for CollectorConfig {
     }
 }
 
+impl CollectorConfig {
+    /// Construct config from environment variables with fallback defaults.
+    ///
+    /// Env vars:
+    /// - `COLLECTOR_GRPC_LISTEN_ADDR` (default: `[::1]:50051`)
+    /// - `CLICKHOUSE_URL` (default: `http://localhost:8123`)
+    /// - `CLICKHOUSE_DATABASE` (default: `interdict`)
+    /// - `COLLECTOR_S3_BUCKET` (default: `""`)
+    /// - `COLLECTOR_S3_REGION` (default: `""`)
+    /// - `COLLECTOR_SIGNING_MODE` (default: `dev`) -- `dev`, `file`, or `kms`
+    /// - `COLLECTOR_SIGNING_KEY_PATH` (default: `/data/keys/signing.key`) -- used when signing_mode=file
+    /// - `COLLECTOR_KMS_KEY_ID` -- required when signing_mode=kms
+    /// - `COLLECTOR_MERKLE_WINDOW_SECS` (default: 3600)
+    /// - `COLLECTOR_MERKLE_MAX_LEAVES` (default: 1000000)
+    /// - `COLLECTOR_FULL_TEXT_STORAGE` (default: false) -- `1`/`true`/`yes`
+    /// - `COLLECTOR_RETENTION_DAYS` (default: 2555)
+    pub fn from_env() -> Self {
+        let signing_mode = match std::env::var("COLLECTOR_SIGNING_MODE")
+            .unwrap_or_else(|_| "dev".to_string())
+            .to_ascii_lowercase()
+            .as_str()
+        {
+            "file" => SigningMode::File(
+                std::env::var("COLLECTOR_SIGNING_KEY_PATH")
+                    .unwrap_or_else(|_| "/data/keys/signing.key".to_string())
+                    .into(),
+            ),
+            "kms" => SigningMode::Kms(
+                std::env::var("COLLECTOR_KMS_KEY_ID")
+                    .expect("COLLECTOR_KMS_KEY_ID required when COLLECTOR_SIGNING_MODE=kms"),
+            ),
+            _ => SigningMode::Dev,
+        };
+
+        Self {
+            grpc_listen_addr: std::env::var("COLLECTOR_GRPC_LISTEN_ADDR")
+                .unwrap_or_else(|_| "[::1]:50051".to_string()),
+            clickhouse_url: std::env::var("CLICKHOUSE_URL")
+                .unwrap_or_else(|_| "http://localhost:8123".to_string()),
+            clickhouse_database: std::env::var("CLICKHOUSE_DATABASE")
+                .unwrap_or_else(|_| "interdict".to_string()),
+            s3_bucket: std::env::var("COLLECTOR_S3_BUCKET").unwrap_or_default(),
+            s3_region: std::env::var("COLLECTOR_S3_REGION").unwrap_or_default(),
+            signing_mode,
+            merkle_window_secs: std::env::var("COLLECTOR_MERKLE_WINDOW_SECS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(3600),
+            merkle_max_leaves: std::env::var("COLLECTOR_MERKLE_MAX_LEAVES")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1_000_000),
+            full_text_storage: std::env::var("COLLECTOR_FULL_TEXT_STORAGE")
+                .map(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+                .unwrap_or(false),
+            retention_days: std::env::var("COLLECTOR_RETENTION_DAYS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(2555),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_from_env_defaults() {
-        // Clear any env vars that might interfere
+    /// SAFETY: These tests mutate environment variables and must run with
+    /// `--test-threads=1` to avoid data races between tests.
+
+    unsafe fn clear_collector_env() {
         std::env::remove_var("COLLECTOR_GRPC_LISTEN_ADDR");
         std::env::remove_var("CLICKHOUSE_URL");
         std::env::remove_var("CLICKHOUSE_DATABASE");
@@ -52,10 +116,17 @@ mod tests {
         std::env::remove_var("COLLECTOR_S3_REGION");
         std::env::remove_var("COLLECTOR_SIGNING_MODE");
         std::env::remove_var("COLLECTOR_SIGNING_KEY_PATH");
+        std::env::remove_var("COLLECTOR_KMS_KEY_ID");
         std::env::remove_var("COLLECTOR_MERKLE_WINDOW_SECS");
         std::env::remove_var("COLLECTOR_MERKLE_MAX_LEAVES");
         std::env::remove_var("COLLECTOR_FULL_TEXT_STORAGE");
         std::env::remove_var("COLLECTOR_RETENTION_DAYS");
+    }
+
+    #[test]
+    fn test_from_env_defaults() {
+        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        unsafe { clear_collector_env() };
 
         let cfg = CollectorConfig::from_env();
         assert_eq!(cfg.grpc_listen_addr, "[::1]:50051");
@@ -72,15 +143,19 @@ mod tests {
 
     #[test]
     fn test_from_env_overrides() {
-        std::env::set_var("COLLECTOR_GRPC_LISTEN_ADDR", "[::]:50051");
-        std::env::set_var("CLICKHOUSE_URL", "http://clickhouse:8123");
-        std::env::set_var("CLICKHOUSE_DATABASE", "mydb");
-        std::env::set_var("COLLECTOR_S3_BUCKET", "my-bucket");
-        std::env::set_var("COLLECTOR_S3_REGION", "eu-west-1");
-        std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", "true");
-        std::env::set_var("COLLECTOR_RETENTION_DAYS", "365");
-        std::env::set_var("COLLECTOR_MERKLE_WINDOW_SECS", "1800");
-        std::env::set_var("COLLECTOR_MERKLE_MAX_LEAVES", "500000");
+        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        unsafe {
+            clear_collector_env();
+            std::env::set_var("COLLECTOR_GRPC_LISTEN_ADDR", "[::]:50051");
+            std::env::set_var("CLICKHOUSE_URL", "http://clickhouse:8123");
+            std::env::set_var("CLICKHOUSE_DATABASE", "mydb");
+            std::env::set_var("COLLECTOR_S3_BUCKET", "my-bucket");
+            std::env::set_var("COLLECTOR_S3_REGION", "eu-west-1");
+            std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", "true");
+            std::env::set_var("COLLECTOR_RETENTION_DAYS", "365");
+            std::env::set_var("COLLECTOR_MERKLE_WINDOW_SECS", "1800");
+            std::env::set_var("COLLECTOR_MERKLE_MAX_LEAVES", "500000");
+        }
 
         let cfg = CollectorConfig::from_env();
         assert_eq!(cfg.grpc_listen_addr, "[::]:50051");
@@ -93,22 +168,18 @@ mod tests {
         assert_eq!(cfg.merkle_window_secs, 1800);
         assert_eq!(cfg.merkle_max_leaves, 500_000);
 
-        // Clean up
-        std::env::remove_var("COLLECTOR_GRPC_LISTEN_ADDR");
-        std::env::remove_var("CLICKHOUSE_URL");
-        std::env::remove_var("CLICKHOUSE_DATABASE");
-        std::env::remove_var("COLLECTOR_S3_BUCKET");
-        std::env::remove_var("COLLECTOR_S3_REGION");
-        std::env::remove_var("COLLECTOR_FULL_TEXT_STORAGE");
-        std::env::remove_var("COLLECTOR_RETENTION_DAYS");
-        std::env::remove_var("COLLECTOR_MERKLE_WINDOW_SECS");
-        std::env::remove_var("COLLECTOR_MERKLE_MAX_LEAVES");
+        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        unsafe { clear_collector_env() };
     }
 
     #[test]
     fn test_from_env_signing_mode_file() {
-        std::env::set_var("COLLECTOR_SIGNING_MODE", "file");
-        std::env::set_var("COLLECTOR_SIGNING_KEY_PATH", "/custom/key.pem");
+        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        unsafe {
+            clear_collector_env();
+            std::env::set_var("COLLECTOR_SIGNING_MODE", "file");
+            std::env::set_var("COLLECTOR_SIGNING_KEY_PATH", "/custom/key.pem");
+        }
 
         let cfg = CollectorConfig::from_env();
         match &cfg.signing_mode {
@@ -116,15 +187,17 @@ mod tests {
             other => panic!("expected SigningMode::File, got {:?}", other),
         }
 
-        // Clean up
-        std::env::remove_var("COLLECTOR_SIGNING_MODE");
-        std::env::remove_var("COLLECTOR_SIGNING_KEY_PATH");
+        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        unsafe { clear_collector_env() };
     }
 
     #[test]
     fn test_from_env_signing_mode_file_default_path() {
-        std::env::set_var("COLLECTOR_SIGNING_MODE", "file");
-        std::env::remove_var("COLLECTOR_SIGNING_KEY_PATH");
+        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        unsafe {
+            clear_collector_env();
+            std::env::set_var("COLLECTOR_SIGNING_MODE", "file");
+        }
 
         let cfg = CollectorConfig::from_env();
         match &cfg.signing_mode {
@@ -134,24 +207,29 @@ mod tests {
             other => panic!("expected SigningMode::File, got {:?}", other),
         }
 
-        // Clean up
-        std::env::remove_var("COLLECTOR_SIGNING_MODE");
+        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        unsafe { clear_collector_env() };
     }
 
     #[test]
     fn test_from_env_full_text_storage_variants() {
+        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        unsafe { clear_collector_env() };
+
         for val in &["1", "true", "yes", "TRUE", "Yes", "YES"] {
-            std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", val);
+            // SAFETY: test-threads=1 prevents concurrent env mutation.
+            unsafe { std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", val) };
             let cfg = CollectorConfig::from_env();
             assert!(cfg.full_text_storage, "expected true for '{}'", val);
         }
         for val in &["0", "false", "no", "anything"] {
-            std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", val);
+            // SAFETY: test-threads=1 prevents concurrent env mutation.
+            unsafe { std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", val) };
             let cfg = CollectorConfig::from_env();
             assert!(!cfg.full_text_storage, "expected false for '{}'", val);
         }
 
-        // Clean up
-        std::env::remove_var("COLLECTOR_FULL_TEXT_STORAGE");
+        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        unsafe { clear_collector_env() };
     }
 }
