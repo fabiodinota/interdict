@@ -1,0 +1,183 @@
+# Interdict AI Governance Platform - Docker Compose
+# Usage: cp env.example .env && docker compose up
+#
+# Exposes:
+#   - Kernel proxy: https://localhost:8443
+#   - Control plane API: http://localhost:3000
+#   - Dashboard: http://localhost:8080
+
+services:
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-interdict}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interdict}
+      POSTGRES_DB: ${POSTGRES_DB:-interdict}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-interdict} -d ${POSTGRES_DB:-interdict}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.1
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-interdict}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-interdict-minio-secret}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # One-shot init container to create the evidence bucket in MinIO
+  minio-init:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-interdict} $${MINIO_ROOT_PASSWORD:-interdict-minio-secret} &&
+      mc mb --ignore-existing local/interdict-evidence &&
+      echo 'Bucket interdict-evidence ready'
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-interdict}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-interdict-minio-secret}
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Interdict Services
+  # ---------------------------------------------------------------------------
+
+  control-plane:
+    build:
+      context: .
+      dockerfile: docker/control-plane/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://interdict:interdict@postgres:5432/interdict}
+      CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-interdict}
+      PORT: ${PORT:-3000}
+      WASM_STORAGE_DIR: ${WASM_STORAGE_DIR:-./data/wasm}
+      OPA_BINARY_PATH: ${OPA_BINARY_PATH:-opa}
+      INTERDICT_GRPC_PORT: ${INTERDICT_GRPC_PORT:-50052}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  evidence-collector:
+    build:
+      context: .
+      dockerfile: docker/evidence-collector/Dockerfile
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      COLLECTOR_GRPC_LISTEN_ADDR: ${COLLECTOR_GRPC_LISTEN_ADDR:-[::]:50051}
+      CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-interdict}
+      COLLECTOR_S3_BUCKET: ${COLLECTOR_S3_BUCKET:-interdict-evidence}
+      COLLECTOR_S3_REGION: ${COLLECTOR_S3_REGION:-us-east-1}
+      COLLECTOR_SIGNING_MODE: ${COLLECTOR_SIGNING_MODE:-dev}
+      COLLECTOR_SIGNING_KEY_PATH: ${COLLECTOR_SIGNING_KEY_PATH:-/data/keys/signing.key}
+      COLLECTOR_MERKLE_WINDOW_SECS: ${COLLECTOR_MERKLE_WINDOW_SECS:-3600}
+      COLLECTOR_MERKLE_MAX_LEAVES: ${COLLECTOR_MERKLE_MAX_LEAVES:-1000000}
+      COLLECTOR_FULL_TEXT_STORAGE: ${COLLECTOR_FULL_TEXT_STORAGE:-false}
+      COLLECTOR_RETENTION_DAYS: ${COLLECTOR_RETENTION_DAYS:-2555}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://minio:9000}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-interdict}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-interdict-minio-secret}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      RUST_LOG: ${RUST_LOG:-info}
+    volumes:
+      - signing_keys:/data/keys
+    restart: unless-stopped
+
+  kernel:
+    build:
+      context: .
+      dockerfile: docker/kernel/Dockerfile
+    depends_on:
+      control-plane:
+        condition: service_healthy
+    environment:
+      KERNEL_LISTEN_ADDR: ${KERNEL_LISTEN_ADDR:-0.0.0.0:8443}
+      KERNEL_CA_CERT_PATH: ${KERNEL_CA_CERT_PATH:-/data/certs/ca.crt}
+      KERNEL_CA_KEY_PATH: ${KERNEL_CA_KEY_PATH:-/data/certs/ca.key}
+      KERNEL_DISTRIBUTION_ADDR: ${KERNEL_DISTRIBUTION_ADDR:-http://control-plane:50052}
+      KERNEL_EVIDENCE_COLLECTOR_ADDR: ${KERNEL_EVIDENCE_COLLECTOR_ADDR:-http://evidence-collector:50051}
+      KERNEL_ORG_ID: ${KERNEL_ORG_ID:-default}
+      KERNEL_LOG_LEVEL: ${KERNEL_LOG_LEVEL:-info}
+      KERNEL_LOG_FORMAT: ${KERNEL_LOG_FORMAT:-json}
+      KERNEL_ALLOWLIST_VENDORS: ${KERNEL_ALLOWLIST_VENDORS:-["api.openai.com","api.anthropic.com"]}
+      KERNEL_FORCE_TEMPLATE: ${KERNEL_FORCE_TEMPLATE:-false}
+      RUST_LOG: ${RUST_LOG:-info}
+    ports:
+      - "8443:8443"
+    volumes:
+      - ca_certs:/data/certs
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard/Dockerfile
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+# ---------------------------------------------------------------------------
+# Volumes
+# ---------------------------------------------------------------------------
+
+volumes:
+  postgres_data:
+    driver: local
+  clickhouse_data:
+    driver: local
+  minio_data:
+    driver: local
+  ca_certs:
+    driver: local
+  signing_keys:
+    driver: local
