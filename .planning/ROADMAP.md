@@ -7,7 +7,7 @@ Interdict.io v1.1 (Pilot Ready) converts the working v1.0 data plane and control
 ## Milestones
 
 - ✅ **v1.0 MVP** -- Phases 1-6.1 (shipped 2026-03-01)
-- 🚧 **v1.1 Pilot Ready** -- Phases 7-12 (in progress)
+- 🚧 **v1.1 Pilot Ready** -- Phases 7-13 (in progress)
 
 ## Phases
 
@@ -144,10 +144,11 @@ Plans:
   1. Operator can enable SAML SSO by setting documented env vars and providing IdP metadata -- without researching source code
   2. After admin key rotation, evidence-collector picks up the new signing key via shared volume without pod restart (Docker Compose and Helm)
   3. MODULES startup logging array includes all Phase 11 modules (cosmetic fix)
-**Plans**: TBD (to be created by `/gsd:plan-phase 13`)
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD
+- [ ] 13-01-PLAN.md -- Docker Compose SAML + key rotation wiring, env.example, cert-init, MODULES fix (Wave 1)
+- [ ] 13-02-PLAN.md -- Helm chart SAML + key rotation wiring, signing-keys PVC, cert-script extension (Wave 1)
 
 ## Progress
 
@@ -169,8 +170,8 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13
 | 10. SAML SSO & Security Hardening | 3/3 | Complete    | 2026-03-03 | - |
 | 11. Advanced Dashboard Views | 4/4 | Complete    | 2026-03-03 | - |
 | 12. Kubernetes Deployment | 3/3 | Complete    | 2026-03-03 | - |
-| 13. Deployment Wiring for SAML & Key Rotation | v1.1 | 0/TBD | Pending | - |
+| 13. Deployment Wiring for SAML & Key Rotation | v1.1 | 0/2 | Pending | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-03 after gap closure phases added*
+*Last updated: 2026-03-03 after Phase 13 planning*
