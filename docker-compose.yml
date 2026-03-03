@@ -73,6 +73,21 @@ services:
     restart: "no"
 
   # ---------------------------------------------------------------------------
+  # mTLS Certificate Bootstrap
+  # ---------------------------------------------------------------------------
+
+  cert-init:
+    image: alpine:latest
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - "apk add --no-cache openssl && sh /scripts/generate-internal-ca.sh"
+    volumes:
+      - ./docker/certs/generate-internal-ca.sh:/scripts/generate-internal-ca.sh:ro
+      - certs:/certs
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
   # Interdict Services
   # ---------------------------------------------------------------------------
 
@@ -85,6 +100,8 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
+      cert-init:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://interdict:interdict@postgres:5432/interdict}
       CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
@@ -93,8 +110,14 @@ services:
       WASM_STORAGE_DIR: ${WASM_STORAGE_DIR:-./data/wasm}
       OPA_BINARY_PATH: ${OPA_BINARY_PATH:-opa}
       INTERDICT_GRPC_PORT: ${INTERDICT_GRPC_PORT:-50052}
+      MTLS_ENABLED: ${MTLS_ENABLED:-true}
+      MTLS_CA_CERT_PATH: ${MTLS_CA_CERT_PATH:-/certs/internal-ca.pem}
+      MTLS_CERT_PATH: ${MTLS_CERT_PATH:-/certs/control-plane.pem}
+      MTLS_KEY_PATH: ${MTLS_KEY_PATH:-/certs/control-plane-key.pem}
     ports:
       - "3000:3000"
+    volumes:
+      - certs:/certs:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
@@ -112,6 +135,8 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      cert-init:
+        condition: service_completed_successfully
     environment:
       COLLECTOR_GRPC_LISTEN_ADDR: ${COLLECTOR_GRPC_LISTEN_ADDR:-[::]:50051}
       CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
@@ -128,9 +153,14 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-interdict}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-interdict-minio-secret}
       AWS_REGION: ${AWS_REGION:-us-east-1}
+      MTLS_ENABLED: ${MTLS_ENABLED:-true}
+      MTLS_CA_CERT_PATH: ${MTLS_CA_CERT_PATH:-/certs/internal-ca.pem}
+      MTLS_CERT_PATH: ${MTLS_CERT_PATH:-/certs/evidence-collector.pem}
+      MTLS_KEY_PATH: ${MTLS_KEY_PATH:-/certs/evidence-collector-key.pem}
       RUST_LOG: ${RUST_LOG:-info}
     volumes:
       - signing_keys:/data/keys
+      - certs:/certs:ro
     restart: unless-stopped
 
   kernel:
@@ -140,12 +170,17 @@ services:
     depends_on:
       control-plane:
         condition: service_healthy
+      cert-init:
+        condition: service_completed_successfully
     environment:
       KERNEL_LISTEN_ADDR: ${KERNEL_LISTEN_ADDR:-0.0.0.0:8443}
       KERNEL_CA_CERT_PATH: ${KERNEL_CA_CERT_PATH:-/data/certs/ca.crt}
       KERNEL_CA_KEY_PATH: ${KERNEL_CA_KEY_PATH:-/data/certs/ca.key}
-      KERNEL_DISTRIBUTION_ADDR: ${KERNEL_DISTRIBUTION_ADDR:-http://control-plane:50052}
-      KERNEL_EVIDENCE_COLLECTOR_ADDR: ${KERNEL_EVIDENCE_COLLECTOR_ADDR:-http://evidence-collector:50051}
+      KERNEL_DISTRIBUTION_ADDR: ${KERNEL_DISTRIBUTION_ADDR:-https://control-plane:50052}
+      KERNEL_EVIDENCE_COLLECTOR_ADDR: ${KERNEL_EVIDENCE_COLLECTOR_ADDR:-https://evidence-collector:50051}
+      KERNEL_MTLS_CA_CERT: ${KERNEL_MTLS_CA_CERT:-/certs/internal-ca.pem}
+      KERNEL_MTLS_CLIENT_CERT: ${KERNEL_MTLS_CLIENT_CERT:-/certs/kernel-client.pem}
+      KERNEL_MTLS_CLIENT_KEY: ${KERNEL_MTLS_CLIENT_KEY:-/certs/kernel-client-key.pem}
       KERNEL_ORG_ID: ${KERNEL_ORG_ID:-default}
       KERNEL_LOG_LEVEL: ${KERNEL_LOG_LEVEL:-info}
       KERNEL_LOG_FORMAT: ${KERNEL_LOG_FORMAT:-json}
@@ -156,6 +191,7 @@ services:
       - "8443:8443"
     volumes:
       - ca_certs:/data/certs
+      - certs:/certs:ro
     restart: unless-stopped
 
   dashboard:
@@ -186,4 +222,6 @@ volumes:
   ca_certs:
     driver: local
   signing_keys:
+    driver: local
+  certs:
     driver: local

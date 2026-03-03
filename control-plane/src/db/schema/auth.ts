@@ -81,6 +81,35 @@ export const userDepartments = pgTable(
  * Configurable per-role permission grants.
  * Defaults loaded from seed; enterprise customers can customize via API.
  */
+// ---------------------------------------------------------------------------
+// Signing Keys (Ed25519 Key Rotation Registry)
+// ---------------------------------------------------------------------------
+
+/**
+ * Registry of Ed25519 signing keys used by the evidence collector.
+ * Only one key is active at a time; retired keys are kept for verification
+ * of previously signed evidence bundles.
+ */
+export const signingKeys = pgTable(
+  "signing_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    keyId: varchar("key_id", { length: 64 }).notNull().unique(), // SHA-256(pubkey)[:16] hex
+    publicKeyHex: varchar("public_key_hex", { length: 128 }).notNull(), // Full Ed25519 public key hex
+    isActive: boolean("is_active").notNull().default(false), // Only ONE active at a time
+    activatedAt: timestamp("activated_at"),
+    retiredAt: timestamp("retired_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("signing_keys_active_idx").on(table.isActive),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Role Permissions
+// ---------------------------------------------------------------------------
+
 export const rolePermissions = pgTable(
   "role_permissions",
   {

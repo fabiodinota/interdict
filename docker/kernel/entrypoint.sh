@@ -36,14 +36,19 @@ set -e
 # -- Policy --
 : "${KERNEL_REVIEW_DB_PATH:=/data/review_queue.db}"
 : "${KERNEL_POLICIES_DIR:=/app/policies/}"
-: "${KERNEL_DISTRIBUTION_ADDR:=http://control-plane:50052}"
+: "${KERNEL_DISTRIBUTION_ADDR:=https://control-plane:50052}"
 : "${KERNEL_ORG_ID:=default}"
 
 # -- Template control --
 : "${KERNEL_FORCE_TEMPLATE:=false}"
 
 # -- Evidence collector --
-: "${KERNEL_EVIDENCE_COLLECTOR_ADDR:=http://evidence-collector:50051}"
+: "${KERNEL_EVIDENCE_COLLECTOR_ADDR:=https://evidence-collector:50051}"
+
+# -- mTLS client certificates (for gRPC channels to evidence collector and control plane) --
+: "${KERNEL_MTLS_CA_CERT:=/certs/internal-ca.pem}"
+: "${KERNEL_MTLS_CLIENT_CERT:=/certs/kernel-client.pem}"
+: "${KERNEL_MTLS_CLIENT_KEY:=/certs/kernel-client-key.pem}"
 
 # Generate interdict.toml from template if not mounted by user
 if [ ! -f /app/interdict.toml ] || [ "${KERNEL_FORCE_TEMPLATE}" = "true" ]; then
