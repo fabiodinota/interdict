@@ -9,7 +9,7 @@ use tonic::{Request, Response, Status, Streaming};
 
 use crate::chain::{hasher::ChainManager, signer};
 use crate::merkle::builder::HourlyMerkleBuilder;
-use crate::signing::SigningProvider;
+use crate::signing::RotatingSigningProvider;
 use crate::storage::clickhouse::{ClickHouseWriter, EvidenceRow};
 
 use super::proto::{
@@ -18,7 +18,7 @@ use super::proto::{
 
 pub struct EvidenceCollectorService {
     chain_manager: Arc<Mutex<ChainManager>>,
-    signing_provider: Arc<dyn SigningProvider>,
+    signing_provider: Arc<RotatingSigningProvider>,
     clickhouse_writer: Arc<ClickHouseWriter>,
     merkle_builder: Arc<Mutex<HourlyMerkleBuilder>>,
     merkle_overflow_tx: Option<mpsc::Sender<()>>,
@@ -27,7 +27,7 @@ pub struct EvidenceCollectorService {
 impl EvidenceCollectorService {
     pub fn new(
         chain_manager: Arc<Mutex<ChainManager>>,
-        signing_provider: Arc<dyn SigningProvider>,
+        signing_provider: Arc<RotatingSigningProvider>,
         clickhouse_writer: Arc<ClickHouseWriter>,
         merkle_builder: Arc<Mutex<HourlyMerkleBuilder>>,
         merkle_overflow_tx: Option<mpsc::Sender<()>>,
@@ -50,7 +50,8 @@ impl EvidenceCollectorService {
             .await
             .link(kernel_id, &bundle_bytes);
 
-        let signed = signer::sign_bundle(self.signing_provider.as_ref(), &bundle_bytes).await?;
+        let current_signer = self.signing_provider.current();
+        let signed = signer::sign_bundle(&**current_signer, &bundle_bytes).await?;
 
         bundle.chain_hash = chain_hash.to_vec();
         bundle.previous_hash = previous_hash.to_vec();

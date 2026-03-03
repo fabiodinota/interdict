@@ -7,7 +7,9 @@ use evidence_collector::config::{CollectorConfig, SigningMode};
 use evidence_collector::grpc::proto::evidence_collector_server::EvidenceCollectorServer;
 use evidence_collector::grpc::service::EvidenceCollectorService;
 use evidence_collector::merkle::builder::{self, HourlyMerkleBuilder};
-use evidence_collector::signing::{KmsSigningProvider, LocalSigningProvider, SigningProvider};
+use evidence_collector::signing::{
+    KmsSigningProvider, LocalSigningProvider, RotatingSigningProvider, SigningProvider,
+};
 use evidence_collector::storage::clickhouse::ClickHouseWriter;
 use evidence_collector::storage::s3::S3Anchor;
 use tokio::sync::{Mutex, mpsc};
@@ -34,8 +36,9 @@ async fn main() -> Result<()> {
         "interdict-collector starting"
     );
 
-    // Initialize signing provider based on config.
-    let signing_provider: Arc<dyn SigningProvider> = match &cfg.signing_mode {
+    // Initialize signing provider based on config, wrapped in RotatingSigningProvider
+    // for hot-reload support.
+    let inner_provider: Arc<dyn SigningProvider> = match &cfg.signing_mode {
         SigningMode::Dev => {
             info!("using ephemeral dev signing key (NOT for production)");
             Arc::new(LocalSigningProvider::generate())
@@ -49,6 +52,8 @@ async fn main() -> Result<()> {
             Arc::new(KmsSigningProvider::new(key_id.clone()).await?)
         }
     };
+
+    let signing_provider = Arc::new(RotatingSigningProvider::new(inner_provider));
 
     // Initialize chain manager for per-kernel hash linkage.
     let chain_manager = Arc::new(Mutex::new(ChainManager::new()));
@@ -84,6 +89,17 @@ async fn main() -> Result<()> {
 
     // Cancellation token for graceful shutdown.
     let cancel = CancellationToken::new();
+
+    // Spawn signing key file watcher if SIGNING_KEY_WATCH_PATH is set.
+    if let Some(watch_path) = &cfg.signing_key_watch_path {
+        let watcher_provider = Arc::clone(&signing_provider);
+        let watcher_path = std::path::PathBuf::from(watch_path);
+        let watcher_cancel = cancel.clone();
+        info!(path = %watch_path, "starting signing key file watcher (30s poll interval)");
+        tokio::spawn(async move {
+            signing_key_watch_task(watcher_provider, watcher_path, watcher_cancel).await;
+        });
+    }
 
     // Spawn Merkle rotation background task.
     let rotation_cancel = cancel.clone();
@@ -164,4 +180,71 @@ async fn main() -> Result<()> {
 
     info!("interdict-collector stopped");
     Ok(())
+}
+
+/// Polls a signing key file for changes and hot-reloads when the file is modified.
+///
+/// Checks the file's modification time every 30 seconds. On change, calls
+/// `RotatingSigningProvider::reload_from_file` to atomically swap the active key.
+/// Stops when the cancellation token is triggered.
+async fn signing_key_watch_task(
+    provider: Arc<RotatingSigningProvider>,
+    key_path: std::path::PathBuf,
+    cancel: CancellationToken,
+) {
+    use std::time::Duration;
+    use tokio::time::interval;
+
+    let mut poll = interval(Duration::from_secs(30));
+    let mut last_mtime: Option<std::time::SystemTime> = None;
+
+    // Record initial mtime if file exists.
+    if let Ok(meta) = std::fs::metadata(&key_path) {
+        last_mtime = meta.modified().ok();
+    }
+
+    loop {
+        tokio::select! {
+            _ = cancel.cancelled() => {
+                info!("signing key watcher stopping (shutdown)");
+                break;
+            }
+            _ = poll.tick() => {
+                match std::fs::metadata(&key_path) {
+                    Ok(meta) => {
+                        let current_mtime = meta.modified().ok();
+                        if current_mtime != last_mtime && last_mtime.is_some() {
+                            info!(
+                                path = %key_path.display(),
+                                "signing key file changed, reloading"
+                            );
+                            match provider.reload_from_file(&key_path) {
+                                Ok(()) => {
+                                    info!(
+                                        new_key_id = %provider.current().key_id(),
+                                        "signing key hot-reloaded successfully"
+                                    );
+                                }
+                                Err(err) => {
+                                    tracing::error!(
+                                        error = %err,
+                                        path = %key_path.display(),
+                                        "failed to reload signing key"
+                                    );
+                                }
+                            }
+                        }
+                        last_mtime = current_mtime;
+                    }
+                    Err(err) => {
+                        tracing::warn!(
+                            error = %err,
+                            path = %key_path.display(),
+                            "signing key watch file not accessible"
+                        );
+                    }
+                }
+            }
+        }
+    }
 }

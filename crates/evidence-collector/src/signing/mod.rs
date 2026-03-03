@@ -1,11 +1,13 @@
 pub mod kms;
 pub mod local;
+pub mod rotation;
 
 use async_trait::async_trait;
 use thiserror::Error;
 
 pub use kms::KmsSigningProvider;
 pub use local::LocalSigningProvider;
+pub use rotation::RotatingSigningProvider;
 
 #[derive(Debug, Error)]
 pub enum SigningError {

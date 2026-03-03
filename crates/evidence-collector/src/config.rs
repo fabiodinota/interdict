@@ -27,6 +27,10 @@ pub struct CollectorConfig {
     pub mtls_cert_path: Option<String>,
     /// Path to the server private key.
     pub mtls_key_path: Option<String>,
+    /// Optional file path to poll for signing key rotation.
+    /// When set, the evidence collector polls this file every 30 seconds
+    /// and hot-reloads the signing key when the file is modified.
+    pub signing_key_watch_path: Option<String>,
 }
 
 impl Default for CollectorConfig {
@@ -46,6 +50,7 @@ impl Default for CollectorConfig {
             mtls_ca_cert_path: None,
             mtls_cert_path: None,
             mtls_key_path: None,
+            signing_key_watch_path: None,
         }
     }
 }
@@ -70,6 +75,7 @@ impl CollectorConfig {
     /// - `MTLS_CA_CERT_PATH` -- CA cert for client verification
     /// - `MTLS_CERT_PATH` -- Server certificate
     /// - `MTLS_KEY_PATH` -- Server private key
+    /// - `SIGNING_KEY_WATCH_PATH` -- Optional file path to poll for signing key hot-reload
     pub fn from_env() -> Self {
         let signing_mode = match std::env::var("COLLECTOR_SIGNING_MODE")
             .unwrap_or_else(|_| "dev".to_string())
@@ -119,6 +125,7 @@ impl CollectorConfig {
             mtls_ca_cert_path: std::env::var("MTLS_CA_CERT_PATH").ok(),
             mtls_cert_path: std::env::var("MTLS_CERT_PATH").ok(),
             mtls_key_path: std::env::var("MTLS_KEY_PATH").ok(),
+            signing_key_watch_path: std::env::var("SIGNING_KEY_WATCH_PATH").ok(),
         }
     }
 }
@@ -143,6 +150,7 @@ mod tests {
         std::env::remove_var("COLLECTOR_MERKLE_MAX_LEAVES");
         std::env::remove_var("COLLECTOR_FULL_TEXT_STORAGE");
         std::env::remove_var("COLLECTOR_RETENTION_DAYS");
+        std::env::remove_var("SIGNING_KEY_WATCH_PATH");
     }
 
     #[test]
