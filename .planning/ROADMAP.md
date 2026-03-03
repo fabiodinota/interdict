@@ -33,7 +33,7 @@ Full details archived in `milestones/v1.0-ROADMAP.md`
 - [x] **Phase 7: Identity Foundation** -- API key auth, 5-role RBAC with route guards and data-level scoping (completed 2026-03-01)
 - [x] **Phase 8: Container Images & Docker Compose** -- Multi-stage Dockerfiles for all services, one-command pilot deployment (completed 2026-03-02)
 - [x] **Phase 9: Dashboard Core Views** -- Next.js dashboard with 6 core compliance officer views (completed 2026-03-03)
-- [x] **Phase 10: SAML SSO & Security Hardening** -- Enterprise SSO, mTLS between all components, evidence signing key rotation (completed 2026-03-03)
+- [x] **Phase 10: SAML SSO & Security Hardening** -- Enterprise SSO, mTLS between all components, evidence signing key rotation (completed 2026-03-03)
 - [ ] **Phase 11: Advanced Dashboard Views** -- Evidence verification, human review queue, department policies, anomaly detection
 - [ ] **Phase 12: Kubernetes Deployment** -- Helm chart, sidecar manifests, CA certificate onboarding
 
@@ -111,12 +111,13 @@ Plans:
   2. Compliance officer can view Layer 3 escalated interactions in the Human Review Queue and approve or reject them with mandatory reasoning, with SLA countdown timers visible
   3. Department Manager can view inherited policies for their department and override specific settings through the Department Policy Management UI
   4. Compliance officer can view anomaly detection alerts showing volume spikes, off-hours usage, vendor switching, and topic drift against statistical baselines
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 11-01: TBD
-- [ ] 11-02: TBD
-- [ ] 11-03: TBD
+- [ ] 11-01-PLAN.md -- Evidence Verification UI and API (Wave 1)
+- [ ] 11-02-PLAN.md -- Human Review Queue with SLA timers (Wave 1)
+- [ ] 11-03-PLAN.md -- Department Policy Management with overrides (Wave 1)
+- [ ] 11-04-PLAN.md -- Anomaly Detection alerts page (Wave 1)
 
 ### Phase 12: Kubernetes Deployment
 **Goal**: Operator can deploy Interdict on Kubernetes via Helm chart or as a sidecar, and onboard client machines to trust the proxy CA
@@ -151,9 +152,9 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 8. Container Images & Docker Compose | v1.1 | 2/2 | Complete | 2026-03-02 |
 | 9. Dashboard Core Views | v1.1 | 5/5 | Complete | 2026-03-03 |
 | 10. SAML SSO & Security Hardening | 3/3 | Complete    | 2026-03-03 | - |
-| 11. Advanced Dashboard Views | v1.1 | 0/? | Not started | - |
+| 11. Advanced Dashboard Views | v1.1 | 0/4 | Not started | - |
 | 12. Kubernetes Deployment | v1.1 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-03 after Phase 10 planning*
+*Last updated: 2026-03-03 after Phase 11 planning*
