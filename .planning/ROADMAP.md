@@ -114,10 +114,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 11-01-PLAN.md -- Evidence Verification UI and API (Wave 1)
-- [ ] 11-02-PLAN.md -- Human Review Queue with SLA timers (Wave 1)
-- [ ] 11-03-PLAN.md -- Department Policy Management with overrides (Wave 1)
-- [ ] 11-04-PLAN.md -- Anomaly Detection alerts page (Wave 1)
+- [x] 11-01-PLAN.md -- Evidence Verification UI and API (Wave 1) -- completed 2026-03-03
+- [x] 11-02-PLAN.md -- Human Review Queue with SLA timers (Wave 2) -- completed 2026-03-03
+- [x] 11-03-PLAN.md -- Department Policy Management with overrides (Wave 2) -- completed 2026-03-03
+- [x] 11-04-PLAN.md -- Anomaly Detection alerts page (Wave 2) -- completed 2026-03-03
 
 ### Phase 12: Kubernetes Deployment
 **Goal**: Operator can deploy Interdict on Kubernetes via Helm chart or as a sidecar, and onboard client machines to trust the proxy CA

@@ -28,7 +28,7 @@ Requirements for Pilot Ready milestone. Each maps to roadmap phases.
 ### Dashboard -- Advanced Views
 
 - [x] **DASH-07**: Auditor can independently verify evidence bundle hash chain integrity, Ed25519 signatures, and Merkle proofs through an Evidence Verification UI
-- [ ] **DASH-08**: Compliance officer can review, approve, or reject Layer 3 escalated AI interactions through a Human Review Queue with configurable SLA timers
+- [x] **DASH-08**: Compliance officer can review, approve, or reject Layer 3 escalated AI interactions through a Human Review Queue with configurable SLA timers
 - [x] **DASH-09**: Department Manager can view and override inherited policies for their department through a Department Policy Management UI
 - [x] **DASH-10**: Compliance officer can view anomaly detection alerts (volume spikes, off-hours usage, vendor switching, topic drift) based on statistical baselines
 
@@ -95,7 +95,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-05 | Phase 9 | Complete |
 | DASH-06 | Phase 9 | Complete |
 | DASH-07 | Phase 11 | Complete |
-| DASH-08 | Phase 11 | Pending |
+| DASH-08 | Phase 11 | Complete |
 | DASH-09 | Phase 11 | Complete |
 | DASH-10 | Phase 11 | Complete |
 | DEPLOY-01 | Phase 8 | Complete |
