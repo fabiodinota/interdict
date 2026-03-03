@@ -1,0 +1,64 @@
+{{- if and .Values.minio.enabled .Values.minioInit.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "interdict.fullname" . }}-minio-init
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio-init
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        {{- include "interdict.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: minio-init
+    spec:
+      restartPolicy: Never
+      {{- include "interdict.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: minio-init
+          image: {{ include "interdict.image" (dict "service" .Values.minioInit "global" .Values.global "chart" .Chart) }}
+          imagePullPolicy: {{ .Values.minioInit.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for MinIO to be ready..."
+              until mc alias set local http://{{ .Release.Name }}-minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} 2>/dev/null; do
+                echo "MinIO not ready, retrying in 5s..."
+                sleep 5
+              done
+              mc mb --ignore-existing local/{{ .Values.minioInit.bucketName }}
+              echo "Bucket {{ .Values.minioInit.bucketName }} ready"
+          env:
+            - name: MINIO_ROOT_USER
+              {{- if .Values.minio.auth.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.auth.existingSecret }}
+                  key: root-user
+              {{- else }}
+              value: {{ .Values.minio.auth.rootUser | quote }}
+              {{- end }}
+            - name: MINIO_ROOT_PASSWORD
+              {{- if .Values.minio.auth.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.auth.existingSecret }}
+                  key: root-password
+              {{- else }}
+              value: {{ .Values.minio.auth.rootPassword | quote }}
+              {{- end }}
+          resources:
+            {{- toYaml .Values.minioInit.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+{{- end }}

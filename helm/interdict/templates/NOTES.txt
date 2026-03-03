@@ -1,0 +1,32 @@
+Interdict AI Governance Platform has been deployed!
+
+1. Control Plane API:
+   kubectl port-forward svc/{{ include "interdict.fullname" . }}-control-plane 3000:3000
+   Then visit: http://localhost:3000/health
+
+2. Dashboard:
+{{- if .Values.dashboard.ingress.enabled }}
+   Visit the configured ingress host:
+   {{- range .Values.dashboard.ingress.hosts }}
+   http{{ if $.Values.dashboard.ingress.tls }}s{{ end }}://{{ .host }}
+   {{- end }}
+{{- else }}
+   kubectl port-forward svc/{{ include "interdict.fullname" . }}-dashboard 8080:3001
+   Then visit: http://localhost:8080
+{{- end }}
+
+3. Kernel Proxy:
+   kubectl port-forward svc/{{ include "interdict.fullname" . }}-kernel 8443:8443
+   Then configure AI clients to use: https://localhost:8443
+
+4. Export CA Certificate (for client trust):
+{{- if .Values.certInit.enabled }}
+   kubectl cp $(kubectl get pod -l job-name={{ include "interdict.fullname" . }}-cert-init -o jsonpath='{.items[0].metadata.name}'):/certs/internal-ca.pem ./interdict-ca.pem
+   Or from the PVC:
+   kubectl run --rm -it cert-export --image=alpine --restart=Never -- cat /certs/internal-ca.pem
+{{- else }}
+   The CA certificate was provided externally. Retrieve it from your certificate management system.
+{{- end }}
+
+5. Verify all pods are running:
+   kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}

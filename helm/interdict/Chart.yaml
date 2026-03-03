@@ -1,0 +1,34 @@
+apiVersion: v2
+name: interdict
+description: Interdict AI Governance Platform - Policy enforcement, evidence collection, and compliance for AI operations
+type: application
+version: 0.1.0
+appVersion: "1.1.0"
+
+keywords:
+  - ai-governance
+  - policy-enforcement
+  - compliance
+  - evidence-collection
+  - mtls
+
+home: https://github.com/interdict/interdict
+sources:
+  - https://github.com/interdict/interdict
+
+maintainers:
+  - name: Interdict Team
+
+dependencies:
+  - name: postgresql
+    version: "~16.0"
+    repository: oci://registry-1.docker.io/bitnamicharts
+    condition: postgresql.enabled
+  - name: clickhouse
+    version: "~6.0"
+    repository: oci://registry-1.docker.io/bitnamicharts
+    condition: clickhouse.enabled
+  - name: minio
+    version: "~14.0"
+    repository: oci://registry-1.docker.io/bitnamicharts
+    condition: minio.enabled

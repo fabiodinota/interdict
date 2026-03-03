@@ -1,0 +1,292 @@
+# -- Global settings
+global:
+  # -- Override the image registry for all Interdict images
+  imageRegistry: ""
+  # -- List of image pull secret names
+  imagePullSecrets: []
+
+# -- Override chart name
+nameOverride: ""
+# -- Override fully qualified chart name
+fullnameOverride: ""
+
+# -- Service account configuration
+serviceAccount:
+  create: false
+  name: ""
+
+# =============================================================================
+# Kernel (Data Plane Proxy)
+# =============================================================================
+kernel:
+  image:
+    registry: "ghcr.io"
+    repository: "interdict/kernel"
+    tag: ""  # defaults to Chart.appVersion
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  # -- Listen address inside the container
+  listenAddr: "0.0.0.0:8443"
+  # -- Organization ID for policy hierarchy
+  orgId: "default"
+  # -- Log level: debug, info, warn, error
+  logLevel: "info"
+  # -- Log format: json (production) or pretty (development)
+  logFormat: "json"
+  # -- Allowed AI vendor domains (JSON array string)
+  allowlistVendors: '["api.openai.com","api.anthropic.com"]'
+  # -- Force regenerate TOML config from template
+  forceTemplate: "false"
+  # -- CA cert path for dynamic TLS
+  caCertPath: "/data/certs/ca.crt"
+  # -- CA key path for dynamic TLS
+  caKeyPath: "/data/certs/ca.key"
+  # -- Control plane gRPC address
+  distributionAddr: "https://{{ include \"interdict.fullname\" . }}-control-plane:50052"
+  # -- Evidence collector gRPC address
+  evidenceCollectorAddr: "https://{{ include \"interdict.fullname\" . }}-evidence-collector:50051"
+  # -- Upstream connection timeout (ms)
+  connectTimeoutMs: "10000"
+  # -- First byte timeout (ms)
+  firstByteTimeoutMs: "30000"
+  # -- Stream timeout (ms)
+  streamTimeoutMs: "300000"
+  # -- Max request queue before 503
+  maxRequestQueue: "1024"
+  # -- Connection pool max HTTP/2 connections per vendor
+  poolMaxConnections: "4"
+  # -- Connection pool max concurrent streams per connection
+  poolMaxStreams: "100"
+  # -- Connection pool idle timeout (ms)
+  poolIdleTimeout: "60000"
+  # -- RUST_LOG level
+  rustLog: "info"
+  mtls:
+    # -- Enable mTLS for internal gRPC
+    enabled: true
+    caCertPath: "/certs/internal-ca.pem"
+    clientCertPath: "/certs/kernel-client.pem"
+    clientKeyPath: "/certs/kernel-client-key.pem"
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  service:
+    type: ClusterIP
+    port: 8443
+
+# =============================================================================
+# Control Plane (API + Policy Distribution)
+# =============================================================================
+controlPlane:
+  image:
+    registry: "ghcr.io"
+    repository: "interdict/control-plane"
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  # -- HTTP API port
+  port: 3000
+  # -- gRPC distribution port
+  grpcPort: 50052
+  # -- Wasm module storage directory
+  wasmStorageDir: "./data/wasm"
+  # -- OPA binary path
+  opaBinaryPath: "opa"
+  # -- Max gRPC message size (bytes)
+  grpcMaxMessageSize: "16777216"
+  mtls:
+    enabled: true
+    caCertPath: "/certs/internal-ca.pem"
+    certPath: "/certs/control-plane.pem"
+    keyPath: "/certs/control-plane-key.pem"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+  service:
+    type: ClusterIP
+    port: 3000
+    grpcPort: 50052
+
+# =============================================================================
+# Evidence Collector
+# =============================================================================
+evidenceCollector:
+  image:
+    registry: "ghcr.io"
+    repository: "interdict/evidence-collector"
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  # -- gRPC listen address
+  grpcListenAddr: "[::]:50051"
+  # -- gRPC port
+  grpcPort: 50051
+  # -- S3 bucket for evidence
+  s3Bucket: "interdict-evidence"
+  # -- S3 region
+  s3Region: "us-east-1"
+  # -- Signing mode: dev, file, kms
+  signingMode: "dev"
+  # -- Path to Ed25519 signing key (when signingMode=file)
+  signingKeyPath: "/data/keys/signing.key"
+  # -- Merkle tree rotation window (seconds)
+  merkleWindowSecs: "3600"
+  # -- Max leaves per Merkle tree
+  merkleMaxLeaves: "1000000"
+  # -- Store full request/response text (false = hashes only)
+  fullTextStorage: "false"
+  # -- Evidence retention (days, 7 years default)
+  retentionDays: "2555"
+  # -- RUST_LOG level
+  rustLog: "info"
+  # -- S3/MinIO connection (use existingSecret for production)
+  aws:
+    endpointUrl: ""  # set to MinIO service URL if using bundled MinIO
+    accessKeyId: ""
+    secretAccessKey: ""
+    region: "us-east-1"
+    # -- Name of existing Secret containing AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+    existingSecret: ""
+  mtls:
+    enabled: true
+    caCertPath: "/certs/internal-ca.pem"
+    certPath: "/certs/evidence-collector.pem"
+    keyPath: "/certs/evidence-collector-key.pem"
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  service:
+    type: ClusterIP
+    port: 50051
+
+# =============================================================================
+# Dashboard
+# =============================================================================
+dashboard:
+  image:
+    registry: "ghcr.io"
+    repository: "interdict/dashboard"
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  # -- Internal port (Next.js server)
+  port: 3001
+  # -- Node environment
+  nodeEnv: "production"
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  service:
+    type: ClusterIP
+    port: 3001
+  ingress:
+    # -- Enable ingress for external dashboard access
+    enabled: false
+    # -- Ingress class name (e.g., nginx, traefik)
+    className: ""
+    # -- Additional annotations
+    annotations: {}
+    hosts:
+      - host: interdict.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+    #  - secretName: interdict-dashboard-tls
+    #    hosts:
+    #      - interdict.local
+
+# =============================================================================
+# Certificate Bootstrap
+# =============================================================================
+certInit:
+  # -- Enable automatic certificate generation via pre-install hook
+  # Set to false if providing your own certificates via existingSecret
+  enabled: true
+  image:
+    registry: ""
+    repository: "alpine"
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
+
+# -- Name of existing Secret containing TLS certs (when certInit.enabled=false)
+# Secret must contain: internal-ca.pem, control-plane.pem, control-plane-key.pem,
+# evidence-collector.pem, evidence-collector-key.pem, kernel-client.pem, kernel-client-key.pem
+existingTlsSecret: ""
+
+# -- Cert PVC storage size
+certsPvcSize: "10Mi"
+
+# =============================================================================
+# Infrastructure Subcharts
+# =============================================================================
+
+# -- PostgreSQL subchart (Bitnami)
+# @default -- See values below
+postgresql:
+  enabled: true
+  auth:
+    username: interdict
+    password: ""  # Set via --set or existingSecret
+    database: interdict
+    existingSecret: ""
+    secretKeys:
+      userPasswordKey: password
+
+# -- ClickHouse subchart (Bitnami)
+# @default -- See values below
+clickhouse:
+  enabled: true
+
+# -- MinIO subchart (Bitnami)
+# @default -- See values below
+minio:
+  enabled: true
+  auth:
+    rootUser: interdict
+    rootPassword: ""  # Set via --set or existingSecret
+    existingSecret: ""
+
+# =============================================================================
+# MinIO Init Job
+# =============================================================================
+minioInit:
+  # -- Enable MinIO bucket initialization (requires minio.enabled=true)
+  enabled: true
+  image:
+    registry: ""
+    repository: "minio/mc"
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  # -- Bucket name for evidence storage
+  bucketName: "interdict-evidence"
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
