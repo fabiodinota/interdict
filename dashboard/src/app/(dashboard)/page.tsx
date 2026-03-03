@@ -7,6 +7,7 @@ import { TimeRangeSelector, getDateRange } from "@/components/dashboard/TimeRang
 import type { TimeRange } from "@/components/dashboard/TimeRangeSelector";
 import { ViolationChart } from "@/components/dashboard/ViolationChart";
 import { VendorUsageChart } from "@/components/dashboard/VendorUsageChart";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import {
   useHourlyViolations,
   useVendorUsage,
@@ -88,7 +89,8 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Activity Feed will be placed here in Task 2 */}
+      {/* Live Activity Feed (SSE-powered, independent of time range) */}
+      <ActivityFeed />
     </div>
   );
 }
