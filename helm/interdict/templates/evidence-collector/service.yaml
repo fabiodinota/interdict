@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "interdict.fullname" . }}-evidence-collector
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: evidence-collector
+spec:
+  type: {{ .Values.evidenceCollector.service.type }}
+  ports:
+    - name: grpc
+      port: {{ .Values.evidenceCollector.service.port }}
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    {{- include "interdict.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: evidence-collector

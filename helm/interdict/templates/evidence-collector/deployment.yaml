@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "interdict.fullname" . }}-evidence-collector
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: evidence-collector
+spec:
+  replicas: {{ .Values.evidenceCollector.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "interdict.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: evidence-collector
+  template:
+    metadata:
+      labels:
+        {{- include "interdict.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: evidence-collector
+    spec:
+      {{- include "interdict.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: wait-clickhouse
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for ClickHouse..."
+              until wget --spider -q http://{{ .Release.Name }}-clickhouse:8123/ping 2>/dev/null; do
+                echo "ClickHouse not ready, retrying in 3s..."
+                sleep 3
+              done
+              echo "ClickHouse is ready."
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "10m"
+            limits:
+              memory: "32Mi"
+              cpu: "50m"
+      containers:
+        - name: evidence-collector
+          image: {{ include "interdict.image" (dict "service" .Values.evidenceCollector "global" .Values.global "chart" .Chart) }}
+          imagePullPolicy: {{ .Values.evidenceCollector.image.pullPolicy }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.evidenceCollector.grpcPort }}
+              protocol: TCP
+          env:
+            - name: COLLECTOR_GRPC_LISTEN_ADDR
+              value: {{ .Values.evidenceCollector.grpcListenAddr | quote }}
+            - name: CLICKHOUSE_URL
+              value: "http://{{ .Release.Name }}-clickhouse:8123"
+            - name: CLICKHOUSE_DATABASE
+              value: "interdict"
+            - name: COLLECTOR_S3_BUCKET
+              value: {{ .Values.evidenceCollector.s3Bucket | quote }}
+            - name: COLLECTOR_S3_REGION
+              value: {{ .Values.evidenceCollector.s3Region | quote }}
+            - name: COLLECTOR_SIGNING_MODE
+              value: {{ .Values.evidenceCollector.signingMode | quote }}
+            - name: COLLECTOR_SIGNING_KEY_PATH
+              value: {{ .Values.evidenceCollector.signingKeyPath | quote }}
+            - name: COLLECTOR_MERKLE_WINDOW_SECS
+              value: {{ .Values.evidenceCollector.merkleWindowSecs | quote }}
+            - name: COLLECTOR_MERKLE_MAX_LEAVES
+              value: {{ .Values.evidenceCollector.merkleMaxLeaves | quote }}
+            - name: COLLECTOR_FULL_TEXT_STORAGE
+              value: {{ .Values.evidenceCollector.fullTextStorage | quote }}
+            - name: COLLECTOR_RETENTION_DAYS
+              value: {{ .Values.evidenceCollector.retentionDays | quote }}
+            - name: AWS_ENDPOINT_URL
+              {{- if .Values.evidenceCollector.aws.endpointUrl }}
+              value: {{ .Values.evidenceCollector.aws.endpointUrl | quote }}
+              {{- else if .Values.minio.enabled }}
+              value: "http://{{ .Release.Name }}-minio:9000"
+              {{- else }}
+              value: ""
+              {{- end }}
+            - name: AWS_REGION
+              value: {{ .Values.evidenceCollector.aws.region | quote }}
+            {{- if .Values.evidenceCollector.aws.existingSecret }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.evidenceCollector.aws.existingSecret }}
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.evidenceCollector.aws.existingSecret }}
+                  key: secret-access-key
+            {{- else }}
+            - name: AWS_ACCESS_KEY_ID
+              value: {{ .Values.evidenceCollector.aws.accessKeyId | quote }}
+            - name: AWS_SECRET_ACCESS_KEY
+              value: {{ .Values.evidenceCollector.aws.secretAccessKey | quote }}
+            {{- end }}
+            - name: MTLS_ENABLED
+              value: {{ .Values.evidenceCollector.mtls.enabled | quote }}
+            - name: MTLS_CA_CERT_PATH
+              value: {{ .Values.evidenceCollector.mtls.caCertPath | quote }}
+            - name: MTLS_CERT_PATH
+              value: {{ .Values.evidenceCollector.mtls.certPath | quote }}
+            - name: MTLS_KEY_PATH
+              value: {{ .Values.evidenceCollector.mtls.keyPath | quote }}
+            - name: RUST_LOG
+              value: {{ .Values.evidenceCollector.rustLog | quote }}
+          resources:
+            {{- toYaml .Values.evidenceCollector.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+            - name: signing-keys
+              mountPath: /data/keys
+      volumes:
+        - name: certs
+          {{- if .Values.certInit.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "interdict.fullname" . }}-certs
+          {{- else if .Values.existingTlsSecret }}
+          secret:
+            secretName: {{ .Values.existingTlsSecret }}
+          {{- else }}
+          secret:
+            secretName: {{ include "interdict.fullname" . }}-tls
+          {{- end }}
+        - name: signing-keys
+          emptyDir: {}

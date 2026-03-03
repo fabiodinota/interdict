@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "interdict.fullname" . }}-kernel
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kernel
+spec:
+  replicas: {{ .Values.kernel.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "interdict.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: kernel
+  template:
+    metadata:
+      labels:
+        {{- include "interdict.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: kernel
+    spec:
+      {{- include "interdict.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: wait-control-plane
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Control Plane..."
+              until wget --spider -q http://{{ include "interdict.fullname" . }}-control-plane:{{ .Values.controlPlane.port }}/health 2>/dev/null; do
+                echo "Control Plane not ready, retrying in 3s..."
+                sleep 3
+              done
+              echo "Control Plane is ready."
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "10m"
+            limits:
+              memory: "32Mi"
+              cpu: "50m"
+      containers:
+        - name: kernel
+          image: {{ include "interdict.image" (dict "service" .Values.kernel "global" .Values.global "chart" .Chart) }}
+          imagePullPolicy: {{ .Values.kernel.image.pullPolicy }}
+          ports:
+            - name: https
+              containerPort: 8443
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "interdict.fullname" . }}-kernel
+          readinessProbe:
+            tcpSocket:
+              port: https
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: https
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 5
+          resources:
+            {{- toYaml .Values.kernel.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+            - name: ca-certs
+              mountPath: /data/certs
+      volumes:
+        - name: certs
+          {{- if .Values.certInit.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "interdict.fullname" . }}-certs
+          {{- else if .Values.existingTlsSecret }}
+          secret:
+            secretName: {{ .Values.existingTlsSecret }}
+          {{- else }}
+          secret:
+            secretName: {{ include "interdict.fullname" . }}-tls
+          {{- end }}
+        - name: ca-certs
+          emptyDir: {}

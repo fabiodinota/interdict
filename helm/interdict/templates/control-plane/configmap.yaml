@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "interdict.fullname" . }}-control-plane
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+data:
+  DATABASE_URL: "postgres://{{ .Values.postgresql.auth.username }}:$(POSTGRES_PASSWORD)@{{ .Release.Name }}-postgresql:5432/{{ .Values.postgresql.auth.database }}"
+  CLICKHOUSE_URL: "http://{{ .Release.Name }}-clickhouse:8123"
+  CLICKHOUSE_DATABASE: "interdict"
+  PORT: {{ .Values.controlPlane.port | quote }}
+  WASM_STORAGE_DIR: {{ .Values.controlPlane.wasmStorageDir | quote }}
+  OPA_BINARY_PATH: {{ .Values.controlPlane.opaBinaryPath | quote }}
+  INTERDICT_GRPC_PORT: {{ .Values.controlPlane.grpcPort | quote }}
+  INTERDICT_GRPC_MAX_MESSAGE_SIZE: {{ .Values.controlPlane.grpcMaxMessageSize | quote }}
+  MTLS_ENABLED: {{ .Values.controlPlane.mtls.enabled | quote }}
+  MTLS_CA_CERT_PATH: {{ .Values.controlPlane.mtls.caCertPath | quote }}
+  MTLS_CERT_PATH: {{ .Values.controlPlane.mtls.certPath | quote }}
+  MTLS_KEY_PATH: {{ .Values.controlPlane.mtls.keyPath | quote }}
