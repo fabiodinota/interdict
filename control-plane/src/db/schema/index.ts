@@ -27,3 +27,9 @@ export { departments, teams, users } from "./organization";
 
 // Auth (API keys, user-department membership, role permissions)
 export { apiKeys, userDepartments, rolePermissions } from "./auth";
+
+// Reviews (human review queue for Layer 3 escalations)
+export { reviewItems } from "./reviews";
+
+// Department policy overrides
+export { departmentPolicyOverrides } from "./department-overrides";

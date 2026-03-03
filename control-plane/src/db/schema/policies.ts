@@ -36,6 +36,7 @@ export const policies = pgTable("policies", {
   description: text("description"),
   currentVersionId: uuid("current_version_id"), // FK to policy_versions, set after first version created
   isActive: boolean("is_active").notNull().default(true),
+  isMandatory: boolean("is_mandatory").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdBy: uuid("created_by"), // FK to users (enforced in Phase 7)

@@ -20,6 +20,8 @@ import { auditModule } from "./modules/audit";
 import { reportsModule } from "./modules/reports";
 import { signingKeysModule } from "./modules/signing-keys";
 import { evidenceModule } from "./modules/evidence";
+import { departmentOverridesModule } from "./modules/department-overrides";
+import { anomaliesModule } from "./modules/anomalies";
 import {
   startDistributionServer,
   stopDistributionServer,
@@ -96,6 +98,8 @@ const app = new Elysia()
   .use(evidenceModule)
   // Phase 11: Wire reviewsModule, departmentOverridesModule, anomaliesModule here
   // Plans 11-02, 11-03, and 11-04 will add their modules below this comment.
+  .use(departmentOverridesModule)
+  .use(anomaliesModule)
   .listen(config.port);
 
 // Start gRPC distribution server for pushing policy updates to kernels
