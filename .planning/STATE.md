@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: in-progress
-stopped_at: Completed 11-01 (Evidence Verification UI and API)
-last_updated: "2026-03-03T20:40:19Z"
-last_activity: 2026-03-03 -- Completed 11-01 (Evidence Verification UI and API)
+stopped_at: Completed 11-03 (Department Policy Management)
+last_updated: "2026-03-03T20:48:10Z"
+last_activity: 2026-03-03 -- Completed 11-03 (Department Policy Management)
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 ## Current Position
 
 Phase: 11 of 12 (Advanced Dashboard Views)
-Plan: 1 of 4 (11-01 complete)
-Status: Evidence Verification UI and API complete; Plans 02-04 ready for parallel execution
-Last activity: 2026-03-03 -- Completed 11-01 (Evidence Verification UI and API)
+Plan: 3 of 4 (11-01, 11-03 complete; 11-02, 11-04 in parallel)
+Status: Department Policy Management complete; Plans 02/04 may be in parallel
+Last activity: 2026-03-03 -- Completed 11-03 (Department Policy Management)
 
-Progress: [########--] 82% (14/17 plans in v1.1)
+Progress: [########=-] 88% (15/17 plans in v1.1)
 
 ## Performance Metrics
 
@@ -39,8 +39,8 @@ Progress: [########--] 82% (14/17 plans in v1.1)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 14
-- Plans remaining: 3 (Phase 11: 3 plans, Phase 12: TBD)
+- Plans completed: 15
+- Plans remaining: 2 (Phase 11: 2 plans, Phase 12: TBD)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -58,6 +58,7 @@ Progress: [########--] 82% (14/17 plans in v1.1)
 | 10    | 02   | 6min     | 2     | 14    |
 | 10    | 03   | 10min    | 2     | 9     |
 | 11    | 01   | 6min     | 2     | 12    |
+| 11    | 03   | 4min     | 2     | 11    |
 
 *Updated after each plan completion*
 
@@ -131,6 +132,10 @@ v1.1 decisions:
 - 11-01: Merkle proof step returns null/partial -- Merkle roots in S3 only, control plane lacks S3 access
 - 11-01: All Phase 11 types and nav items added in Plan 01 to prevent file conflicts with Plans 02-04
 - 11-01: QuickVerifyButton passes partial bundle data; full crypto fields fetched server-side by verify API
+- 11-03: Super admins and compliance officers bypass department membership check for override management
+- 11-03: Upsert pattern (INSERT ON CONFLICT UPDATE) for department policy override create/update
+- 11-03: Setting mandatory=true auto-deletes existing disable-overrides to enforce policy everywhere
+- 11-03: Optimistic toggle with revert on error for responsive department policy UI
 
 ### Research Flags
 
@@ -149,7 +154,7 @@ None -- Phase 10 complete.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T20:40:19Z
-**Stopped at:** Completed 11-01 (Evidence Verification UI and API)
-**Resume file:** .planning/phases/11-advanced-dashboard-views/11-01-SUMMARY.md
-**Next action:** Execute Plans 11-02, 11-03, 11-04 (parallel eligible)
+**Last session:** 2026-03-03T20:48:10Z
+**Stopped at:** Completed 11-03 (Department Policy Management)
+**Resume file:** .planning/phases/11-advanced-dashboard-views/11-03-SUMMARY.md
+**Next action:** Execute Plans 11-02, 11-04 (parallel eligible)
