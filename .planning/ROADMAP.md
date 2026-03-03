@@ -79,13 +79,13 @@ Plans:
   3. Compliance officer can view real-time violation statistics (by type, department, vendor, time period) on the dashboard home screen with charts that auto-refresh
   4. Compliance officer can approve/block AI vendors and select regulatory jurisdictions, with changes reflected in the kernel's enforcement within seconds
   5. Compliance officer can generate a PDF or CSV compliance report covering a specified date range
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
-- [ ] 09-03: TBD
-- [ ] 09-04: TBD
+- [x] 09-01-PLAN.md -- Dashboard Foundation & Layout (Wave 1) -- completed 2026-03-03
+- [ ] 09-02-PLAN.md -- Dashboard Home Screen & Real-Time Charts (Wave 2)
+- [ ] 09-03-PLAN.md -- Policy Builder & Policy List (Wave 2)
+- [ ] 09-04-PLAN.md -- Audit Trail, Vendor Management, Regulatory Selector & Report Generation (Wave 3)
 
 ### Phase 10: SAML SSO & Security Hardening
 **Goal**: Enterprise users can authenticate via their corporate identity provider, and all internal communication is mutually authenticated and encrypted
@@ -149,11 +149,11 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 6.1 Kernel Integration Wiring | v1.0 | 1/1 | Complete | 2026-03-01 |
 | 7. Identity Foundation | v1.1 | Complete    | 2026-03-01 | - |
 | 8. Container Images & Docker Compose | v1.1 | 0/2 | Planned | - |
-| 9. Dashboard Core Views | v1.1 | 0/? | Not started | - |
+| 9. Dashboard Core Views | v1.1 | 1/4 | In Progress | - |
 | 10. SAML SSO & Security Hardening | v1.1 | 0/? | Not started | - |
 | 11. Advanced Dashboard Views | v1.1 | 0/? | Not started | - |
 | 12. Kubernetes Deployment | v1.1 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-02 after Phase 8 planning*
+*Last updated: 2026-03-03 after 09-01 completion*

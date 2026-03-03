@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
-status: unknown
-stopped_at: Phase 9 context gathered (updated)
-last_updated: "2026-03-03T03:10:55.881Z"
+status: in-progress
+stopped_at: Completed 09-01 (Dashboard Foundation & Layout)
+last_updated: "2026-03-03T04:42:23Z"
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 9
+  completed_plans: 6
 ---
 
 # Project State
@@ -19,16 +19,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** v1.1 Pilot Ready -- Phase 8 COMPLETE, ready for Phase 9
+**Current focus:** v1.1 Pilot Ready -- Phase 9 in progress (Dashboard Core Views)
 
 ## Current Position
 
-Phase: 8 of 12 (Container Images & Docker Compose) -- COMPLETE
-Plan: 2 of 2 (Docker Compose orchestration) -- COMPLETE
-Status: All plans complete
-Last activity: 2026-03-02 -- Completed 08-02 (docker-compose.yml, from_env config, health ordering)
+Phase: 9 of 12 (Dashboard Core Views) -- IN PROGRESS
+Plan: 2 of 4 (next: Dashboard Home Screen & Real-Time Charts)
+Status: Plan 09-01 complete
+Last activity: 2026-03-03 -- Completed 09-01 (Dashboard Foundation & Layout)
 
-Progress: [██████████] 100% (2/2 plans in Phase 8)
+Progress: [###-------] 25% (1/4 plans in Phase 9)
 
 ## Performance Metrics
 
@@ -38,8 +38,8 @@ Progress: [██████████] 100% (2/2 plans in Phase 8)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 5
-- Plans remaining: 0 (Phase 8 complete)
+- Plans completed: 6
+- Plans remaining: 3 (Phase 9: 3 remaining)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -48,6 +48,7 @@ Progress: [██████████] 100% (2/2 plans in Phase 8)
 | 07    | 03   | 7min     | 2     | 7     |
 | 08    | 01   | 3min     | 2     | 11    |
 | 08    | 02   | 3min     | 2     | 3     |
+| 09    | 01   | 7min     | 2     | 56    |
 
 *Updated after each plan completion*
 
@@ -84,6 +85,10 @@ v1.1 decisions:
 - 08-02: Removed env_file from kernel service -- explicit environment block prevents unexpected variable leaking
 - 08-02: Rust 2024 edition requires unsafe blocks for env var mutation in tests; run with --test-threads=1
 - 08-02: Dashboard exposed on port 8080 for dev convenience; minio-init uses $$ shell escaping for runtime vars
+- 09-01: BFF proxy pattern -- all client API calls route through /api/proxy/[...path] which injects Bearer token from httpOnly cookie
+- 09-01: Next.js 15 (not 16) for production reliability; standalone output for Docker
+- 09-01: Dashboard port 3001 internal / 8080 external to avoid conflict with control plane on 3000
+- 09-01: class-variance-authority added as shadcn/ui dependency (required by generated badge component)
 
 ### Research Flags
 
@@ -98,11 +103,11 @@ None yet.
 
 ### Blockers/Concerns
 
-None -- Phase 8 complete.
+None -- Phase 9 in progress.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T03:10:55.878Z
-**Stopped at:** Phase 9 context gathered (updated)
-**Resume file:** .planning/phases/09-dashboard-core-views/09-CONTEXT.md
-**Next action:** Phase 8 complete. Next: Phase 9 (Dashboard) or Phase 10 (Advanced Auth)
+**Last session:** 2026-03-03T04:42:23Z
+**Stopped at:** Completed 09-01 (Dashboard Foundation & Layout)
+**Resume file:** .planning/phases/09-dashboard-core-views/09-01-SUMMARY.md
+**Next action:** Execute 09-02 (Dashboard Home Screen & Real-Time Charts)
