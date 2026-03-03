@@ -36,7 +36,7 @@ Requirements for Pilot Ready milestone. Each maps to roadmap phases.
 
 - [x] **DEPLOY-01**: All services (kernel, control plane API, dashboard, evidence collector) are packaged as container images published to a registry
 - [x] **DEPLOY-02**: Operator can deploy the full Interdict stack on a single server using Docker Compose with one command
-- [ ] **DEPLOY-03**: Operator can deploy the full Interdict stack on Kubernetes using a Helm chart with configurable values
+- [x] **DEPLOY-03**: Operator can deploy the full Interdict stack on Kubernetes using a Helm chart with configurable values
 - [ ] **DEPLOY-04**: Operator can deploy the kernel as a sidecar container alongside AI application pods in Kubernetes
 - [x] **DEPLOY-05**: Operator can onboard client machines to trust the Interdict CA certificate using platform-specific scripts (macOS, Windows, Linux)
 
@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-10 | Phase 11 | Complete |
 | DEPLOY-01 | Phase 8 | Complete |
 | DEPLOY-02 | Phase 8 | Complete |
-| DEPLOY-03 | Phase 12 | Pending |
+| DEPLOY-03 | Phase 12 | Complete |
 | DEPLOY-04 | Phase 12 | Pending |
 | DEPLOY-05 | Phase 12 | Complete |
 

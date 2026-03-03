@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: completed
-stopped_at: Completed 12-03-PLAN.md (CA Trust Scripts)
-last_updated: "2026-03-03T21:33:03.823Z"
-last_activity: 2026-03-03 -- Completed 11-02 (Human Review Queue); Phase 11 complete
+stopped_at: Completed 12-01 (Helm Chart Foundation)
+last_updated: "2026-03-03T21:35:42.862Z"
+last_activity: 2026-03-03 -- Completed 12-01 (Helm Chart Foundation)
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 20
-  completed_plans: 18
-  percent: 100
+  completed_plans: 19
+  percent: 95
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 ## Current Position
 
 Phase: 12 of 12 (Kubernetes Deployment) -- IN PROGRESS
-Plan: 1 of 3 (12-03 complete; 12-01, 12-02 pending)
-Status: Phase 12 plan 03 (CA Trust Scripts) complete
-Last activity: 2026-03-03 -- Completed 12-03 (CA Trust Scripts)
+Plan: 1 of 3 (12-01 complete; 12-02, 12-03 pending)
+Status: Phase 12 plan 01 (Helm Chart Foundation) complete
+Last activity: 2026-03-03 -- Completed 12-01 (Helm Chart Foundation)
 
-Progress: [█████████░] 90% (18/20 plans in v1.1)
+Progress: [██████████] 95% (19/20 plans in v1.1)
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [█████████░] 90% (18/20 plans in v1.1)
 
 *Updated after each plan completion*
 | Phase 12 P03 | 2min | 2 tasks | 2 files |
+| Phase 12 P01 | 3min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,7 @@ v1.1 decisions:
 - 11-04: Severity thresholds: info 1.2-2x, warning 2-5x, critical 5x+; off-hours uses absolute pct difference
 - 11-04: All four anomaly queries run in parallel with per-query catch to prevent cascading failures
 - [Phase 12]: ANSI color codes for script output; PEM validation before trust store modification; subject match for Windows cert removal
+- [Phase 12]: ghcr.io/interdict/ default image registry; PVC for certs (not Secret); existingSecret pattern for passwords; busybox init containers for dependency ordering
 
 ### Research Flags
 
@@ -168,7 +170,7 @@ None -- Phase 10 complete.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T21:33:03.820Z
-**Stopped at:** Completed 12-03-PLAN.md (CA Trust Scripts)
+**Last session:** 2026-03-03T21:35:42.859Z
+**Stopped at:** Completed 12-01 (Helm Chart Foundation)
 **Resume file:** None
 **Next action:** Phase 12 planning and execution (Helm/sidecar/deployment)
