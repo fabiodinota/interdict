@@ -37,7 +37,7 @@ Full details archived in `milestones/v1.0-ROADMAP.md`
 - [x] **Phase 11: Advanced Dashboard Views** -- Evidence verification, human review queue, department policies, anomaly detection (completed 2026-03-03)
 - [x] **Phase 12: Kubernetes Deployment** -- Helm chart, sidecar manifests, CA certificate onboarding (completed 2026-03-03)
 - [x] **Phase 13: Deployment Wiring for SAML & Key Rotation** -- Close audit gaps: SAML deployment activation path, key rotation file delivery, cosmetic MODULES fix (completed 2026-03-03)
-- [ ] **Phase 14: SAML SSO Cross-Origin Cookie Fix** -- Fix ACS cross-origin cookie loss so SAML login completes end-to-end
+- [x] **Phase 14: SAML SSO Cross-Origin Cookie Fix** -- Fix ACS cross-origin cookie loss so SAML login completes end-to-end (completed 2026-03-04)
 - [ ] **Phase 15: Signing Key Management Dashboard UI** -- Add dashboard page and hook for signing key visibility and rotation
 
 ## Phase Details
@@ -164,7 +164,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 14-01-PLAN.md -- Dashboard SAML callback route, ACS redirect fix, login error display (Wave 1)
+- [x] 14-01-PLAN.md -- Dashboard SAML callback route, ACS redirect fix, login error display (Wave 1) -- completed 2026-03-04
 
 ### Phase 15: Signing Key Management Dashboard UI
 **Goal**: Admin can view signing key status and trigger rotation from the dashboard instead of direct API calls
@@ -198,7 +198,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15
 | 11. Advanced Dashboard Views | 4/4 | Complete    | 2026-03-03 | - |
 | 12. Kubernetes Deployment | 3/3 | Complete    | 2026-03-03 | - |
 | 13. Deployment Wiring for SAML & Key Rotation | 2/2 | Complete    | 2026-03-03 | - |
-| 14. SAML SSO Cross-Origin Cookie Fix | v1.1 | 0/1 | Planning | - |
+| 14. SAML SSO Cross-Origin Cookie Fix | v1.1 | 1/1 | Complete | 2026-03-04 |
 | 15. Signing Key Management Dashboard UI | v1.1 | 0/0 | Not Started | - |
 
 ---
