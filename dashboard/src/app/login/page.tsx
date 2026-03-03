@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ShieldCheck, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,11 +16,22 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { isSamlEnabled, getSsoUrl } from "@/lib/auth-client";
 
-export default function LoginPage() {
+const SAML_ERROR_MESSAGES: Record<string, string> = {
+  missing_token: "SSO login failed: authentication response was incomplete. Please try again.",
+  invalid_session: "SSO login failed: session could not be verified. Please try again.",
+};
+
+function LoginContent() {
   const { login } = useAuth();
+  const searchParams = useSearchParams();
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const samlError = searchParams.get("error");
+  const samlErrorMessage = samlError
+    ? SAML_ERROR_MESSAGES[samlError] || "SSO login failed. Please try again."
+    : null;
 
   const samlEnabled = isSamlEnabled();
 
@@ -54,6 +66,9 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {samlErrorMessage && !error && (
+            <p className="text-sm text-destructive font-medium">{samlErrorMessage}</p>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="apiKey">API Key</Label>
@@ -111,5 +126,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   );
 }
