@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: completed
-stopped_at: Completed 11-02 (Human Review Queue) -- Phase 11 fully complete
-last_updated: "2026-03-03T20:57:33.029Z"
+stopped_at: Completed 12-03-PLAN.md (CA Trust Scripts)
+last_updated: "2026-03-03T21:33:03.823Z"
 last_activity: 2026-03-03 -- Completed 11-02 (Human Review Queue); Phase 11 complete
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 20
+  completed_plans: 18
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** v1.1 Pilot Ready -- Phase 11 in progress (Advanced Dashboard Views)
+**Current focus:** v1.1 Pilot Ready -- Phase 12 in progress (Kubernetes Deployment)
 
 ## Current Position
 
-Phase: 11 of 12 (Advanced Dashboard Views) -- COMPLETE
-Plan: 4 of 4 (all complete)
-Status: Phase 11 complete (4/4 plans); ready for Phase 12
-Last activity: 2026-03-03 -- Completed 11-02 (Human Review Queue); Phase 11 complete
+Phase: 12 of 12 (Kubernetes Deployment) -- IN PROGRESS
+Plan: 1 of 3 (12-03 complete; 12-01, 12-02 pending)
+Status: Phase 12 plan 03 (CA Trust Scripts) complete
+Last activity: 2026-03-03 -- Completed 12-03 (CA Trust Scripts)
 
-Progress: [##########] 100% (17/17 plans in v1.1)
+Progress: [█████████░] 90% (18/20 plans in v1.1)
 
 ## Performance Metrics
 
@@ -40,8 +40,8 @@ Progress: [##########] 100% (17/17 plans in v1.1)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 17
-- Plans remaining: 0 (Phase 11 complete; Phase 12: TBD)
+- Plans completed: 18
+- Plans remaining: 2 (Phase 12: 12-01, 12-02 pending)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -64,6 +64,7 @@ Progress: [##########] 100% (17/17 plans in v1.1)
 | 11    | 04   | 5min     | 2     | 10    |
 
 *Updated after each plan completion*
+| Phase 12 P03 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,7 @@ v1.1 decisions:
 - 11-04: Prompt hash used only in uniqExact() counts, never returned raw (Invariant #6)
 - 11-04: Severity thresholds: info 1.2-2x, warning 2-5x, critical 5x+; off-hours uses absolute pct difference
 - 11-04: All four anomaly queries run in parallel with per-query catch to prevent cascading failures
+- [Phase 12]: ANSI color codes for script output; PEM validation before trust store modification; subject match for Windows cert removal
 
 ### Research Flags
 
@@ -166,7 +168,7 @@ None -- Phase 10 complete.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T20:50:08Z
-**Stopped at:** Completed 11-02 (Human Review Queue) -- Phase 11 fully complete
-**Resume file:** .planning/phases/11-advanced-dashboard-views/11-02-SUMMARY.md
+**Last session:** 2026-03-03T21:33:03.820Z
+**Stopped at:** Completed 12-03-PLAN.md (CA Trust Scripts)
+**Resume file:** None
 **Next action:** Phase 12 planning and execution (Helm/sidecar/deployment)

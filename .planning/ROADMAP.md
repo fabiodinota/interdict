@@ -153,7 +153,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 9. Dashboard Core Views | v1.1 | 5/5 | Complete | 2026-03-03 |
 | 10. SAML SSO & Security Hardening | 3/3 | Complete    | 2026-03-03 | - |
 | 11. Advanced Dashboard Views | 4/4 | Complete    | 2026-03-03 | - |
-| 12. Kubernetes Deployment | v1.1 | 0/3 | Not started | - |
+| 12. Kubernetes Deployment | 1/3 | In Progress|  | - |
 
 ---
 *Roadmap created: 2026-02-26*
