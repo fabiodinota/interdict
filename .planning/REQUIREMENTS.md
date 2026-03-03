@@ -9,12 +9,12 @@ Requirements for Pilot Ready milestone. Each maps to roadmap phases.
 
 ### Identity & Security
 
-- [x] **IDENT-01**: User can authenticate via SAML 2.0 SSO with enterprise IdPs (Okta, Azure AD)
+- [ ] **IDENT-01**: User can authenticate via SAML 2.0 SSO with enterprise IdPs (Okta, Azure AD)
 - [x] **IDENT-02**: User can authenticate via API key for programmatic access
 - [x] **IDENT-03**: User is assigned one of five roles (Super Admin, Compliance Officer, Policy Admin, Department Manager, Read-Only Auditor) that restricts accessible features and data
 - [x] **IDENT-04**: User with Department Manager role can only view data for their own department
 - [x] **IDENT-05**: All internal component communication (kernel <-> control plane, kernel <-> evidence collector) is encrypted and mutually authenticated via mTLS
-- [x] **IDENT-06**: Admin can rotate Ed25519 evidence signing keys without breaking verification of previously signed evidence bundles
+- [ ] **IDENT-06**: Admin can rotate Ed25519 evidence signing keys without breaking verification of previously signed evidence bundles
 
 ### Dashboard -- Core Views
 
@@ -82,12 +82,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IDENT-01 | Phase 10 | Complete |
+| IDENT-01 | Phase 13 | Pending |
 | IDENT-02 | Phase 7 | Complete |
 | IDENT-03 | Phase 7 | Complete |
 | IDENT-04 | Phase 7 | Complete |
 | IDENT-05 | Phase 10 | Complete |
-| IDENT-06 | Phase 10 | Complete |
+| IDENT-06 | Phase 13 | Pending |
 | DASH-01 | Phase 9 | Complete |
 | DASH-02 | Phase 9 | Complete |
 | DASH-03 | Phase 9 | Complete |
@@ -108,7 +108,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v1.1 requirements: 21 total
 - Mapped to phases: 21
 - Unmapped: 0
+- Satisfied: 19/21 (IDENT-01, IDENT-06 pending gap closure in Phase 13)
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after v1.1 roadmap creation*
+*Last updated: 2026-03-03 after gap closure phase 13 added*
