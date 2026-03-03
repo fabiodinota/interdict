@@ -53,6 +53,14 @@ spec:
               value: "http://{{ include "interdict.fullname" . }}-control-plane:{{ .Values.controlPlane.port }}"
             - name: NODE_ENV
               value: {{ .Values.dashboard.nodeEnv | quote }}
+            {{- if .Values.dashboard.saml.enabled }}
+            - name: NEXT_PUBLIC_SAML_ENABLED
+              value: "true"
+            {{- end }}
+            {{- if .Values.dashboard.saml.apiUrl }}
+            - name: NEXT_PUBLIC_API_URL
+              value: {{ .Values.dashboard.saml.apiUrl | quote }}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /

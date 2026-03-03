@@ -108,6 +108,8 @@ spec:
               value: {{ .Values.evidenceCollector.mtls.keyPath | quote }}
             - name: RUST_LOG
               value: {{ .Values.evidenceCollector.rustLog | quote }}
+            - name: SIGNING_KEY_WATCH_PATH
+              value: {{ .Values.evidenceCollector.signingKey.watchPath | quote }}
           resources:
             {{- toYaml .Values.evidenceCollector.resources | nindent 12 }}
           securityContext:
@@ -134,4 +136,5 @@ spec:
             secretName: {{ include "interdict.fullname" . }}-tls
           {{- end }}
         - name: signing-keys
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: {{ include "interdict.fullname" . }}-signing-keys

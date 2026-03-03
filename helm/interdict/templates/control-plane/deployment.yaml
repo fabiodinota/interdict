@@ -93,6 +93,13 @@ spec:
             - name: certs
               mountPath: /certs
               readOnly: true
+            - name: signing-keys
+              mountPath: /data/keys
+            {{- if .Values.controlPlane.saml.enabled }}
+            - name: saml-config
+              mountPath: /config
+              readOnly: true
+            {{- end }}
       volumes:
         - name: certs
           {{- if .Values.certInit.enabled }}
@@ -105,3 +112,15 @@ spec:
           secret:
             secretName: {{ include "interdict.fullname" . }}-tls
           {{- end }}
+        - name: signing-keys
+          persistentVolumeClaim:
+            claimName: {{ include "interdict.fullname" . }}-signing-keys
+        {{- if .Values.controlPlane.saml.enabled }}
+        - name: saml-config
+          {{- if .Values.controlPlane.saml.existingIdpMetadataSecret }}
+          secret:
+            secretName: {{ .Values.controlPlane.saml.existingIdpMetadataSecret }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}

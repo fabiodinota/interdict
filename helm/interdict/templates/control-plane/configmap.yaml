@@ -18,3 +18,12 @@ data:
   MTLS_CA_CERT_PATH: {{ .Values.controlPlane.mtls.caCertPath | quote }}
   MTLS_CERT_PATH: {{ .Values.controlPlane.mtls.certPath | quote }}
   MTLS_KEY_PATH: {{ .Values.controlPlane.mtls.keyPath | quote }}
+  SIGNING_KEY_OUTPUT_PATH: {{ .Values.controlPlane.signingKey.outputPath | quote }}
+  {{- if .Values.controlPlane.saml.enabled }}
+  SAML_SP_ENTITY_ID: {{ .Values.controlPlane.saml.spEntityId | quote }}
+  SAML_SP_BASE_URL: {{ .Values.controlPlane.saml.spBaseUrl | quote }}
+  SAML_SP_KEY_PATH: {{ .Values.controlPlane.saml.spKeyPath | quote }}
+  SAML_SP_CERT_PATH: {{ .Values.controlPlane.saml.spCertPath | quote }}
+  SAML_IDP_METADATA_PATH: {{ .Values.controlPlane.saml.idpMetadataPath | quote }}
+  DASHBOARD_URL: {{ .Values.controlPlane.saml.dashboardUrl | quote }}
+  {{- end }}
