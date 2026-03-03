@@ -17,6 +17,7 @@ import { startCompilationWorker } from "./modules/compiler/worker";
 import { vendorsModule } from "./modules/vendors";
 import { regulatoryModule } from "./modules/regulatory";
 import { auditModule } from "./modules/audit";
+import { reportsModule } from "./modules/reports";
 import {
   startDistributionServer,
   stopDistributionServer,
@@ -31,6 +32,7 @@ const MODULES = [
   "vendors",
   "regulatory",
   "audit",
+  "reports",
   "distribution",
 ] as const;
 
@@ -85,6 +87,7 @@ const app = new Elysia()
   .use(vendorsModule)
   .use(regulatoryModule)
   .use(auditModule)
+  .use(reportsModule)
   .listen(config.port);
 
 // Start gRPC distribution server for pushing policy updates to kernels
