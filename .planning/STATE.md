@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: Pilot Ready
 status: completed
 stopped_at: Completed 15-01 (Signing Key Management Dashboard UI)
-last_updated: "2026-03-03T23:39:50.502Z"
+last_updated: "2026-03-03T23:42:20.074Z"
 last_activity: 2026-03-04 -- Completed 15-01 (Signing key list, rotation dialog, sidebar nav)
 progress:
   total_phases: 9
