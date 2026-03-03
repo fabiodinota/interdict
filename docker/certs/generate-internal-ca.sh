@@ -99,7 +99,24 @@ generate_service_cert "control-plane" "DNS:control-plane,DNS:localhost"
 generate_service_cert "kernel-client" "DNS:kernel,DNS:localhost"
 
 # ---------------------------------------------------------------------------
-# 5. Set permissions
+# 5. SAML SP self-signed certificate (3-year validity, ECDSA P-256)
+# ---------------------------------------------------------------------------
+# Used by samlify for SAML assertion signing. Self-signed is fine for SAML SP.
+# Only generated if not already present (allows operator to provide their own).
+if [ ! -f "${CERT_DIR}/saml-sp.key" ]; then
+    echo "[cert-init] Generating SAML SP certificate..."
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+        -days 1095 -nodes \
+        -keyout "${CERT_DIR}/saml-sp.key" \
+        -out "${CERT_DIR}/saml-sp.crt" \
+        -subj "/CN=interdict-saml-sp/O=Interdict"
+    echo "[cert-init] SAML SP certificate generated."
+else
+    echo "[cert-init] SAML SP certificate already exists, skipping."
+fi
+
+# ---------------------------------------------------------------------------
+# 6. Set permissions
 # ---------------------------------------------------------------------------
 chmod 644 "${CERT_DIR}"/*.pem
 chmod 600 "${CERT_DIR}"/*-key.pem
