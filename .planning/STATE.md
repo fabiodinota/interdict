@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
-status: unknown
-stopped_at: Completed 09-05 (Gap Closure -- BFF Proxy Binary Response Passthrough) -- Phase 9 fully complete
-last_updated: "2026-03-03T14:41:24.412Z"
+status: in-progress
+stopped_at: Completed 10-02 (Internal gRPC mTLS)
+last_updated: "2026-03-03T18:43:47.313Z"
+last_activity: 2026-03-03 -- Completed 10-02 (Internal gRPC mTLS)
 progress:
-  total_phases: 3
+  total_phases: 6
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 13
+  completed_plans: 11
 ---
 
 # Project State
@@ -19,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** v1.1 Pilot Ready -- Phase 9 complete (Dashboard Core Views)
+**Current focus:** v1.1 Pilot Ready -- Phase 10 in progress (SAML/SSO Security Hardening)
 
 ## Current Position
 
-Phase: 9 of 12 (Dashboard Core Views) -- COMPLETE
-Plan: 5 of 5 (all plans complete, including gap closure)
-Status: Phase 09 complete -- all 6 core dashboard views functional, report downloads working
-Last activity: 2026-03-03 -- Completed 09-05 (Gap Closure -- BFF Proxy Binary Response Passthrough)
+Phase: 10 of 12 (SAML/SSO Security Hardening) -- IN PROGRESS
+Plan: 2 of 3 (10-02 complete)
+Status: Phase 10 in progress -- mTLS on all internal gRPC channels complete
+Last activity: 2026-03-03 -- Completed 10-02 (Internal gRPC mTLS)
 
-Progress: [##########] 100% (5/5 plans in Phase 9)
+Progress: [########--] 85% (11/13 plans in v1.1)
 
 ## Performance Metrics
 
@@ -38,8 +39,8 @@ Progress: [##########] 100% (5/5 plans in Phase 9)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 10
-- Plans remaining: 0 (Phase 9: complete)
+- Plans completed: 11
+- Plans remaining: 2 (Phase 10: 1 remaining, Phase 11-12: TBD)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -53,6 +54,7 @@ Progress: [##########] 100% (5/5 plans in Phase 9)
 | 09    | 03   | 8min     | 2     | 17    |
 | 09    | 04   | 12min    | 2     | 26    |
 | 09    | 05   | 2min     | 1     | 1     |
+| 10    | 02   | 6min     | 2     | 14    |
 
 *Updated after each plan completion*
 
@@ -108,11 +110,15 @@ v1.1 decisions:
 - 09-04: Vendor cards expand inline for models; framework cards grouped by jurisdiction when multiple present
 - 09-04: Cursor stack pattern for TanStack Table forward/backward pagination
 - 09-05: BFF proxy treats missing/empty Content-Type as JSON for backward compatibility; non-JSON responses piped as raw body stream
+- 10-02: ECDSA P-256 for internal CA and service certs (broader TLS library compat than Ed25519)
+- 10-02: mTLS toggle via MTLS_ENABLED env var for backward-compatible local dev without Docker
+- 10-02: Cert bytes stored as raw Vec<u8> in client structs, ClientTlsConfig rebuilt per connection (not Clone)
+- 10-02: Shell script cert generation (not rcgen) for one-shot Alpine init container simplicity
 
 ### Research Flags
 
 - Phase 10: samlify on Bun runtime needs isolated PoC before implementation
-- Phase 10: mTLS cert bootstrap automation needs spike
+- Phase 10: mTLS cert bootstrap automation needs spike -- RESOLVED in 10-02 (Alpine init container with openssl CLI)
 - Phase 11: Anomaly detection ClickHouse query patterns need prototyping
 - Phase 9: Policy Builder Rego generation from visual inputs -- RESOLVED in 09-03 (template engine with generateRego())
 
@@ -122,11 +128,11 @@ None yet.
 
 ### Blockers/Concerns
 
-None -- Phase 9 in progress.
+None -- Phase 10 in progress.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T14:29:00Z
-**Stopped at:** Completed 09-05 (Gap Closure -- BFF Proxy Binary Response Passthrough) -- Phase 9 fully complete
-**Resume file:** .planning/phases/09-dashboard-core-views/09-05-SUMMARY.md
-**Next action:** Execute Phase 10 (Advanced Identity) or review/test Phase 9 outputs
+**Last session:** 2026-03-03T18:42:04Z
+**Stopped at:** Completed 10-02 (Internal gRPC mTLS)
+**Resume file:** .planning/phases/10-saml-sso-security-hardening/10-02-SUMMARY.md
+**Next action:** Execute 10-01 (SAML SP) or 10-03 (remaining Phase 10 plan)
