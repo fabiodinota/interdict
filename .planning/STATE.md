@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: in-progress
-stopped_at: Completed 10-02 (Internal gRPC mTLS)
-last_updated: "2026-03-03T18:43:47.313Z"
-last_activity: 2026-03-03 -- Completed 10-02 (Internal gRPC mTLS)
+stopped_at: Completed 10-03 (Ed25519 Signing Key Rotation) -- Phase 10 fully complete
+last_updated: "2026-03-03T18:47:00Z"
+last_activity: 2026-03-03 -- Completed 10-03 (Ed25519 Signing Key Rotation)
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 13
 ---
 
 # Project State
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 ## Current Position
 
 Phase: 10 of 12 (SAML/SSO Security Hardening) -- IN PROGRESS
-Plan: 2 of 3 (10-02 complete)
-Status: Phase 10 in progress -- mTLS on all internal gRPC channels complete
-Last activity: 2026-03-03 -- Completed 10-02 (Internal gRPC mTLS)
+Plan: 2 of 3 (10-01 and 10-02 complete)
+Status: Phase 10 in progress -- SAML SSO and mTLS complete, key rotation remaining
+Last activity: 2026-03-03 -- Completed 10-01 (SAML SSO Authentication)
 
-Progress: [########--] 85% (11/13 plans in v1.1)
+Progress: [#########-] 92% (12/13 plans in v1.1)
 
 ## Performance Metrics
 
@@ -39,8 +39,8 @@ Progress: [########--] 85% (11/13 plans in v1.1)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 11
-- Plans remaining: 2 (Phase 10: 1 remaining, Phase 11-12: TBD)
+- Plans completed: 12
+- Plans remaining: 1 (Phase 10: 10-03 key rotation remaining)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -54,6 +54,7 @@ Progress: [########--] 85% (11/13 plans in v1.1)
 | 09    | 03   | 8min     | 2     | 17    |
 | 09    | 04   | 12min    | 2     | 26    |
 | 09    | 05   | 2min     | 1     | 1     |
+| 10    | 01   | 9min     | 2     | 11    |
 | 10    | 02   | 6min     | 2     | 14    |
 
 *Updated after each plan completion*
@@ -110,6 +111,12 @@ v1.1 decisions:
 - 09-04: Vendor cards expand inline for models; framework cards grouped by jurisdiction when multiple present
 - 09-04: Cursor stack pattern for TanStack Table forward/backward pagination
 - 09-05: BFF proxy treats missing/empty Content-Type as JSON for backward compatibility; non-JSON responses piped as raw body stream
+- 10-01: samlify 2.10.2 (CVE-2025-47949 safe); SAML private keys file-mounted only (Invariant #6)
+- 10-01: Dual-mode auth: ik_live_* prefix routes to API key flow, all else to session token flow
+- 10-01: JIT provisioning defaults to read_only_auditor role unless valid roleHint from IdP
+- 10-01: Split dashboard auth into auth.ts (server) and auth-client.ts (client) for Next.js compatibility
+- 10-01: Session tokens are 128-char hex (64 random bytes) with 8-hour expiry
+- 10-01: BFF proxy unchanged -- already forwards tokens generically as Bearer tokens
 - 10-02: ECDSA P-256 for internal CA and service certs (broader TLS library compat than Ed25519)
 - 10-02: mTLS toggle via MTLS_ENABLED env var for backward-compatible local dev without Docker
 - 10-02: Cert bytes stored as raw Vec<u8> in client structs, ClientTlsConfig rebuilt per connection (not Clone)
@@ -117,7 +124,7 @@ v1.1 decisions:
 
 ### Research Flags
 
-- Phase 10: samlify on Bun runtime needs isolated PoC before implementation
+- Phase 10: samlify on Bun runtime needs isolated PoC before implementation -- RESOLVED in 10-01 (samlify 2.10.2 works with Bun)
 - Phase 10: mTLS cert bootstrap automation needs spike -- RESOLVED in 10-02 (Alpine init container with openssl CLI)
 - Phase 11: Anomaly detection ClickHouse query patterns need prototyping
 - Phase 9: Policy Builder Rego generation from visual inputs -- RESOLVED in 09-03 (template engine with generateRego())
@@ -132,7 +139,7 @@ None -- Phase 10 in progress.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T18:42:04Z
-**Stopped at:** Completed 10-02 (Internal gRPC mTLS)
-**Resume file:** .planning/phases/10-saml-sso-security-hardening/10-02-SUMMARY.md
-**Next action:** Execute 10-01 (SAML SP) or 10-03 (remaining Phase 10 plan)
+**Last session:** 2026-03-03T18:45:00Z
+**Stopped at:** Completed 10-01 (SAML SSO Authentication)
+**Resume file:** .planning/phases/10-saml-sso-security-hardening/10-01-SUMMARY.md
+**Next action:** Execute 10-03 (Key Rotation) to complete Phase 10

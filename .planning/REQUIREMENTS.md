@@ -9,7 +9,7 @@ Requirements for Pilot Ready milestone. Each maps to roadmap phases.
 
 ### Identity & Security
 
-- [ ] **IDENT-01**: User can authenticate via SAML 2.0 SSO with enterprise IdPs (Okta, Azure AD)
+- [x] **IDENT-01**: User can authenticate via SAML 2.0 SSO with enterprise IdPs (Okta, Azure AD)
 - [x] **IDENT-02**: User can authenticate via API key for programmatic access
 - [x] **IDENT-03**: User is assigned one of five roles (Super Admin, Compliance Officer, Policy Admin, Department Manager, Read-Only Auditor) that restricts accessible features and data
 - [x] **IDENT-04**: User with Department Manager role can only view data for their own department
@@ -82,7 +82,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IDENT-01 | Phase 10 | Pending |
+| IDENT-01 | Phase 10 | Complete |
 | IDENT-02 | Phase 7 | Complete |
 | IDENT-03 | Phase 7 | Complete |
 | IDENT-04 | Phase 7 | Complete |
