@@ -71,9 +71,41 @@ async function proxyRequest(
 
   try {
     const res = await fetch(url, fetchOptions);
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch {
+    const upstreamContentType = res.headers.get("content-type") ?? "";
+    const isJsonResponse =
+      upstreamContentType === "" ||
+      upstreamContentType.startsWith("application/json");
+
+    if (isJsonResponse) {
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    }
+
+    // Non-JSON response (binary PDF, text/csv, etc.) -- pipe raw body through
+    if (!res.body) {
+      return NextResponse.json(
+        { success: false, error: { message: "Empty upstream response body" } },
+        { status: 502 }
+      );
+    }
+
+    const responseHeaders = new Headers();
+    responseHeaders.set("Content-Type", upstreamContentType);
+    const contentDisposition = res.headers.get("content-disposition");
+    if (contentDisposition) {
+      responseHeaders.set("Content-Disposition", contentDisposition);
+    }
+    const contentLength = res.headers.get("content-length");
+    if (contentLength) {
+      responseHeaders.set("Content-Length", contentLength);
+    }
+
+    return new Response(res.body, {
+      status: res.status,
+      headers: responseHeaders,
+    });
+  } catch (err) {
+    // JSON parse failures are now scoped only to actual JSON responses
     return NextResponse.json(
       { success: false, error: { message: "Proxy request failed" } },
       { status: 502 }
