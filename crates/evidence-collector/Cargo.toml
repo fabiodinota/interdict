@@ -8,7 +8,7 @@ name = "interdict-collector"
 path = "src/main.rs"
 
 [dependencies]
-tonic = { version = "0.14", features = ["zstd"] }
+tonic = { version = "0.14", features = ["zstd", "tls"] }
 tonic-prost = "0.14"
 prost = "0.14"
 prost-types = "0.14"
@@ -31,6 +31,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 anyhow = "1"
 thiserror = "2"
 rand = "0.8"
+arc-swap = "1"
 async-trait = "0.1"
 hex = "0.4"
 base64 = "0.22"

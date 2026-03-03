@@ -78,6 +78,18 @@ pub struct DistributionConfig {
     /// Interval in seconds between session cleanup sweeps.
     #[serde(default = "default_session_cleanup_interval_secs")]
     pub session_cleanup_interval_secs: u64,
+
+    /// Path to internal CA certificate for mTLS (from env KERNEL_MTLS_CA_CERT).
+    #[serde(default)]
+    pub mtls_ca_cert_path: Option<String>,
+
+    /// Path to kernel client certificate for mTLS (from env KERNEL_MTLS_CLIENT_CERT).
+    #[serde(default)]
+    pub mtls_client_cert_path: Option<String>,
+
+    /// Path to kernel client private key for mTLS (from env KERNEL_MTLS_CLIENT_KEY).
+    #[serde(default)]
+    pub mtls_client_key_path: Option<String>,
 }
 
 impl Default for DistributionConfig {
@@ -93,6 +105,9 @@ impl Default for DistributionConfig {
             session_max_entries: default_session_max_entries(),
             session_ttl_secs: default_session_ttl_secs(),
             session_cleanup_interval_secs: default_session_cleanup_interval_secs(),
+            mtls_ca_cert_path: std::env::var("KERNEL_MTLS_CA_CERT").ok(),
+            mtls_client_cert_path: std::env::var("KERNEL_MTLS_CLIENT_CERT").ok(),
+            mtls_client_key_path: std::env::var("KERNEL_MTLS_CLIENT_KEY").ok(),
         }
     }
 }

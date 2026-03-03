@@ -16,6 +16,7 @@
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import { join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
 import { eq, and, max } from "drizzle-orm";
 import { policies, policyVersions } from "../../db/schema/policies";
 import {
@@ -274,9 +275,41 @@ export function startDistributionServer(
   });
 
   const bindAddress = `0.0.0.0:${grpcPort}`;
+
+  // Determine server credentials: mTLS or insecure
+  const mtlsEnabled = process.env.MTLS_ENABLED === "true";
+  let credentials: grpc.ServerCredentials;
+
+  if (mtlsEnabled) {
+    const caCertPath = process.env.MTLS_CA_CERT_PATH;
+    const certPath = process.env.MTLS_CERT_PATH;
+    const keyPath = process.env.MTLS_KEY_PATH;
+
+    if (!caCertPath || !certPath || !keyPath) {
+      throw new Error(
+        "[distribution] MTLS_ENABLED=true but MTLS_CA_CERT_PATH, MTLS_CERT_PATH, or MTLS_KEY_PATH is missing"
+      );
+    }
+
+    const caCert = readFileSync(caCertPath);
+    const serverCert = readFileSync(certPath);
+    const serverKey = readFileSync(keyPath);
+
+    credentials = grpc.ServerCredentials.createSsl(
+      caCert,
+      [{ cert_chain: serverCert, private_key: serverKey }],
+      true // checkClientCertificate
+    );
+
+    console.log("[distribution] mTLS enabled: requiring client certificates for gRPC connections");
+  } else {
+    credentials = grpc.ServerCredentials.createInsecure();
+    console.log("[distribution] mTLS disabled: accepting insecure gRPC connections");
+  }
+
   server.bindAsync(
     bindAddress,
-    grpc.ServerCredentials.createInsecure(),
+    credentials,
     (err, port) => {
       if (err) {
         console.error(

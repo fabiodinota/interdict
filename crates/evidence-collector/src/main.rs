@@ -13,6 +13,8 @@ use evidence_collector::storage::s3::S3Anchor;
 use tokio::sync::{Mutex, mpsc};
 use tokio_util::sync::CancellationToken;
 use tonic::transport::Server;
+use tonic::transport::server::ServerTlsConfig;
+use tonic::transport::{Certificate, Identity};
 use tracing::info;
 
 #[tokio::main]
@@ -106,7 +108,42 @@ async fn main() -> Result<()> {
 
     // Start gRPC server with graceful shutdown.
     let shutdown_cancel = cancel.clone();
-    Server::builder()
+
+    let mut builder = if cfg.mtls_enabled {
+        let ca_cert_path = cfg
+            .mtls_ca_cert_path
+            .as_deref()
+            .expect("MTLS_CA_CERT_PATH required when MTLS_ENABLED=true");
+        let cert_path = cfg
+            .mtls_cert_path
+            .as_deref()
+            .expect("MTLS_CERT_PATH required when MTLS_ENABLED=true");
+        let key_path = cfg
+            .mtls_key_path
+            .as_deref()
+            .expect("MTLS_KEY_PATH required when MTLS_ENABLED=true");
+
+        let ca_cert = std::fs::read_to_string(ca_cert_path)
+            .unwrap_or_else(|e| panic!("failed to read CA cert {ca_cert_path}: {e}"));
+        let server_cert = std::fs::read_to_string(cert_path)
+            .unwrap_or_else(|e| panic!("failed to read server cert {cert_path}: {e}"));
+        let server_key = std::fs::read_to_string(key_path)
+            .unwrap_or_else(|e| panic!("failed to read server key {key_path}: {e}"));
+
+        let tls_config = ServerTlsConfig::new()
+            .identity(Identity::from_pem(&server_cert, &server_key))
+            .client_ca_root(Certificate::from_pem(&ca_cert));
+
+        info!("mTLS enabled: requiring client certificates for gRPC connections");
+        Server::builder()
+            .tls_config(tls_config)
+            .expect("invalid mTLS configuration")
+    } else {
+        info!("mTLS disabled: accepting insecure gRPC connections");
+        Server::builder()
+    };
+
+    builder
         .add_service(EvidenceCollectorServer::new(service))
         .serve_with_shutdown(grpc_addr, async move {
             tokio::signal::ctrl_c()

@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
-use tonic::transport::Endpoint;
+use tonic::transport::{Certificate, ClientTlsConfig, Endpoint, Identity};
 
 use crate::policy::distribution::proto;
 use crate::policy::distribution::proto::policy_distribution_client::PolicyDistributionClient;
@@ -46,6 +46,12 @@ pub struct DistributionClient {
     disconnect_mode: String,
     /// Token for graceful shutdown of the reconnect loop.
     cancel_token: CancellationToken,
+    /// Raw CA cert bytes for mTLS (None = insecure).
+    tls_ca_cert: Option<Vec<u8>>,
+    /// Raw client cert bytes for mTLS.
+    tls_client_cert: Option<Vec<u8>>,
+    /// Raw client key bytes for mTLS.
+    tls_client_key: Option<Vec<u8>>,
 }
 
 impl DistributionClient {
@@ -70,7 +76,40 @@ impl DistributionClient {
             disconnect_timeout,
             disconnect_mode,
             cancel_token,
+            tls_ca_cert: None,
+            tls_client_cert: None,
+            tls_client_key: None,
         }
+    }
+
+    /// Configure mTLS for this distribution client.
+    ///
+    /// Cert bytes are stored raw so `ClientTlsConfig` can be rebuilt per
+    /// connection attempt (it does not implement `Clone`).
+    pub fn with_mtls(
+        mut self,
+        ca_cert: Vec<u8>,
+        client_cert: Vec<u8>,
+        client_key: Vec<u8>,
+    ) -> Self {
+        self.tls_ca_cert = Some(ca_cert);
+        self.tls_client_cert = Some(client_cert);
+        self.tls_client_key = Some(client_key);
+        self
+    }
+
+    /// Build a `ClientTlsConfig` from stored cert bytes, if mTLS is configured.
+    fn build_tls_config(&self) -> Option<ClientTlsConfig> {
+        let ca = self.tls_ca_cert.as_ref()?;
+        let cert = self.tls_client_cert.as_ref()?;
+        let key = self.tls_client_key.as_ref()?;
+
+        Some(
+            ClientTlsConfig::new()
+                .ca_certificate(Certificate::from_pem(ca))
+                .identity(Identity::from_pem(cert, key))
+                .domain_name("control-plane"),
+        )
     }
 
     /// Spawn the reconnect loop as a background tokio task.
@@ -150,9 +189,13 @@ impl DistributionClient {
 
     /// Connect to the control plane and subscribe to the policy update stream.
     async fn connect_and_subscribe(&self) -> anyhow::Result<tonic::Streaming<proto::PolicyUpdate>> {
-        let endpoint = Endpoint::from_shared(self.addr.clone())?
+        let mut endpoint = Endpoint::from_shared(self.addr.clone())?
             .connect_timeout(Duration::from_secs(5))
             .timeout(self.disconnect_timeout);
+
+        if let Some(tls_config) = self.build_tls_config() {
+            endpoint = endpoint.tls_config(tls_config)?;
+        }
 
         let channel = endpoint.connect().await?;
         let mut client = PolicyDistributionClient::new(channel);
@@ -274,7 +317,10 @@ impl DistributionClient {
     /// Send ACK or NACK to the control plane.
     async fn send_ack(&self, version: u64, accepted: bool, error_message: &str) {
         let ack_result = async {
-            let endpoint = Endpoint::from_shared(self.addr.clone())?;
+            let mut endpoint = Endpoint::from_shared(self.addr.clone())?;
+            if let Some(tls_config) = self.build_tls_config() {
+                endpoint = endpoint.tls_config(tls_config)?;
+            }
             let channel = endpoint.connect().await?;
             let mut client = PolicyDistributionClient::new(channel);
 

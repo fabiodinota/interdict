@@ -28,10 +28,22 @@ struct EvidenceBundleBatch {
     bundles: Vec<proto::EvidenceBundle>,
 }
 
+/// Optional mTLS certificate material for evidence gRPC client.
+#[derive(Clone)]
+pub struct MtlsCerts {
+    pub ca_cert: Vec<u8>,
+    pub client_cert: Vec<u8>,
+    pub client_key: Vec<u8>,
+}
+
 impl EvidenceBuffer {
-    pub fn new(collector_addr: String, kernel_id: String) -> (Self, tokio::task::JoinHandle<()>) {
+    pub fn new(
+        collector_addr: String,
+        kernel_id: String,
+        mtls: Option<MtlsCerts>,
+    ) -> (Self, tokio::task::JoinHandle<()>) {
         let (tx, rx) = mpsc::channel(EVIDENCE_BUFFER_SIZE);
-        let handle = tokio::spawn(evidence_flusher(rx, collector_addr, kernel_id));
+        let handle = tokio::spawn(evidence_flusher(rx, collector_addr, kernel_id, mtls));
         (Self { tx }, handle)
     }
 
@@ -59,8 +71,14 @@ async fn evidence_flusher(
     mut rx: mpsc::Receiver<RawEvidenceEvent>,
     collector_addr: String,
     kernel_id: String,
+    mtls: Option<MtlsCerts>,
 ) {
-    let mut client = EvidenceGrpcClient::new(collector_addr);
+    let mut client = match mtls {
+        Some(certs) => {
+            EvidenceGrpcClient::with_mtls(collector_addr, certs.ca_cert, certs.client_cert, certs.client_key)
+        }
+        None => EvidenceGrpcClient::new(collector_addr),
+    };
     let mut interval = tokio::time::interval(FLUSH_INTERVAL);
     let mut batch_sequence = 0_u64;
     let mut batch = Vec::with_capacity(256);

@@ -238,8 +238,37 @@ async fn main() -> anyhow::Result<()> {
         .kernel_id
         .clone()
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    // Load mTLS cert material if configured (env vars set by Docker Compose cert-init)
+    let mtls_certs = if let (Ok(ca_path), Ok(cert_path), Ok(key_path)) = (
+        std::env::var("KERNEL_MTLS_CA_CERT"),
+        std::env::var("KERNEL_MTLS_CLIENT_CERT"),
+        std::env::var("KERNEL_MTLS_CLIENT_KEY"),
+    ) {
+        let ca = std::fs::read(&ca_path)
+            .unwrap_or_else(|e| panic!("failed to read mTLS CA cert {ca_path}: {e}"));
+        let cert = std::fs::read(&cert_path)
+            .unwrap_or_else(|e| panic!("failed to read mTLS client cert {cert_path}: {e}"));
+        let key = std::fs::read(&key_path)
+            .unwrap_or_else(|e| panic!("failed to read mTLS client key {key_path}: {e}"));
+
+        tracing::info!(
+            ca_cert = %ca_path,
+            client_cert = %cert_path,
+            "mTLS enabled for gRPC clients"
+        );
+
+        Some(evidence::MtlsCerts {
+            ca_cert: ca,
+            client_cert: cert,
+            client_key: key,
+        })
+    } else {
+        tracing::info!("mTLS not configured for gRPC clients (KERNEL_MTLS_CA_CERT not set)");
+        None
+    };
+
     let (evidence_buffer, evidence_flusher_handle) =
-        evidence::EvidenceBuffer::new(evidence_collector_addr.clone(), kernel_id.clone());
+        evidence::EvidenceBuffer::new(evidence_collector_addr.clone(), kernel_id.clone(), mtls_certs.clone());
     let evidence_buffer = Arc::new(evidence_buffer);
 
     tracing::info!(
@@ -258,7 +287,7 @@ async fn main() -> anyhow::Result<()> {
             team_id: dist_config.team_id.clone(),
         };
 
-        let client = policy::distribution::client::DistributionClient::new(
+        let mut client = policy::distribution::client::DistributionClient::new(
             distribution_addr.clone(),
             kernel_id.clone(),
             hierarchy_config,
@@ -268,6 +297,14 @@ async fn main() -> anyhow::Result<()> {
             dist_config.disconnect_mode.clone(),
             cancel_token.clone(),
         );
+
+        if let Some(ref certs) = mtls_certs {
+            client = client.with_mtls(
+                certs.ca_cert.clone(),
+                certs.client_cert.clone(),
+                certs.client_key.clone(),
+            );
+        }
 
         let handle = client.run();
         tracing::info!(

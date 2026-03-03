@@ -19,6 +19,14 @@ pub struct CollectorConfig {
     pub merkle_max_leaves: u64,
     pub full_text_storage: bool,
     pub retention_days: u32,
+    /// Enable mTLS for the gRPC server (requires CA cert, server cert, server key).
+    pub mtls_enabled: bool,
+    /// Path to the internal CA certificate (trust anchor for client verification).
+    pub mtls_ca_cert_path: Option<String>,
+    /// Path to the server certificate.
+    pub mtls_cert_path: Option<String>,
+    /// Path to the server private key.
+    pub mtls_key_path: Option<String>,
 }
 
 impl Default for CollectorConfig {
@@ -34,6 +42,10 @@ impl Default for CollectorConfig {
             merkle_max_leaves: 1_000_000,
             full_text_storage: false,
             retention_days: 2555,
+            mtls_enabled: false,
+            mtls_ca_cert_path: None,
+            mtls_cert_path: None,
+            mtls_key_path: None,
         }
     }
 }
@@ -54,6 +66,10 @@ impl CollectorConfig {
     /// - `COLLECTOR_MERKLE_MAX_LEAVES` (default: 1000000)
     /// - `COLLECTOR_FULL_TEXT_STORAGE` (default: false) -- `1`/`true`/`yes`
     /// - `COLLECTOR_RETENTION_DAYS` (default: 2555)
+    /// - `MTLS_ENABLED` (default: "false") -- `true`/`false`
+    /// - `MTLS_CA_CERT_PATH` -- CA cert for client verification
+    /// - `MTLS_CERT_PATH` -- Server certificate
+    /// - `MTLS_KEY_PATH` -- Server private key
     pub fn from_env() -> Self {
         let signing_mode = match std::env::var("COLLECTOR_SIGNING_MODE")
             .unwrap_or_else(|_| "dev".to_string())
@@ -97,6 +113,12 @@ impl CollectorConfig {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(2555),
+            mtls_enabled: std::env::var("MTLS_ENABLED")
+                .map(|v| v.to_ascii_lowercase() == "true")
+                .unwrap_or(false),
+            mtls_ca_cert_path: std::env::var("MTLS_CA_CERT_PATH").ok(),
+            mtls_cert_path: std::env::var("MTLS_CERT_PATH").ok(),
+            mtls_key_path: std::env::var("MTLS_KEY_PATH").ok(),
         }
     }
 }
