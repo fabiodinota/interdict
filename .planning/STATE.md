@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: completed
-stopped_at: Completed 13-02 (SAML SSO and Key Rotation Helm Wiring)
-last_updated: "2026-03-03T22:27:05.909Z"
-last_activity: 2026-03-03 -- Completed 13-02 (SAML SSO and Key Rotation Helm Wiring)
+stopped_at: Completed 14-01 (SAML Cross-Origin Cookie Fix)
+last_updated: "2026-03-03T23:21:24.558Z"
+last_activity: 2026-03-04 -- Completed 14-01 (Dashboard SAML callback route and ACS redirect fix)
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 22
-  completed_plans: 22
-  percent: 100
+  total_phases: 9
+  completed_phases: 8
+  total_plans: 23
+  completed_plans: 23
+  percent: 96
 ---
 
 # Project State
