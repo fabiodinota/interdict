@@ -7,7 +7,7 @@ Interdict.io v1.1 (Pilot Ready) converts the working v1.0 data plane and control
 ## Milestones
 
 - ✅ **v1.0 MVP** -- Phases 1-6.1 (shipped 2026-03-01)
-- 🚧 **v1.1 Pilot Ready** -- Phases 7-13 (in progress)
+- 🚧 **v1.1 Pilot Ready** -- Phases 7-15 (in progress)
 
 ## Phases
 
@@ -26,7 +26,7 @@ Full details archived in `milestones/v1.0-ROADMAP.md`
 
 </details>
 
-### v1.1 Pilot Ready (Phases 7-13)
+### v1.1 Pilot Ready (Phases 7-15)
 
 **Milestone Goal:** Make Interdict.io deployable and usable by pilot customers -- a CISO can log in via SSO, configure policies through a dashboard, review audit trails, and IT can deploy via Docker Compose or Helm.
 
@@ -37,6 +37,8 @@ Full details archived in `milestones/v1.0-ROADMAP.md`
 - [x] **Phase 11: Advanced Dashboard Views** -- Evidence verification, human review queue, department policies, anomaly detection (completed 2026-03-03)
 - [x] **Phase 12: Kubernetes Deployment** -- Helm chart, sidecar manifests, CA certificate onboarding (completed 2026-03-03)
 - [x] **Phase 13: Deployment Wiring for SAML & Key Rotation** -- Close audit gaps: SAML deployment activation path, key rotation file delivery, cosmetic MODULES fix (completed 2026-03-03)
+- [ ] **Phase 14: SAML SSO Cross-Origin Cookie Fix** -- Fix ACS cross-origin cookie loss so SAML login completes end-to-end
+- [ ] **Phase 15: Signing Key Management Dashboard UI** -- Add dashboard page and hook for signing key visibility and rotation
 
 ## Phase Details
 
@@ -150,10 +152,32 @@ Plans:
 - [ ] 13-01-PLAN.md -- Docker Compose SAML + key rotation wiring, env.example, cert-init, MODULES fix (Wave 1)
 - [ ] 13-02-PLAN.md -- Helm chart SAML + key rotation wiring, signing-keys PVC, cert-script extension (Wave 1)
 
+### Phase 14: SAML SSO Cross-Origin Cookie Fix
+**Goal**: SAML SSO login completes end-to-end — user authenticates via IdP and lands in the dashboard with a valid session
+**Depends on**: Phase 10 (SAML ACS handler), Phase 9 (dashboard middleware)
+**Requirements**: IDENT-01
+**Gap Closure:** Closes integration gap from v1.1 audit — ACS cross-origin cookie loss
+**Success Criteria** (what must be TRUE):
+  1. After SAML authentication, ACS redirects to a dashboard callback route that sets the session cookie on the dashboard origin
+  2. Dashboard middleware recognizes the session cookie and grants access — no redirect loop back to /login
+  3. Existing API key authentication flow remains unaffected
+**Plans**: TBD
+
+### Phase 15: Signing Key Management Dashboard UI
+**Goal**: Admin can view signing key status and trigger rotation from the dashboard instead of direct API calls
+**Depends on**: Phase 10 (signing-keys API), Phase 11 (dashboard infrastructure)
+**Requirements**: IDENT-06
+**Gap Closure:** Closes integration gap from v1.1 audit — no dashboard UI for signing key management
+**Success Criteria** (what must be TRUE):
+  1. Admin can view current and historical signing keys on a /settings/signing-keys dashboard page
+  2. Admin can trigger key rotation from the dashboard and see confirmation of the new key
+  3. Key status (active, rotated, created date) is displayed with clear visual indicators
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13
+Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -171,6 +195,8 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13
 | 11. Advanced Dashboard Views | 4/4 | Complete    | 2026-03-03 | - |
 | 12. Kubernetes Deployment | 3/3 | Complete    | 2026-03-03 | - |
 | 13. Deployment Wiring for SAML & Key Rotation | 2/2 | Complete    | 2026-03-03 | - |
+| 14. SAML SSO Cross-Origin Cookie Fix | v1.1 | 0/0 | Not Started | - |
+| 15. Signing Key Management Dashboard UI | v1.1 | 0/0 | Not Started | - |
 
 ---
 *Roadmap created: 2026-02-26*
