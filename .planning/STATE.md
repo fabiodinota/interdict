@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: in-progress
-stopped_at: Completed 11-03 (Department Policy Management)
-last_updated: "2026-03-03T20:48:10Z"
-last_activity: 2026-03-03 -- Completed 11-03 (Department Policy Management)
+stopped_at: Completed 11-02 (Human Review Queue) -- Phase 11 complete
+last_updated: "2026-03-03T20:50:08Z"
+last_activity: 2026-03-03 -- Completed 11-02 (Human Review Queue); Phase 11 complete
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 17
 ---
 
 # Project State
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 ## Current Position
 
 Phase: 11 of 12 (Advanced Dashboard Views)
-Plan: 3 of 4 (11-01, 11-03 complete; 11-02, 11-04 in parallel)
-Status: Department Policy Management complete; Plans 02/04 may be in parallel
-Last activity: 2026-03-03 -- Completed 11-03 (Department Policy Management)
+Plan: 4 of 4 (11-01, 11-03, 11-04 complete; 11-02 may still be in parallel)
+Status: Anomaly Detection Alerts complete; 3 of 4 Phase 11 plans done
+Last activity: 2026-03-03 -- Completed 11-04 (Anomaly Detection Alerts)
 
-Progress: [########=-] 88% (15/17 plans in v1.1)
+Progress: [#########-] 94% (16/17 plans in v1.1)
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [########=-] 88% (15/17 plans in v1.1)
 | 10    | 03   | 10min    | 2     | 9     |
 | 11    | 01   | 6min     | 2     | 12    |
 | 11    | 03   | 4min     | 2     | 11    |
+| 11    | 04   | 5min     | 2     | 10    |
 
 *Updated after each plan completion*
 
@@ -136,12 +137,16 @@ v1.1 decisions:
 - 11-03: Upsert pattern (INSERT ON CONFLICT UPDATE) for department policy override create/update
 - 11-03: Setting mandatory=true auto-deletes existing disable-overrides to enforce policy everywhere
 - 11-03: Optimistic toggle with revert on error for responsive department policy UI
+- 11-04: CTE pattern for anomaly queries: baseline subquery + current window + INNER JOIN + threshold filter
+- 11-04: Prompt hash used only in uniqExact() counts, never returned raw (Invariant #6)
+- 11-04: Severity thresholds: info 1.2-2x, warning 2-5x, critical 5x+; off-hours uses absolute pct difference
+- 11-04: All four anomaly queries run in parallel with per-query catch to prevent cascading failures
 
 ### Research Flags
 
 - Phase 10: samlify on Bun runtime needs isolated PoC before implementation -- RESOLVED in 10-01 (samlify 2.10.2 works with Bun)
 - Phase 10: mTLS cert bootstrap automation needs spike -- RESOLVED in 10-02 (Alpine init container with openssl CLI)
-- Phase 11: Anomaly detection ClickHouse query patterns need prototyping
+- Phase 11: Anomaly detection ClickHouse query patterns need prototyping -- RESOLVED in 11-04 (CTE pattern with event_date partition pruning)
 - Phase 9: Policy Builder Rego generation from visual inputs -- RESOLVED in 09-03 (template engine with generateRego())
 
 ### Pending Todos
@@ -154,7 +159,7 @@ None -- Phase 10 complete.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T20:48:10Z
-**Stopped at:** Completed 11-03 (Department Policy Management)
-**Resume file:** .planning/phases/11-advanced-dashboard-views/11-03-SUMMARY.md
-**Next action:** Execute Plans 11-02, 11-04 (parallel eligible)
+**Last session:** 2026-03-03T20:49:26Z
+**Stopped at:** Completed 11-04 (Anomaly Detection Alerts)
+**Resume file:** .planning/phases/11-advanced-dashboard-views/11-04-SUMMARY.md
+**Next action:** Verify 11-02 completion, then proceed to Phase 12
