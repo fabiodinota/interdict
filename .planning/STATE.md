@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: in-progress
-stopped_at: Completed 09-03 (Policy Builder & Policy List)
-last_updated: "2026-03-03T08:49:35Z"
+stopped_at: Completed 09-04 (Audit Trail, Vendors, Regulatory, Reports)
+last_updated: "2026-03-03T09:06:16Z"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -23,12 +23,12 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 
 ## Current Position
 
-Phase: 9 of 12 (Dashboard Core Views) -- IN PROGRESS
-Plan: 4 of 4 (next: Remaining Dashboard Views)
-Status: Plan 09-03 complete
-Last activity: 2026-03-03 -- Completed 09-03 (Policy Builder & Policy List)
+Phase: 9 of 12 (Dashboard Core Views) -- COMPLETE
+Plan: 4 of 4 (all plans complete)
+Status: Phase 09 complete -- all 6 core dashboard views functional
+Last activity: 2026-03-03 -- Completed 09-04 (Audit Trail, Vendors, Regulatory, Reports)
 
-Progress: [########--] 75% (3/4 plans in Phase 9)
+Progress: [##########] 100% (4/4 plans in Phase 9)
 
 ## Performance Metrics
 
@@ -38,8 +38,8 @@ Progress: [########--] 75% (3/4 plans in Phase 9)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 8
-- Plans remaining: 1 (Phase 9: 1 remaining)
+- Plans completed: 9
+- Plans remaining: 0 (Phase 9: complete)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -51,6 +51,7 @@ Progress: [########--] 75% (3/4 plans in Phase 9)
 | 09    | 01   | 7min     | 2     | 56    |
 | 09    | 02   | 6min     | 2     | 8     |
 | 09    | 03   | 8min     | 2     | 17    |
+| 09    | 04   | 12min    | 2     | 26    |
 
 *Updated after each plan completion*
 
@@ -100,6 +101,11 @@ v1.1 decisions:
 - 09-03: Edit mode starts in raw Rego editor since template params cannot be reverse-engineered from Rego
 - 09-03: Compilation status polling uses TanStack Query refetchInterval returning false to auto-stop
 - 09-03: Used Dialog for confirmation dialogs (restore, delete) since AlertDialog not installed; same UX
+- 09-04: In-page state toggle for framework detail view (not route-based) for simplicity
+- 09-04: PDF generated server-side with PDFKit; blob downloaded via BFF proxy for auth continuity
+- 09-04: Buffer to Uint8Array conversion for Bun/Elysia TS Response constructor compatibility
+- 09-04: Vendor cards expand inline for models; framework cards grouped by jurisdiction when multiple present
+- 09-04: Cursor stack pattern for TanStack Table forward/backward pagination
 
 ### Research Flags
 
@@ -118,7 +124,7 @@ None -- Phase 9 in progress.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T08:49:35Z
-**Stopped at:** Completed 09-03 (Policy Builder & Policy List)
-**Resume file:** .planning/phases/09-dashboard-core-views/09-03-SUMMARY.md
-**Next action:** Execute 09-04 (Remaining Dashboard Views)
+**Last session:** 2026-03-03T09:06:16Z
+**Stopped at:** Completed 09-04 (Audit Trail, Vendors, Regulatory, Reports) -- Phase 9 complete
+**Resume file:** .planning/phases/09-dashboard-core-views/09-04-SUMMARY.md
+**Next action:** Execute Phase 10 (Advanced Identity) or review/test Phase 9 outputs
