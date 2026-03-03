@@ -14,6 +14,7 @@ import {
   MessageSquareWarning,
   Building,
   AlertTriangle,
+  KeyRound,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
   { label: "Reviews", icon: MessageSquareWarning, href: "/reviews" },
   { label: "Dept Policies", icon: Building, href: "/department-policies" },
   { label: "Anomalies", icon: AlertTriangle, href: "/anomalies" },
+  { label: "Signing Keys", icon: KeyRound, href: "/settings/signing-keys" },
 ] as const;
 
 export function Sidebar() {

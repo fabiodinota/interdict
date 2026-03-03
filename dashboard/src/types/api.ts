@@ -221,3 +221,22 @@ export interface AnomalySummary {
   info: number;
   byType: Record<string, number>;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 15: Signing Key Management Types
+// ---------------------------------------------------------------------------
+
+export interface SigningKeyInfo {
+  id: string;
+  key_id: string;
+  public_key_hex: string;
+  is_active: boolean;
+  activated_at: string | null;
+  retired_at: string | null;
+  created_at: string;
+}
+
+export interface RotateKeyResult {
+  key_id: string;
+  public_key_hex: string;
+}
