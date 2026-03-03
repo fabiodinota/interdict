@@ -170,7 +170,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13
 | 10. SAML SSO & Security Hardening | 3/3 | Complete    | 2026-03-03 | - |
 | 11. Advanced Dashboard Views | 4/4 | Complete    | 2026-03-03 | - |
 | 12. Kubernetes Deployment | 3/3 | Complete    | 2026-03-03 | - |
-| 13. Deployment Wiring for SAML & Key Rotation | 2/2 | Complete   | 2026-03-03 | - |
+| 13. Deployment Wiring for SAML & Key Rotation | 2/2 | Complete    | 2026-03-03 | - |
 
 ---
 *Roadmap created: 2026-02-26*
