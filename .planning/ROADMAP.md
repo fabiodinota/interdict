@@ -95,12 +95,12 @@ Plans:
   1. User can log in via SAML 2.0 SSO through Okta or Azure AD and land in the dashboard with correct role assignment
   2. All gRPC channels between kernel, control plane, and evidence collector use mTLS -- connections without valid client certificates are rejected
   3. Admin can rotate the Ed25519 evidence signing key and the system continues to verify both old (pre-rotation) and new (post-rotation) evidence bundles without breaking the hash chain
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 10-01: TBD
-- [ ] 10-02: TBD
-- [ ] 10-03: TBD
+- [ ] 10-01-PLAN.md -- SAML 2.0 SSO with samlify, dual-mode auth, JIT user provisioning (Wave 1)
+- [ ] 10-02-PLAN.md -- mTLS for all internal gRPC channels with cert bootstrap (Wave 1)
+- [ ] 10-03-PLAN.md -- Ed25519 signing key rotation with admin API and hot-reload (Wave 1)
 
 ### Phase 11: Advanced Dashboard Views
 **Goal**: Auditors can independently verify evidence integrity, compliance officers can manage escalations and anomalies, and department managers can customize their team's policies
@@ -150,10 +150,10 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 7. Identity Foundation | v1.1 | Complete    | 2026-03-01 | - |
 | 8. Container Images & Docker Compose | v1.1 | 2/2 | Complete | 2026-03-02 |
 | 9. Dashboard Core Views | v1.1 | 5/5 | Complete | 2026-03-03 |
-| 10. SAML SSO & Security Hardening | v1.1 | 0/? | Not started | - |
+| 10. SAML SSO & Security Hardening | v1.1 | 0/3 | Not started | - |
 | 11. Advanced Dashboard Views | v1.1 | 0/? | Not started | - |
 | 12. Kubernetes Deployment | v1.1 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-03 after 09-01 completion*
+*Last updated: 2026-03-03 after Phase 10 planning*
