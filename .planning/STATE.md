@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: in-progress
-stopped_at: Phase 11 context gathered
-last_updated: "2026-03-03T19:44:43.710Z"
-last_activity: 2026-03-03 -- Completed 10-03 (Ed25519 Signing Key Rotation)
+stopped_at: Completed 11-01 (Evidence Verification UI and API)
+last_updated: "2026-03-03T20:40:19Z"
+last_activity: 2026-03-03 -- Completed 11-01 (Evidence Verification UI and API)
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
----
-
----
-gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Pilot Ready
-status: in-progress
-stopped_at: Completed 10-03 (Ed25519 Signing Key Rotation) -- Phase 10 fully complete
-last_updated: "2026-03-03T18:47:00Z"
-last_activity: 2026-03-03 -- Completed 10-03 (Ed25519 Signing Key Rotation)
-progress:
-  total_phases: 6
-  completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 17
+  completed_plans: 14
 ---
 
 # Project State
@@ -35,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** v1.1 Pilot Ready -- Phase 10 complete (SAML/SSO Security Hardening)
+**Current focus:** v1.1 Pilot Ready -- Phase 11 in progress (Advanced Dashboard Views)
 
 ## Current Position
 
-Phase: 10 of 12 (SAML/SSO Security Hardening) -- COMPLETE
-Plan: 3 of 3 (all plans complete)
-Status: Phase 10 complete -- SAML SSO, mTLS, and key rotation all implemented
-Last activity: 2026-03-03 -- Completed 10-03 (Ed25519 Signing Key Rotation)
+Phase: 11 of 12 (Advanced Dashboard Views)
+Plan: 1 of 4 (11-01 complete)
+Status: Evidence Verification UI and API complete; Plans 02-04 ready for parallel execution
+Last activity: 2026-03-03 -- Completed 11-01 (Evidence Verification UI and API)
 
-Progress: [##########] 100% (13/13 plans in v1.1)
+Progress: [########--] 82% (14/17 plans in v1.1)
 
 ## Performance Metrics
 
@@ -54,8 +39,8 @@ Progress: [##########] 100% (13/13 plans in v1.1)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 13
-- Plans remaining: 0 (Phase 10: complete)
+- Plans completed: 14
+- Plans remaining: 3 (Phase 11: 3 plans, Phase 12: TBD)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -72,6 +57,7 @@ Progress: [##########] 100% (13/13 plans in v1.1)
 | 10    | 01   | 9min     | 2     | 11    |
 | 10    | 02   | 6min     | 2     | 14    |
 | 10    | 03   | 10min    | 2     | 9     |
+| 11    | 01   | 6min     | 2     | 12    |
 
 *Updated after each plan completion*
 
@@ -141,6 +127,10 @@ v1.1 decisions:
 - 10-03: BoxedProviderAdapter wraps Arc<dyn SigningProvider> in Box for ArcSwap compatibility; callers use current() per-operation
 - 10-03: File watcher uses 30s mtime polling (SIGNING_KEY_WATCH_PATH) instead of inotify for cross-platform simplicity
 - 10-03: Private key written to shared volume path (SIGNING_KEY_OUTPUT_PATH) only; never returned over network API
+- 11-01: WebCrypto Ed25519 for signature verification (Bun native, no extra deps like @noble/ed25519)
+- 11-01: Merkle proof step returns null/partial -- Merkle roots in S3 only, control plane lacks S3 access
+- 11-01: All Phase 11 types and nav items added in Plan 01 to prevent file conflicts with Plans 02-04
+- 11-01: QuickVerifyButton passes partial bundle data; full crypto fields fetched server-side by verify API
 
 ### Research Flags
 
@@ -159,7 +149,7 @@ None -- Phase 10 complete.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T19:44:43.707Z
-**Stopped at:** Phase 11 context gathered
-**Resume file:** .planning/phases/11-advanced-dashboard-views/11-CONTEXT.md
-**Next action:** Execute Phase 11 (Advanced Dashboard) or Phase 12 (Helm/Sidecar Deployment)
+**Last session:** 2026-03-03T20:40:19Z
+**Stopped at:** Completed 11-01 (Evidence Verification UI and API)
+**Resume file:** .planning/phases/11-advanced-dashboard-views/11-01-SUMMARY.md
+**Next action:** Execute Plans 11-02, 11-03, 11-04 (parallel eligible)
