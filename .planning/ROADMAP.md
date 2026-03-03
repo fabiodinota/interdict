@@ -175,7 +175,10 @@ Plans:
   1. Admin can view current and historical signing keys on a /settings/signing-keys dashboard page
   2. Admin can trigger key rotation from the dashboard and see confirmation of the new key
   3. Key status (active, rotated, created date) is displayed with clear visual indicators
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 15-01-PLAN.md -- Signing key types, TanStack Query hook, sidebar nav, page with key table and rotation dialog (Wave 1)
 
 ## Progress
 
@@ -199,8 +202,8 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15
 | 12. Kubernetes Deployment | 3/3 | Complete    | 2026-03-03 | - |
 | 13. Deployment Wiring for SAML & Key Rotation | 2/2 | Complete    | 2026-03-03 | - |
 | 14. SAML SSO Cross-Origin Cookie Fix | v1.1 | Complete    | 2026-03-03 | 2026-03-04 |
-| 15. Signing Key Management Dashboard UI | v1.1 | 0/0 | Not Started | - |
+| 15. Signing Key Management Dashboard UI | v1.1 | 0/1 | Not Started | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-04 after Phase 14 planning*
+*Last updated: 2026-03-04 after Phase 15 planning*
