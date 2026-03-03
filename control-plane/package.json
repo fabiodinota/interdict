@@ -13,6 +13,7 @@
     "seed": "bun run src/seed/run-seed.ts"
   },
   "dependencies": {
+    "@authenio/samlify-xsd-schema-validator": "1.0.5",
     "@clickhouse/client": "^1.8.0",
     "@grpc/grpc-js": "^1.12.0",
     "@grpc/proto-loader": "^0.7.0",
@@ -21,7 +22,8 @@
     "drizzle-typebox": "^0.2.0",
     "elysia": "^1.4.0",
     "pdfkit": "0.17.2",
-    "postgres": "^3.4.0"
+    "postgres": "^3.4.0",
+    "samlify": "^2.10.0"
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",

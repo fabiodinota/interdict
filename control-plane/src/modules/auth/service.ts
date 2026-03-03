@@ -11,8 +11,8 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { eq, and, desc, lt, or } from "drizzle-orm";
-import { apiKeys, userDepartments } from "../../db/schema/auth";
+import { eq, and, desc, lt, or, gt } from "drizzle-orm";
+import { apiKeys, userDepartments, sessions } from "../../db/schema/auth";
 import { users } from "../../db/schema/organization";
 import {
   NotFoundError,
@@ -114,6 +114,14 @@ export interface AuthService {
     departments: string[];
     isService: boolean;
   }>;
+  authenticateBySessionToken(token: string): Promise<AuthenticatedUser | null>;
+  createSession(userId: string): Promise<string>;
+  findOrCreateSamlUser(
+    email: string,
+    displayName: string,
+    externalId: string,
+    roleHint?: string
+  ): Promise<AuthenticatedUser>;
 }
 
 // ---------------------------------------------------------------------------
@@ -335,6 +343,156 @@ export function createAuthService(db: any): AuthService {
         role: user.role,
         departments,
         isService: user.isService,
+      };
+    },
+
+    /**
+     * Authenticate a user by opaque session token.
+     * Looks up session in sessions table, checks expiry, joins with users.
+     * Returns null if session not found, expired, or user inactive.
+     */
+    async authenticateBySessionToken(
+      token: string
+    ): Promise<AuthenticatedUser | null> {
+      const [session] = await db
+        .select()
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.token, token),
+            gt(sessions.expiresAt, new Date())
+          )
+        );
+
+      if (!session) return null;
+
+      // Fetch the user (must be active)
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.id, session.userId), eq(users.isActive, true)));
+
+      if (!user) return null;
+
+      // Fetch user's department memberships
+      const deptRows = await db
+        .select({ departmentId: userDepartments.departmentId })
+        .from(userDepartments)
+        .where(eq(userDepartments.userId, user.id));
+
+      const departmentIds = deptRows.map(
+        (r: { departmentId: string }) => r.departmentId
+      );
+
+      return {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        isService: user.isService,
+        departmentIds,
+      };
+    },
+
+    /**
+     * Create a new session for a user.
+     * Generates a cryptographically random 128-char hex token with 8h expiry.
+     * Returns the token string.
+     */
+    async createSession(userId: string): Promise<string> {
+      const token = randomBytes(64).toString("hex");
+      const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 hours
+
+      await db.insert(sessions).values({
+        token,
+        userId,
+        expiresAt,
+      });
+
+      return token;
+    },
+
+    /**
+     * Find or create a user from SAML assertion (JIT provisioning).
+     * If user exists by email, updates externalId if not set.
+     * If user does not exist, creates with default role (or roleHint if valid).
+     */
+    async findOrCreateSamlUser(
+      email: string,
+      displayName: string,
+      externalId: string,
+      roleHint?: string
+    ): Promise<AuthenticatedUser> {
+      // Check if user already exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email.toLowerCase()));
+
+      let userId: string;
+
+      if (existingUser) {
+        userId = existingUser.id;
+
+        // Update externalId if not yet set
+        if (!existingUser.externalId && externalId) {
+          await db
+            .update(users)
+            .set({ externalId, updatedAt: new Date() })
+            .where(eq(users.id, existingUser.id));
+        }
+      } else {
+        // Validate roleHint against known roles
+        const VALID_ROLES = [
+          "super_admin",
+          "compliance_officer",
+          "policy_admin",
+          "department_manager",
+          "read_only_auditor",
+        ];
+        const role =
+          roleHint && VALID_ROLES.includes(roleHint)
+            ? roleHint
+            : "read_only_auditor";
+
+        // JIT provision: create new user
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            email: email.toLowerCase(),
+            displayName,
+            externalId,
+            role,
+            isActive: true,
+            isService: false,
+          })
+          .returning();
+
+        userId = newUser.id;
+      }
+
+      // Fetch user with departments for AuthenticatedUser
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId));
+
+      const deptRows = await db
+        .select({ departmentId: userDepartments.departmentId })
+        .from(userDepartments)
+        .where(eq(userDepartments.userId, userId));
+
+      const departmentIds = deptRows.map(
+        (r: { departmentId: string }) => r.departmentId
+      );
+
+      return {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        isService: user.isService,
+        departmentIds,
       };
     },
   };

@@ -1,14 +1,19 @@
 /**
  * Auth Module - Elysia Plugin
  *
- * REST endpoints for API key management and user identity.
- * All endpoints require authentication via the auth macro.
+ * REST endpoints for API key management, user identity, and SAML SSO.
+ * API key and profile endpoints require authentication via the auth macro.
+ * SAML endpoints (ACS, metadata) are unauthenticated by design.
  *
  * Endpoints:
- *   GET  /api/v1/auth/me          -- Current user profile (whoAmI)
- *   POST /api/v1/auth/keys        -- Create API key (plaintext returned once)
- *   GET  /api/v1/auth/keys        -- List API keys (never exposes hash)
- *   DELETE /api/v1/auth/keys/:keyId -- Revoke API key (soft delete)
+ *   GET  /api/v1/auth/me              -- Current user profile (whoAmI)
+ *   POST /api/v1/auth/keys            -- Create API key (plaintext returned once)
+ *   GET  /api/v1/auth/keys            -- List API keys (never exposes hash)
+ *   DELETE /api/v1/auth/keys/:keyId   -- Revoke API key (soft delete)
+ *   GET  /api/v1/auth/saml/sso        -- Initiate SAML SSO (redirect to IdP)
+ *   POST /api/v1/auth/saml/acs        -- Assertion Consumer Service
+ *   GET  /api/v1/auth/saml/slo        -- Single Logout
+ *   GET  /api/v1/auth/saml/metadata   -- SP metadata XML
  */
 
 import { Elysia } from "elysia";
@@ -23,6 +28,8 @@ import {
   apiResponse,
   paginatedResponse,
 } from "../../shared/utilities";
+import { samlEnabled } from "./saml/config";
+import { createSamlRoutes } from "./saml/handlers";
 
 export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   .use(authPlugin)
@@ -111,4 +118,9 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
       auth: true,
       params: RevokeApiKeyParams,
     }
-  );
+  )
+
+  // -------------------------------------------------------------------------
+  // SAML SSO Routes (conditionally mounted when SAML is configured)
+  // -------------------------------------------------------------------------
+  .use(createSamlRoutes());

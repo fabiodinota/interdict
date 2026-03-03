@@ -74,13 +74,31 @@ export const userDepartments = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Role Permissions
+// Sessions (SAML SSO / Browser Authentication)
 // ---------------------------------------------------------------------------
 
 /**
- * Configurable per-role permission grants.
- * Defaults loaded from seed; enterprise customers can customize via API.
+ * Sessions table for SAML SSO and browser-based authentication.
+ * Stores opaque session tokens (crypto.randomBytes(64).toString('hex')).
+ * Tokens are indexed for fast lookup by the auth middleware.
  */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    token: varchar("token", { length: 128 }).notNull().unique(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("sessions_token_idx").on(table.token),
+    index("sessions_user_idx").on(table.userId),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Signing Keys (Ed25519 Key Rotation Registry)
 // ---------------------------------------------------------------------------
