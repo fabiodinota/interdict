@@ -115,18 +115,11 @@ export function createSamlRoutes() {
 
         const sessionToken = await authService.createSession(user.id);
 
-        // Set httpOnly session cookie
-        cookie[SESSION_COOKIE_NAME].set({
-          value: sessionToken,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: SESSION_MAX_AGE_SECONDS,
-        });
-
-        // Redirect to dashboard
-        return redirect(DASHBOARD_URL);
+        // Redirect to dashboard callback route with token.
+        // The dashboard sets the cookie on its own origin, solving
+        // the cross-origin cookie problem (control-plane origin != dashboard origin).
+        const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?token=${sessionToken}`;
+        return redirect(callbackUrl);
       } catch (err: any) {
         console.error("[SAML] ACS error:", err.message || err);
         return new Response("SAML authentication failed", { status: 401 });
