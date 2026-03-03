@@ -11,6 +11,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ShieldCheck,
+  MessageSquareWarning,
+  Building,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,6 +31,10 @@ const NAV_ITEMS = [
   { label: "Vendors", icon: Building2, href: "/vendors" },
   { label: "Regulatory", icon: Scale, href: "/regulatory" },
   { label: "Reports", icon: FileText, href: "/reports" },
+  { label: "Evidence", icon: ShieldCheck, href: "/evidence" },
+  { label: "Reviews", icon: MessageSquareWarning, href: "/reviews" },
+  { label: "Dept Policies", icon: Building, href: "/department-policies" },
+  { label: "Anomalies", icon: AlertTriangle, href: "/anomalies" },
 ] as const;
 
 export function Sidebar() {

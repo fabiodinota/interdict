@@ -122,3 +122,102 @@ export interface VendorUsage {
   requestCount: number;
   blockCount: number;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 11: Evidence Verification Types
+// ---------------------------------------------------------------------------
+
+export interface EvidenceBundle {
+  bundle_id: string;
+  chain_hash: string;
+  previous_hash: string;
+  sequence_number: number;
+  signature: string;
+  signing_key_id: string;
+  timestamp: string;
+  actor_identity: string;
+  vendor: string;
+  policy_action: string;
+}
+
+export interface VerificationStep {
+  name: string;
+  passed: boolean | null; // null = not available (e.g., Merkle)
+  details: Record<string, string>;
+}
+
+export interface VerificationResult {
+  bundleId: string;
+  steps: VerificationStep[];
+  overall: "pass" | "fail" | "partial";
+}
+
+// ---------------------------------------------------------------------------
+// Phase 11: Review Queue Types (Plan 02)
+// ---------------------------------------------------------------------------
+
+export interface ReviewItem {
+  id: string;
+  bundleId: string;
+  escalatedAt: string;
+  slaDeadline: string;
+  status: "pending" | "claimed" | "approved" | "rejected" | "auto_escalated";
+  claimedBy: string | null;
+  claimedAt: string | null;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  resolution: string | null;
+  resolutionNotes: string | null;
+  actorIdentity: string;
+  vendor: string;
+  model: string;
+  policyAction: string;
+  policyRules: unknown[];
+  riskScore: number;
+  promptHash: string;
+  responseHash: string;
+}
+
+export type ReviewResolution =
+  | "false_positive"
+  | "violation_confirmed"
+  | "needs_policy_update"
+  | "insufficient_context";
+
+// ---------------------------------------------------------------------------
+// Phase 11: Department Policy Types (Plan 03)
+// ---------------------------------------------------------------------------
+
+export interface DepartmentEffectivePolicy {
+  policyId: string;
+  name: string;
+  description: string;
+  globalEnabled: boolean;
+  effectiveEnabled: boolean;
+  isMandatory: boolean;
+  source: "Global" | "Department override";
+  overrideId: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 11: Anomaly Detection Types (Plan 04)
+// ---------------------------------------------------------------------------
+
+export interface AnomalyAlert {
+  type: "volume_spike" | "off_hours" | "vendor_switch" | "topic_drift";
+  severity: "info" | "warning" | "critical";
+  actorIdentity: string;
+  summary: string;
+  baseline: Record<string, number | string>;
+  current: Record<string, number | string>;
+  detectedAt: string;
+  actions: Array<{ label: string; href: string }>;
+}
+
+export interface AnomalySummary {
+  total: number;
+  critical: number;
+  warning: number;
+  info: number;
+  byType: Record<string, number>;
+}

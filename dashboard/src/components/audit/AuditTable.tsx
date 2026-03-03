@@ -8,7 +8,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { format, parseISO } from "date-fns";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, ShieldCheck, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,12 +27,77 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { AuditRecord, AuditSearchResponse } from "@/hooks/use-audit";
+import { useVerifyBundles } from "@/hooks/use-evidence";
+import { BundleDetailPanel } from "@/components/evidence/BundleDetailPanel";
+import type { VerificationResult, EvidenceBundle } from "@/types/api";
 
 // ---------------------------------------------------------------------------
 // Column helper
 // ---------------------------------------------------------------------------
 
 const columnHelper = createColumnHelper<AuditRecord>();
+
+// ---------------------------------------------------------------------------
+// QuickVerifyButton -- inline verification for a single audit row
+// ---------------------------------------------------------------------------
+
+function QuickVerifyButton({ record }: { record: AuditRecord }) {
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<VerificationResult | null>(null);
+  const verifyMutation = useVerifyBundles();
+
+  const handleVerify = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await verifyMutation.mutateAsync([record.bundle_id]);
+      if (response.data && response.data.length > 0) {
+        setResult(response.data[0]);
+        setOpen(true);
+      }
+    } catch {
+      // Error handled by mutation state
+    }
+  };
+
+  // Construct partial bundle from audit record for display in detail panel.
+  // Full cryptographic fields are fetched server-side by the verify API.
+  const bundle: EvidenceBundle = {
+    bundle_id: record.bundle_id,
+    chain_hash: record.chain_hash,
+    previous_hash: "",
+    sequence_number: 0,
+    signature: "",
+    signing_key_id: "",
+    timestamp: record.timestamp,
+    actor_identity: record.actor_identity,
+    vendor: record.vendor,
+    policy_action: record.policy_action,
+  };
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0"
+        onClick={handleVerify}
+        disabled={verifyMutation.isPending}
+      >
+        {verifyMutation.isPending ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <ShieldCheck className="h-3.5 w-3.5" />
+        )}
+      </Button>
+      <BundleDetailPanel
+        open={open}
+        onOpenChange={setOpen}
+        bundle={bundle}
+        verificationResult={result}
+      />
+    </>
+  );
+}
 
 function actionBadgeVariant(action: string) {
   switch (action) {
@@ -142,6 +207,11 @@ const columns = [
       if (us == null) return "-";
       return `${(us / 1000).toFixed(1)}ms`;
     },
+  }),
+  columnHelper.display({
+    id: "actions",
+    header: "Verify",
+    cell: (info) => <QuickVerifyButton record={info.row.original} />,
   }),
 ];
 
