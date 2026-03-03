@@ -153,21 +153,24 @@ Plans:
 - [ ] 13-02-PLAN.md -- Helm chart SAML + key rotation wiring, signing-keys PVC, cert-script extension (Wave 1)
 
 ### Phase 14: SAML SSO Cross-Origin Cookie Fix
-**Goal**: SAML SSO login completes end-to-end — user authenticates via IdP and lands in the dashboard with a valid session
+**Goal**: SAML SSO login completes end-to-end -- user authenticates via IdP and lands in the dashboard with a valid session
 **Depends on**: Phase 10 (SAML ACS handler), Phase 9 (dashboard middleware)
 **Requirements**: IDENT-01
-**Gap Closure:** Closes integration gap from v1.1 audit — ACS cross-origin cookie loss
+**Gap Closure:** Closes integration gap from v1.1 audit -- ACS cross-origin cookie loss
 **Success Criteria** (what must be TRUE):
   1. After SAML authentication, ACS redirects to a dashboard callback route that sets the session cookie on the dashboard origin
-  2. Dashboard middleware recognizes the session cookie and grants access — no redirect loop back to /login
+  2. Dashboard middleware recognizes the session cookie and grants access -- no redirect loop back to /login
   3. Existing API key authentication flow remains unaffected
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 14-01-PLAN.md -- Dashboard SAML callback route, ACS redirect fix, login error display (Wave 1)
 
 ### Phase 15: Signing Key Management Dashboard UI
 **Goal**: Admin can view signing key status and trigger rotation from the dashboard instead of direct API calls
 **Depends on**: Phase 10 (signing-keys API), Phase 11 (dashboard infrastructure)
 **Requirements**: IDENT-06
-**Gap Closure:** Closes integration gap from v1.1 audit — no dashboard UI for signing key management
+**Gap Closure:** Closes integration gap from v1.1 audit -- no dashboard UI for signing key management
 **Success Criteria** (what must be TRUE):
   1. Admin can view current and historical signing keys on a /settings/signing-keys dashboard page
   2. Admin can trigger key rotation from the dashboard and see confirmation of the new key
@@ -195,9 +198,9 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15
 | 11. Advanced Dashboard Views | 4/4 | Complete    | 2026-03-03 | - |
 | 12. Kubernetes Deployment | 3/3 | Complete    | 2026-03-03 | - |
 | 13. Deployment Wiring for SAML & Key Rotation | 2/2 | Complete    | 2026-03-03 | - |
-| 14. SAML SSO Cross-Origin Cookie Fix | v1.1 | 0/0 | Not Started | - |
+| 14. SAML SSO Cross-Origin Cookie Fix | v1.1 | 0/1 | Planning | - |
 | 15. Signing Key Management Dashboard UI | v1.1 | 0/0 | Not Started | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-03 after Phase 13 planning*
+*Last updated: 2026-03-04 after Phase 14 planning*
