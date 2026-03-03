@@ -34,7 +34,7 @@ Full details archived in `milestones/v1.0-ROADMAP.md`
 - [x] **Phase 8: Container Images & Docker Compose** -- Multi-stage Dockerfiles for all services, one-command pilot deployment (completed 2026-03-02)
 - [x] **Phase 9: Dashboard Core Views** -- Next.js dashboard with 6 core compliance officer views (completed 2026-03-03)
 - [x] **Phase 10: SAML SSO & Security Hardening** -- Enterprise SSO, mTLS between all components, evidence signing key rotation (completed 2026-03-03)
-- [x] **Phase 11: Advanced Dashboard Views** -- Evidence verification, human review queue, department policies, anomaly detection (completed 2026-03-03)
+- [x] **Phase 11: Advanced Dashboard Views** -- Evidence verification, human review queue, department policies, anomaly detection (completed 2026-03-03)
 - [ ] **Phase 12: Kubernetes Deployment** -- Helm chart, sidecar manifests, CA certificate onboarding
 
 ## Phase Details
@@ -127,12 +127,12 @@ Plans:
   1. Operator can deploy the full Interdict stack on a Kubernetes cluster using `helm install` with configurable values for pilot and enterprise environments
   2. Operator can deploy the kernel as a sidecar container in the same pod as an AI application, with the sidecar intercepting all outbound AI traffic
   3. Operator can run a platform-specific script (macOS, Windows, Linux) to install the Interdict CA certificate on client machines for explicit proxy mode
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 12-01: TBD
-- [ ] 12-02: TBD
-- [ ] 12-03: TBD
+- [ ] 12-01-PLAN.md -- Helm chart foundation, values, cert bootstrap, and all service templates (Wave 1)
+- [ ] 12-02-PLAN.md -- Sidecar injection templates and pilot/enterprise overlay files (Wave 2)
+- [ ] 12-03-PLAN.md -- Cross-platform CA trust installer scripts (Wave 1)
 
 ## Progress
 
@@ -153,8 +153,8 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 9. Dashboard Core Views | v1.1 | 5/5 | Complete | 2026-03-03 |
 | 10. SAML SSO & Security Hardening | 3/3 | Complete    | 2026-03-03 | - |
 | 11. Advanced Dashboard Views | 4/4 | Complete    | 2026-03-03 | - |
-| 12. Kubernetes Deployment | v1.1 | 0/? | Not started | - |
+| 12. Kubernetes Deployment | v1.1 | 0/3 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-03 after Phase 11 planning*
+*Last updated: 2026-03-03 after Phase 12 planning*
