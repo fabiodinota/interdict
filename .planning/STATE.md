@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: completed
-stopped_at: Completed 12-02 (Sidecar Injection & Environment Overlays)
-last_updated: "2026-03-03T21:43:56.593Z"
-last_activity: 2026-03-03 -- Completed 12-02 (Sidecar Injection & Environment Overlays)
+stopped_at: Completed 13-02 (SAML SSO and Key Rotation Helm Wiring)
+last_updated: "2026-03-03T22:22:30Z"
+last_activity: 2026-03-03 -- Completed 13-02 (SAML SSO and Key Rotation Helm Wiring)
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 20
-  completed_plans: 20
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 22
+  completed_plans: 22
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** v1.1 Pilot Ready -- Phase 12 complete (Kubernetes Deployment)
+**Current focus:** v1.1 Pilot Ready -- Phase 13 complete (SAML & Key Rotation Deployment Wiring)
 
 ## Current Position
 
-Phase: 12 of 12 (Kubernetes Deployment) -- COMPLETE
-Plan: 3 of 3 (all plans complete)
-Status: Phase 12 complete -- v1.1 Pilot Ready milestone complete
-Last activity: 2026-03-03 -- Completed 12-02 (Sidecar Injection & Environment Overlays)
+Phase: 13 of 13 (Deployment Wiring - SAML & Key Rotation) -- COMPLETE
+Plan: 2 of 2 (all plans complete)
+Status: Phase 13 complete -- all gap closure plans executed
+Last activity: 2026-03-03 -- Completed 13-02 (SAML SSO and Key Rotation Helm Wiring)
 
-Progress: [██████████] 100% (20/20 plans in v1.1)
+Progress: [██████████] 100% (22/22 plans in v1.1)
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [██████████] 100% (20/20 plans in v1.1)
 | Phase 12 P03 | 2min | 2 tasks | 2 files |
 | Phase 12 P01 | 3min | 2 tasks | 20 files |
 | Phase 12 P02 | 2min | 2 tasks | 6 files |
+| 13    | 01   | 1min     | 2     | 5     |
 
 ## Accumulated Context
 
@@ -154,6 +155,9 @@ v1.1 decisions:
 - [Phase 12]: ANSI color codes for script output; PEM validation before trust store modification; subject match for Windows cert removal
 - [Phase 12]: ghcr.io/interdict/ default image registry; PVC for certs (not Secret); existingSecret pattern for passwords; busybox init containers for dependency ordering
 - [Phase 12]: Sidecar allowlistVendors as YAML list for template range iteration; dual traffic routing via sidecar.trafficRedirect.enabled toggle
+- 13-01: SAML SP cert is self-signed (not CA-signed) because SAML SP certs register directly with IdP
+- 13-01: signing_keys named volume shared read-write between control-plane and evidence-collector for hot-reload
+- 13-01: NEXT_PUBLIC_ vars passed as both build args and runtime env for documentation consistency
 
 ### Research Flags
 
@@ -172,7 +176,7 @@ None -- Phase 10 complete.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T21:39:56.273Z
-**Stopped at:** Completed 12-02 (Sidecar Injection & Environment Overlays)
+**Last session:** 2026-03-03T22:21:32Z
+**Stopped at:** Completed 13-01 (SAML + Key Rotation Deployment Wiring)
 **Resume file:** None
-**Next action:** Phase 12 planning and execution (Helm/sidecar/deployment)
+**Next action:** Execute 13-02 (validation/smoke test)
