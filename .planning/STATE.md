@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: in-progress
-stopped_at: Completed 09-04 (Audit Trail, Vendors, Regulatory, Reports)
-last_updated: "2026-03-03T09:06:16Z"
+stopped_at: Completed 09-05 (Gap Closure -- BFF Proxy Binary Response Passthrough)
+last_updated: "2026-03-03T14:29:00Z"
 progress:
   total_phases: 3
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 10
+  completed_plans: 10
 ---
 
 # Project State
@@ -19,16 +19,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** v1.1 Pilot Ready -- Phase 9 in progress (Dashboard Core Views)
+**Current focus:** v1.1 Pilot Ready -- Phase 9 complete (Dashboard Core Views)
 
 ## Current Position
 
 Phase: 9 of 12 (Dashboard Core Views) -- COMPLETE
-Plan: 4 of 4 (all plans complete)
-Status: Phase 09 complete -- all 6 core dashboard views functional
-Last activity: 2026-03-03 -- Completed 09-04 (Audit Trail, Vendors, Regulatory, Reports)
+Plan: 5 of 5 (all plans complete, including gap closure)
+Status: Phase 09 complete -- all 6 core dashboard views functional, report downloads working
+Last activity: 2026-03-03 -- Completed 09-05 (Gap Closure -- BFF Proxy Binary Response Passthrough)
 
-Progress: [##########] 100% (4/4 plans in Phase 9)
+Progress: [##########] 100% (5/5 plans in Phase 9)
 
 ## Performance Metrics
 
@@ -38,7 +38,7 @@ Progress: [##########] 100% (4/4 plans in Phase 9)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 9
+- Plans completed: 10
 - Plans remaining: 0 (Phase 9: complete)
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -52,6 +52,7 @@ Progress: [##########] 100% (4/4 plans in Phase 9)
 | 09    | 02   | 6min     | 2     | 8     |
 | 09    | 03   | 8min     | 2     | 17    |
 | 09    | 04   | 12min    | 2     | 26    |
+| 09    | 05   | 2min     | 1     | 1     |
 
 *Updated after each plan completion*
 
@@ -106,6 +107,7 @@ v1.1 decisions:
 - 09-04: Buffer to Uint8Array conversion for Bun/Elysia TS Response constructor compatibility
 - 09-04: Vendor cards expand inline for models; framework cards grouped by jurisdiction when multiple present
 - 09-04: Cursor stack pattern for TanStack Table forward/backward pagination
+- 09-05: BFF proxy treats missing/empty Content-Type as JSON for backward compatibility; non-JSON responses piped as raw body stream
 
 ### Research Flags
 
@@ -124,7 +126,7 @@ None -- Phase 9 in progress.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T09:06:16Z
-**Stopped at:** Completed 09-04 (Audit Trail, Vendors, Regulatory, Reports) -- Phase 9 complete
-**Resume file:** .planning/phases/09-dashboard-core-views/09-04-SUMMARY.md
+**Last session:** 2026-03-03T14:29:00Z
+**Stopped at:** Completed 09-05 (Gap Closure -- BFF Proxy Binary Response Passthrough) -- Phase 9 fully complete
+**Resume file:** .planning/phases/09-dashboard-core-views/09-05-SUMMARY.md
 **Next action:** Execute Phase 10 (Advanced Identity) or review/test Phase 9 outputs

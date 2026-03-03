@@ -31,8 +31,8 @@ Full details archived in `milestones/v1.0-ROADMAP.md`
 **Milestone Goal:** Make Interdict.io deployable and usable by pilot customers -- a CISO can log in via SSO, configure policies through a dashboard, review audit trails, and IT can deploy via Docker Compose or Helm.
 
 - [x] **Phase 7: Identity Foundation** -- API key auth, 5-role RBAC with route guards and data-level scoping (completed 2026-03-01)
-- [ ] **Phase 8: Container Images & Docker Compose** -- Multi-stage Dockerfiles for all services, one-command pilot deployment
-- [ ] **Phase 9: Dashboard Core Views** -- Next.js dashboard with 6 core compliance officer views
+- [x] **Phase 8: Container Images & Docker Compose** -- Multi-stage Dockerfiles for all services, one-command pilot deployment (completed 2026-03-02)
+- [x] **Phase 9: Dashboard Core Views** -- Next.js dashboard with 6 core compliance officer views (completed 2026-03-03)
 - [ ] **Phase 10: SAML SSO & Security Hardening** -- Enterprise SSO, mTLS between all components, evidence signing key rotation
 - [ ] **Phase 11: Advanced Dashboard Views** -- Evidence verification, human review queue, department policies, anomaly detection
 - [ ] **Phase 12: Kubernetes Deployment** -- Helm chart, sidecar manifests, CA certificate onboarding
@@ -148,8 +148,8 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 6. Policy Distribution & Kernel Integration | v1.0 | 4/4 | Complete | 2026-03-01 |
 | 6.1 Kernel Integration Wiring | v1.0 | 1/1 | Complete | 2026-03-01 |
 | 7. Identity Foundation | v1.1 | Complete    | 2026-03-01 | - |
-| 8. Container Images & Docker Compose | v1.1 | 0/2 | Planned | - |
-| 9. Dashboard Core Views | v1.1 | 1/4 | In Progress | - |
+| 8. Container Images & Docker Compose | v1.1 | 2/2 | Complete | 2026-03-02 |
+| 9. Dashboard Core Views | v1.1 | 5/5 | Complete | 2026-03-03 |
 | 10. SAML SSO & Security Hardening | v1.1 | 0/? | Not started | - |
 | 11. Advanced Dashboard Views | v1.1 | 0/? | Not started | - |
 | 12. Kubernetes Deployment | v1.1 | 0/? | Not started | - |
