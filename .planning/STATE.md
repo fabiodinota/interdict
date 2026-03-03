@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** v1.1 Pilot Ready -- Phase 10 in progress (SAML/SSO Security Hardening)
+**Current focus:** v1.1 Pilot Ready -- Phase 10 complete (SAML/SSO Security Hardening)
 
 ## Current Position
 
-Phase: 10 of 12 (SAML/SSO Security Hardening) -- IN PROGRESS
-Plan: 2 of 3 (10-01 and 10-02 complete)
-Status: Phase 10 in progress -- SAML SSO and mTLS complete, key rotation remaining
-Last activity: 2026-03-03 -- Completed 10-01 (SAML SSO Authentication)
+Phase: 10 of 12 (SAML/SSO Security Hardening) -- COMPLETE
+Plan: 3 of 3 (all plans complete)
+Status: Phase 10 complete -- SAML SSO, mTLS, and key rotation all implemented
+Last activity: 2026-03-03 -- Completed 10-03 (Ed25519 Signing Key Rotation)
 
-Progress: [#########-] 92% (12/13 plans in v1.1)
+Progress: [##########] 100% (13/13 plans in v1.1)
 
 ## Performance Metrics
 
@@ -39,8 +39,8 @@ Progress: [#########-] 92% (12/13 plans in v1.1)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 12
-- Plans remaining: 1 (Phase 10: 10-03 key rotation remaining)
+- Plans completed: 13
+- Plans remaining: 0 (Phase 10: complete)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -56,6 +56,7 @@ Progress: [#########-] 92% (12/13 plans in v1.1)
 | 09    | 05   | 2min     | 1     | 1     |
 | 10    | 01   | 9min     | 2     | 11    |
 | 10    | 02   | 6min     | 2     | 14    |
+| 10    | 03   | 10min    | 2     | 9     |
 
 *Updated after each plan completion*
 
@@ -121,6 +122,10 @@ v1.1 decisions:
 - 10-02: mTLS toggle via MTLS_ENABLED env var for backward-compatible local dev without Docker
 - 10-02: Cert bytes stored as raw Vec<u8> in client structs, ClientTlsConfig rebuilt per connection (not Clone)
 - 10-02: Shell script cert generation (not rcgen) for one-shot Alpine init container simplicity
+- 10-03: arc-swap for lock-free atomic Arc swaps; RotatingSigningProvider avoids implementing SigningProvider directly due to lifetime constraints
+- 10-03: BoxedProviderAdapter wraps Arc<dyn SigningProvider> in Box for ArcSwap compatibility; callers use current() per-operation
+- 10-03: File watcher uses 30s mtime polling (SIGNING_KEY_WATCH_PATH) instead of inotify for cross-platform simplicity
+- 10-03: Private key written to shared volume path (SIGNING_KEY_OUTPUT_PATH) only; never returned over network API
 
 ### Research Flags
 
@@ -135,11 +140,11 @@ None yet.
 
 ### Blockers/Concerns
 
-None -- Phase 10 in progress.
+None -- Phase 10 complete.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T18:45:00Z
-**Stopped at:** Completed 10-01 (SAML SSO Authentication)
-**Resume file:** .planning/phases/10-saml-sso-security-hardening/10-01-SUMMARY.md
-**Next action:** Execute 10-03 (Key Rotation) to complete Phase 10
+**Last session:** 2026-03-03T18:47:00Z
+**Stopped at:** Completed 10-03 (Ed25519 Signing Key Rotation) -- Phase 10 fully complete
+**Resume file:** .planning/phases/10-saml-sso-security-hardening/10-03-SUMMARY.md
+**Next action:** Execute Phase 11 (Advanced Dashboard) or Phase 12 (Helm/Sidecar Deployment)
