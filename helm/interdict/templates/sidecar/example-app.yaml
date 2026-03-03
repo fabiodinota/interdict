@@ -1,0 +1,88 @@
+{{- if .Values.sidecar.exampleApp.enabled }}
+# =============================================================================
+# Example Application with Interdict Sidecar
+# =============================================================================
+# This Deployment demonstrates how to inject the Interdict kernel as a sidecar
+# into an application pod. Copy the initContainers and volumes sections into
+# your own Deployment to add Interdict governance to any AI-consuming app.
+#
+# Two traffic routing modes are supported:
+#
+# Mode 1: iptables redirect (transparent, sidecar.trafficRedirect.enabled=true)
+#   - An init container sets up iptables NAT rules to redirect AI vendor traffic
+#   - Application does not need any proxy configuration
+#   - Requires NET_ADMIN capability on the init container
+#
+# Mode 2: HTTP_PROXY (cooperative, sidecar.trafficRedirect.enabled=false)
+#   - Application uses HTTP_PROXY/HTTPS_PROXY env vars pointing to localhost:8443
+#   - No special capabilities required
+#   - Requires application to honor proxy environment variables
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "interdict.fullname" . }}-example-app
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: example-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "interdict.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: example-app
+  template:
+    metadata:
+      labels:
+        {{- include "interdict.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: example-app
+    spec:
+      {{- include "interdict.imagePullSecrets" . | nindent 6 }}
+      # -----------------------------------------------------------------
+      # Init Containers: Interdict sidecar injection
+      # Copy this entire initContainers block into your Deployment
+      # -----------------------------------------------------------------
+      initContainers:
+        {{- if .Values.sidecar.trafficRedirect.enabled }}
+        # Mode 1: iptables traffic redirect (runs once, then exits)
+        {{- include "interdict.sidecar.iptablesInit" . | nindent 8 }}
+        {{- end }}
+        # Interdict kernel sidecar (runs for pod lifetime via KEP-753)
+        {{- include "interdict.sidecar.container" . | nindent 8 }}
+      # -----------------------------------------------------------------
+      # Main Application Container
+      # -----------------------------------------------------------------
+      containers:
+        - name: example-ai-app
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+              name: http
+          {{- if not .Values.sidecar.trafficRedirect.enabled }}
+          # Mode 2: HTTP_PROXY -- application must honor these env vars
+          env:
+            - name: HTTP_PROXY
+              value: "http://localhost:8443"
+            - name: HTTPS_PROXY
+              value: "http://localhost:8443"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,.svc,.cluster.local"
+          {{- end }}
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+      # -----------------------------------------------------------------
+      # Volumes: Interdict cert mounts
+      # Copy these volumes into your Deployment
+      # -----------------------------------------------------------------
+      volumes:
+        - name: interdict-certs
+          persistentVolumeClaim:
+            claimName: {{ include "interdict.fullname" . }}-certs
+        - name: interdict-ca-certs
+          emptyDir: {}
+{{- end }}

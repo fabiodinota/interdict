@@ -241,6 +241,32 @@ existingTlsSecret: ""
 certsPvcSize: "10Mi"
 
 # =============================================================================
+# Sidecar Mode Configuration
+# =============================================================================
+sidecar:
+  # -- Enable sidecar injection helper templates
+  enabled: false
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  trafficRedirect:
+    # -- Use iptables redirect (true) or HTTP_PROXY env vars (false)
+    enabled: true
+    # -- Target hosts to redirect (empty = use sidecar.allowlistVendors)
+    targetHosts: []
+  # -- AI vendor domains for iptables redirect (list format for template iteration)
+  allowlistVendors:
+    - "api.openai.com"
+    - "api.anthropic.com"
+  exampleApp:
+    # -- Deploy an example application showing sidecar injection
+    enabled: false
+
+# =============================================================================
 # Infrastructure Subcharts
 # =============================================================================
 
