@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: in-progress
-stopped_at: Completed 09-02 (Dashboard Home Screen & Real-Time Charts)
-last_updated: "2026-03-03T04:52:00Z"
+stopped_at: Completed 09-03 (Policy Builder & Policy List)
+last_updated: "2026-03-03T08:49:35Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 ## Current Position
 
 Phase: 9 of 12 (Dashboard Core Views) -- IN PROGRESS
-Plan: 3 of 4 (next: Policy List & Visual Policy Builder)
-Status: Plan 09-02 complete
-Last activity: 2026-03-03 -- Completed 09-02 (Dashboard Home Screen & Real-Time Charts)
+Plan: 4 of 4 (next: Remaining Dashboard Views)
+Status: Plan 09-03 complete
+Last activity: 2026-03-03 -- Completed 09-03 (Policy Builder & Policy List)
 
-Progress: [#####-----] 50% (2/4 plans in Phase 9)
+Progress: [########--] 75% (3/4 plans in Phase 9)
 
 ## Performance Metrics
 
@@ -38,8 +38,8 @@ Progress: [#####-----] 50% (2/4 plans in Phase 9)
 - Average: ~7 plans/day
 
 **v1.1:**
-- Plans completed: 7
-- Plans remaining: 2 (Phase 9: 2 remaining)
+- Plans completed: 8
+- Plans remaining: 1 (Phase 9: 1 remaining)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -50,6 +50,7 @@ Progress: [#####-----] 50% (2/4 plans in Phase 9)
 | 08    | 02   | 3min     | 2     | 3     |
 | 09    | 01   | 7min     | 2     | 56    |
 | 09    | 02   | 6min     | 2     | 8     |
+| 09    | 03   | 8min     | 2     | 17    |
 
 *Updated after each plan completion*
 
@@ -94,13 +95,18 @@ v1.1 decisions:
 - 09-02: useSSE hook uses module-level counter for event IDs to avoid SSR hydration mismatch with crypto.randomUUID
 - 09-02: SSE hook reconnects after 5s on error with mountedRef guard to prevent state updates after unmount
 - 09-02: Violation chart pivots flat records into per-hour rows; vendor chart aggregates per-hour-per-model into per-vendor totals
+- 09-03: Rego string escaping via custom escapeRegoString() to prevent template injection in generated policies
+- 09-03: Simple line-by-line diff (no external diff library) for version history comparison
+- 09-03: Edit mode starts in raw Rego editor since template params cannot be reverse-engineered from Rego
+- 09-03: Compilation status polling uses TanStack Query refetchInterval returning false to auto-stop
+- 09-03: Used Dialog for confirmation dialogs (restore, delete) since AlertDialog not installed; same UX
 
 ### Research Flags
 
 - Phase 10: samlify on Bun runtime needs isolated PoC before implementation
 - Phase 10: mTLS cert bootstrap automation needs spike
 - Phase 11: Anomaly detection ClickHouse query patterns need prototyping
-- Phase 9: Policy Builder Rego generation from visual inputs needs focused spike
+- Phase 9: Policy Builder Rego generation from visual inputs -- RESOLVED in 09-03 (template engine with generateRego())
 
 ### Pending Todos
 
@@ -112,7 +118,7 @@ None -- Phase 9 in progress.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T04:52:00Z
-**Stopped at:** Completed 09-02 (Dashboard Home Screen & Real-Time Charts)
-**Resume file:** .planning/phases/09-dashboard-core-views/09-02-SUMMARY.md
-**Next action:** Execute 09-03 (Policy List & Visual Policy Builder)
+**Last session:** 2026-03-03T08:49:35Z
+**Stopped at:** Completed 09-03 (Policy Builder & Policy List)
+**Resume file:** .planning/phases/09-dashboard-core-views/09-03-SUMMARY.md
+**Next action:** Execute 09-04 (Remaining Dashboard Views)

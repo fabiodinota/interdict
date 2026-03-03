@@ -18,7 +18,7 @@ Requirements for Pilot Ready milestone. Each maps to roadmap phases.
 
 ### Dashboard -- Core Views
 
-- [ ] **DASH-01**: Compliance officer can create, edit, enable/disable governance policies through a visual Policy Builder UI (no Rego knowledge required)
+- [x] **DASH-01**: Compliance officer can create, edit, enable/disable governance policies through a visual Policy Builder UI (no Rego knowledge required)
 - [ ] **DASH-02**: Compliance officer can search and filter all AI interactions and policy decisions in an Audit Trail dashboard
 - [x] **DASH-03**: Compliance officer can view real-time violation statistics (by type, department, vendor, time period) on a dashboard home screen
 - [ ] **DASH-04**: Compliance officer can approve/block AI vendors and set model version allowlists through a Vendor Management UI
@@ -88,7 +88,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IDENT-04 | Phase 7 | Complete |
 | IDENT-05 | Phase 10 | Pending |
 | IDENT-06 | Phase 10 | Pending |
-| DASH-01 | Phase 9 | Pending |
+| DASH-01 | Phase 9 | Complete |
 | DASH-02 | Phase 9 | Pending |
 | DASH-03 | Phase 9 | Complete |
 | DASH-04 | Phase 9 | Pending |
