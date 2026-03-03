@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Pilot Ready
 status: completed
-stopped_at: Completed 12-01 (Helm Chart Foundation)
-last_updated: "2026-03-03T21:35:42.862Z"
-last_activity: 2026-03-03 -- Completed 12-01 (Helm Chart Foundation)
+stopped_at: Completed 12-02 (Sidecar Injection & Environment Overlays)
+last_updated: "2026-03-03T21:39:56.277Z"
+last_activity: 2026-03-03 -- Completed 12-02 (Sidecar Injection & Environment Overlays)
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 20
-  completed_plans: 19
-  percent: 95
+  completed_plans: 20
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** v1.1 Pilot Ready -- Phase 12 in progress (Kubernetes Deployment)
+**Current focus:** v1.1 Pilot Ready -- Phase 12 complete (Kubernetes Deployment)
 
 ## Current Position
 
-Phase: 12 of 12 (Kubernetes Deployment) -- IN PROGRESS
-Plan: 1 of 3 (12-01 complete; 12-02, 12-03 pending)
-Status: Phase 12 plan 01 (Helm Chart Foundation) complete
-Last activity: 2026-03-03 -- Completed 12-01 (Helm Chart Foundation)
+Phase: 12 of 12 (Kubernetes Deployment) -- COMPLETE
+Plan: 3 of 3 (all plans complete)
+Status: Phase 12 complete -- v1.1 Pilot Ready milestone complete
+Last activity: 2026-03-03 -- Completed 12-02 (Sidecar Injection & Environment Overlays)
 
-Progress: [██████████] 95% (19/20 plans in v1.1)
+Progress: [██████████] 100% (20/20 plans in v1.1)
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [██████████] 95% (19/20 plans in v1.1)
 *Updated after each plan completion*
 | Phase 12 P03 | 2min | 2 tasks | 2 files |
 | Phase 12 P01 | 3min | 2 tasks | 20 files |
+| Phase 12 P02 | 2min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,7 @@ v1.1 decisions:
 - 11-04: All four anomaly queries run in parallel with per-query catch to prevent cascading failures
 - [Phase 12]: ANSI color codes for script output; PEM validation before trust store modification; subject match for Windows cert removal
 - [Phase 12]: ghcr.io/interdict/ default image registry; PVC for certs (not Secret); existingSecret pattern for passwords; busybox init containers for dependency ordering
+- [Phase 12]: Sidecar allowlistVendors as YAML list for template range iteration; dual traffic routing via sidecar.trafficRedirect.enabled toggle
 
 ### Research Flags
 
@@ -170,7 +172,7 @@ None -- Phase 10 complete.
 
 ## Session Continuity
 
-**Last session:** 2026-03-03T21:35:42.859Z
-**Stopped at:** Completed 12-01 (Helm Chart Foundation)
+**Last session:** 2026-03-03T21:39:56.273Z
+**Stopped at:** Completed 12-02 (Sidecar Injection & Environment Overlays)
 **Resume file:** None
 **Next action:** Phase 12 planning and execution (Helm/sidecar/deployment)
