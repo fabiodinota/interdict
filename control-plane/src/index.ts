@@ -20,6 +20,7 @@ import { auditModule } from "./modules/audit";
 import { reportsModule } from "./modules/reports";
 import { signingKeysModule } from "./modules/signing-keys";
 import { evidenceModule } from "./modules/evidence";
+import { reviewsModule } from "./modules/reviews";
 import { departmentOverridesModule } from "./modules/department-overrides";
 import { anomaliesModule } from "./modules/anomalies";
 import {
@@ -98,6 +99,7 @@ const app = new Elysia()
   .use(evidenceModule)
   // Phase 11: Wire reviewsModule, departmentOverridesModule, anomaliesModule here
   // Plans 11-02, 11-03, and 11-04 will add their modules below this comment.
+  .use(reviewsModule)
   .use(departmentOverridesModule)
   .use(anomaliesModule)
   .listen(config.port);
