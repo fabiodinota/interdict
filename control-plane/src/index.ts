@@ -41,6 +41,9 @@ const MODULES = [
   "distribution",
   "signing-keys",
   "evidence",
+  "reviews",
+  "department-overrides",
+  "anomalies",
 ] as const;
 
 const app = new Elysia()

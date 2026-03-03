@@ -114,10 +114,19 @@ services:
       MTLS_CA_CERT_PATH: ${MTLS_CA_CERT_PATH:-/certs/internal-ca.pem}
       MTLS_CERT_PATH: ${MTLS_CERT_PATH:-/certs/control-plane.pem}
       MTLS_KEY_PATH: ${MTLS_KEY_PATH:-/certs/control-plane-key.pem}
+      SAML_SP_ENTITY_ID: ${SAML_SP_ENTITY_ID:-https://interdict.example.com/saml/metadata}
+      SAML_SP_BASE_URL: ${SAML_SP_BASE_URL:-http://localhost:3000}
+      SAML_SP_KEY_PATH: ${SAML_SP_KEY_PATH:-/certs/saml-sp.key}
+      SAML_SP_CERT_PATH: ${SAML_SP_CERT_PATH:-/certs/saml-sp.crt}
+      SAML_IDP_METADATA_PATH: ${SAML_IDP_METADATA_PATH:-/config/idp-metadata.xml}
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:8080}
+      SIGNING_KEY_OUTPUT_PATH: ${SIGNING_KEY_OUTPUT_PATH:-/data/keys/signing.key}
     ports:
       - "3000:3000"
     volumes:
       - certs:/certs:ro
+      - signing_keys:/data/keys
+      - ./config:/config:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
@@ -145,6 +154,7 @@ services:
       COLLECTOR_S3_REGION: ${COLLECTOR_S3_REGION:-us-east-1}
       COLLECTOR_SIGNING_MODE: ${COLLECTOR_SIGNING_MODE:-dev}
       COLLECTOR_SIGNING_KEY_PATH: ${COLLECTOR_SIGNING_KEY_PATH:-/data/keys/signing.key}
+      SIGNING_KEY_WATCH_PATH: ${SIGNING_KEY_WATCH_PATH:-/data/keys/signing.key}
       COLLECTOR_MERKLE_WINDOW_SECS: ${COLLECTOR_MERKLE_WINDOW_SECS:-3600}
       COLLECTOR_MERKLE_MAX_LEAVES: ${COLLECTOR_MERKLE_MAX_LEAVES:-1000000}
       COLLECTOR_FULL_TEXT_STORAGE: ${COLLECTOR_FULL_TEXT_STORAGE:-false}
@@ -198,12 +208,17 @@ services:
     build:
       context: .
       dockerfile: docker/dashboard/Dockerfile
+      args:
+        NEXT_PUBLIC_SAML_ENABLED: ${NEXT_PUBLIC_SAML_ENABLED:-false}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
     depends_on:
       control-plane:
         condition: service_healthy
     environment:
       CONTROL_PLANE_URL: http://control-plane:3000
       NODE_ENV: production
+      NEXT_PUBLIC_SAML_ENABLED: ${NEXT_PUBLIC_SAML_ENABLED:-false}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
     ports:
       - "8080:3001"
     restart: unless-stopped
