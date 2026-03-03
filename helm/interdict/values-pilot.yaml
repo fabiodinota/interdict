@@ -1,0 +1,83 @@
+# =============================================================================
+# Interdict Pilot Deployment
+# =============================================================================
+# Small resource footprint for single-node clusters (Docker Desktop K8s, kind,
+# minikube). Suitable for law firm pilot deployments.
+#
+# Usage:
+#   helm install interdict ./helm/interdict -f helm/interdict/values-pilot.yaml
+#
+# All infrastructure subcharts are enabled for a self-contained deployment.
+# =============================================================================
+
+# -- Kernel: minimal resources for low-traffic pilot
+kernel:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+
+# -- Control Plane: single replica, reduced memory
+controlPlane:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# -- Evidence Collector: single replica, reduced memory
+evidenceCollector:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+
+# -- Dashboard: single replica, reduced memory
+dashboard:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+
+# =============================================================================
+# Bundled Infrastructure (all enabled for self-contained pilot)
+# =============================================================================
+
+# -- PostgreSQL: small persistent volume for pilot data
+postgresql:
+  enabled: true
+  primary:
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "250m"
+    persistence:
+      size: 1Gi
+
+# -- ClickHouse: enabled with defaults for event/evidence analytics
+clickhouse:
+  enabled: true
+
+# -- MinIO: small persistent volume for evidence bundle storage
+minio:
+  enabled: true
+  persistence:
+    size: 5Gi

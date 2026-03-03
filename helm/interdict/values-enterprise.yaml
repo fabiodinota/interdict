@@ -1,0 +1,121 @@
+# =============================================================================
+# Interdict Enterprise Deployment
+# =============================================================================
+# High-availability configuration for production multi-node clusters.
+# Suitable for bank pilot and regulated enterprise deployments.
+#
+# Usage:
+#   helm install interdict ./helm/interdict \
+#     -f helm/interdict/values-enterprise.yaml \
+#     --set controlPlane.externalDatabase.url=postgres://user:pass@rds.example.com:5432/interdict \
+#     --set evidenceCollector.externalClickhouse.url=http://clickhouse.example.com:8123 \
+#     --set evidenceCollector.aws.endpointUrl=https://s3.amazonaws.com \
+#     --set evidenceCollector.aws.accessKeyId=AKIA... \
+#     --set evidenceCollector.aws.secretAccessKey=...
+#
+# Infrastructure subcharts are DISABLED -- operators provide their own managed
+# PostgreSQL, ClickHouse, and S3-compatible storage via --set or existingSecret.
+# =============================================================================
+
+# -- Kernel: HA with 3 replicas for zero-downtime proxy coverage
+kernel:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "2"
+
+# -- Control Plane: 2 replicas for API/gRPC availability
+controlPlane:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2"
+
+# -- Evidence Collector: 2 replicas for evidence ingestion throughput
+evidenceCollector:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+
+# -- Dashboard: 2 replicas with ingress and TLS
+dashboard:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      # cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    hosts:
+      - host: interdict.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: interdict-dashboard-tls
+        hosts:
+          - interdict.example.com
+
+# =============================================================================
+# BYO Infrastructure (disable subcharts, use managed services)
+# =============================================================================
+
+# -- PostgreSQL subchart disabled -- use managed PostgreSQL (RDS, Cloud SQL, etc.)
+postgresql:
+  enabled: false
+
+# -- ClickHouse subchart disabled -- use managed ClickHouse (Altinity Cloud, etc.)
+clickhouse:
+  enabled: false
+
+# -- MinIO subchart disabled -- use managed S3-compatible storage
+minio:
+  enabled: false
+
+# -- MinIO init disabled when using external S3
+minioInit:
+  enabled: false
+
+# =============================================================================
+# External Service Configuration
+# =============================================================================
+# Operators provide external connection strings via --set or existingSecret.
+#
+# Example: connecting to managed PostgreSQL (AWS RDS):
+#   --set controlPlane.externalDatabase.url=postgres://interdict:PASSWORD@mydb.abc123.us-east-1.rds.amazonaws.com:5432/interdict
+#
+# Example: connecting to managed ClickHouse:
+#   --set evidenceCollector.externalClickhouse.url=http://clickhouse.internal:8123
+#
+# Example: connecting to AWS S3:
+#   --set evidenceCollector.aws.endpointUrl=https://s3.amazonaws.com
+#   --set evidenceCollector.aws.accessKeyId=AKIAIOSFODNN7EXAMPLE
+#   --set evidenceCollector.aws.secretAccessKey=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+#   --set evidenceCollector.aws.region=us-east-1
+#
+# Example: using an existing Kubernetes Secret for database credentials:
+#   --set postgresql.auth.existingSecret=my-postgres-credentials
+#
+# Example: using an existing Kubernetes Secret for S3 credentials:
+#   --set evidenceCollector.aws.existingSecret=my-s3-credentials
+# =============================================================================
