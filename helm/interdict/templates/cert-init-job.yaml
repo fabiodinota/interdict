@@ -14,6 +14,21 @@ spec:
     requests:
       storage: {{ .Values.certsPvcSize | default "10Mi" }}
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "interdict.fullname" . }}-signing-keys
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.signingKeysPvcSize | default "10Mi" }}
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
