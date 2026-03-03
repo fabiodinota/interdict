@@ -38,7 +38,7 @@ Full details archived in `milestones/v1.0-ROADMAP.md`
 - [x] **Phase 12: Kubernetes Deployment** -- Helm chart, sidecar manifests, CA certificate onboarding (completed 2026-03-03)
 - [x] **Phase 13: Deployment Wiring for SAML & Key Rotation** -- Close audit gaps: SAML deployment activation path, key rotation file delivery, cosmetic MODULES fix (completed 2026-03-03)
 - [x] **Phase 14: SAML SSO Cross-Origin Cookie Fix** -- Fix ACS cross-origin cookie loss so SAML login completes end-to-end (completed 2026-03-04)
-- [ ] **Phase 15: Signing Key Management Dashboard UI** -- Add dashboard page and hook for signing key visibility and rotation
+- [x] **Phase 15: Signing Key Management Dashboard UI** -- Add dashboard page and hook for signing key visibility and rotation (completed 2026-03-03)
 
 ## Phase Details
 
@@ -202,7 +202,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15
 | 12. Kubernetes Deployment | 3/3 | Complete    | 2026-03-03 | - |
 | 13. Deployment Wiring for SAML & Key Rotation | 2/2 | Complete    | 2026-03-03 | - |
 | 14. SAML SSO Cross-Origin Cookie Fix | v1.1 | Complete    | 2026-03-03 | 2026-03-04 |
-| 15. Signing Key Management Dashboard UI | v1.1 | 0/1 | Not Started | - |
+| 15. Signing Key Management Dashboard UI | 1/1 | Complete   | 2026-03-03 | - |
 
 ---
 *Roadmap created: 2026-02-26*
