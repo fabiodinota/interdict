@@ -1,0 +1,11 @@
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "interdict-filesystem",
+    "interdict-git",
+    "interdict-docker",
+    "interdict-kubernetes",
+    "interdict-wasmtime",
+    "interdict-crypto"
+  ]
+}

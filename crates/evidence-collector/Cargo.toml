@@ -8,7 +8,7 @@ name = "interdict-collector"
 path = "src/main.rs"
 
 [dependencies]
-tonic = { version = "0.14", features = ["zstd", "tls"] }
+tonic = { version = "0.14", features = ["zstd", "tls-aws-lc", "tls-native-roots"] }
 tonic-prost = "0.14"
 prost = "0.14"
 prost-types = "0.14"
