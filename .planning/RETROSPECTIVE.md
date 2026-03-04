@@ -52,6 +52,54 @@
 
 ---
 
+## Milestone: v1.1 — Pilot Ready
+
+**Shipped:** 2026-03-04
+**Phases:** 9 | **Plans:** 24
+
+### What Was Built
+- API key auth with 5-role RBAC, department scoping, and dual-mode (API key + session token) authentication
+- Docker Compose deployment with 8 services, cert-init automation, and health-based startup ordering
+- Next.js compliance dashboard with 10+ views: policy builder, audit trail, vendors, regulatory, reports, evidence verification, review queue, department policies, anomalies, signing keys
+- SAML 2.0 SSO with JIT provisioning, mTLS on all gRPC channels, Ed25519 key rotation with hot-reload
+- Kubernetes Helm chart with KEP-753 sidecar injection, pilot/enterprise overlays, CA trust scripts
+- Gap closure phases (13-15) for deployment wiring, cross-origin cookie fix, signing key dashboard UI
+
+### What Worked
+- Milestone audit after Phase 12 caught 2 integration gaps (ACS cross-origin cookie, missing signing key UI) — Phases 13-15 closed them cleanly
+- BFF proxy pattern eliminated client-side token exposure from day one — zero security rework
+- Wave-based parallelization within phases (especially Phase 11: 4 plans in parallel) kept velocity high
+- Plan-check and verifier agents caught the DASH-06 BFF binary passthrough bug before it reached milestone audit
+- Phase numbering continuation from v1.0 (7-15) prevented confusion across milestones
+
+### What Was Inefficient
+- SUMMARY frontmatter (one_liner, requirements_completed) never populated — 24 summaries missing these fields
+- ROADMAP.md plan checkboxes inconsistently maintained — some phases show `[ ]` despite being complete
+- STATE.md performance metrics table became manually maintained and drifted from reality
+- Three gap-closure phases (13, 14, 15) could have been prevented with cross-phase integration testing earlier
+
+### Patterns Established
+- BFF proxy with httpOnly cookie for dashboard → API auth (no client-side tokens)
+- Dual-mode auth middleware: `ik_live_*` prefix routes to API key flow, all else to session token
+- SAML cross-origin callback redirect pattern (ACS → dashboard callback → cookie set on correct origin)
+- TanStack Query + BFF proxy for all dashboard data fetching with optimistic updates
+- cert-init service pattern (Docker Compose + Helm pre-install hook) for automated TLS bootstrap
+- RotatingSigningProvider with ArcSwap for lock-free key hot-reload via file mtime polling
+
+### Key Lessons
+1. Cross-phase integration testing should happen mid-milestone, not only at audit — 3 gap-closure phases were preventable
+2. SUMMARY frontmatter fields must be populated during execution, not deferred — empty fields degrade milestone audit quality
+3. Helm cannot bake NEXT_PUBLIC_ env vars at deploy time — Next.js requires build-time injection; document this for operators
+4. Department scoping must be designed into every new API module from the start, not retrofitted — reviews and anomalies missed it
+5. Milestone audit with integration checker is high-value — caught real cross-phase wiring gaps that phase-level verification missed
+
+### Cost Observations
+- Model mix: opus for orchestration/implementation, sonnet for verifier/integration-checker, haiku for exploration
+- 9 phases completed in ~3 days of wall clock time
+- Notable: gap-closure phases (13-15) averaged 1-2 min per plan — fast because scope was narrow and well-defined
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -59,6 +107,7 @@
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
 | v1.0 | 7 | 28 | Initial milestone — established GSD workflow with plan-check and verifier agents |
+| v1.1 | 9 | 24 | Milestone audit + gap-closure phases; BFF proxy pattern; dual-mode auth; cert-init automation |
 
 ### Top Lessons (Verified Across Milestones)
 
