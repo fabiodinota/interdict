@@ -1,0 +1,8 @@
+# Enforce LF line endings for files that run inside Linux containers
+*.sh text eol=lf
+Dockerfile* text eol=lf
+*.rs text eol=lf
+bin/* text eol=lf
+
+# Windows-safe defaults for everything else
+* text=auto

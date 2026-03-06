@@ -37,6 +37,7 @@ credentials.json
 
 # Logs
 *.log
+logs/
 
 # Coverage
 coverage/
