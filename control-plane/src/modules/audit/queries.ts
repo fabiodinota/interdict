@@ -13,6 +13,15 @@ import type { ClickHouseClient } from "@clickhouse/client";
 import { encodeCursor, decodeCursor, DEFAULT_PAGE_SIZE } from "../../shared/utilities";
 import type { ClickHouseAuditRow } from "./model";
 
+/**
+ * Convert an ISO 8601 string (e.g. "2026-03-05T19:29:46.204Z") to the
+ * ClickHouse DateTime64(3) string format ("2026-03-05 19:29:46.204").
+ * ClickHouse does not accept the T separator or Z suffix.
+ */
+function toChDateTime(iso: string): string {
+  return iso.replace("T", " ").replace("Z", "");
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -108,7 +117,7 @@ export async function queryAuditTrail(
     conditions.push(
       "(timestamp < {cursor_ts:DateTime64(3)} OR (timestamp = {cursor_ts:DateTime64(3)} AND bundle_id < {cursor_id:String}))"
     );
-    params.cursor_ts = new Date(c.timestamp).toISOString();
+    params.cursor_ts = toChDateTime(new Date(c.timestamp).toISOString());
     params.cursor_id = c.id;
   }
 
@@ -186,11 +195,11 @@ export async function queryHourlyViolations(
     query: `
       SELECT hour, policy_action, violation_count, unique_actors, unique_vendors
       FROM mv_hourly_violations
-      WHERE hour >= {from:DateTime} AND hour <= {to:DateTime}
+      WHERE hour >= {from:DateTime64(3)} AND hour <= {to:DateTime64(3)}
       ORDER BY hour ASC
     `,
     format: "JSONEachRow",
-    query_params: { from, to },
+    query_params: { from: toChDateTime(from), to: toChDateTime(to) },
   });
 
   return resultSet.json();
@@ -205,8 +214,8 @@ export async function queryVendorUsage(
   to: string,
   vendor?: string
 ): Promise<unknown[]> {
-  const conditions = ["hour >= {from:DateTime}", "hour <= {to:DateTime}"];
-  const params: Record<string, unknown> = { from, to };
+  const conditions = ["hour >= {from:DateTime64(3)}", "hour <= {to:DateTime64(3)}"];
+  const params: Record<string, unknown> = { from: toChDateTime(from), to: toChDateTime(to) };
 
   if (vendor) {
     conditions.push("vendor = {vendor:String}");
@@ -240,8 +249,8 @@ export async function queryDepartmentSummary(
   department?: string,
   departmentIds?: string[]
 ): Promise<unknown[]> {
-  const conditions = ["hour >= {from:DateTime}", "hour <= {to:DateTime}"];
-  const params: Record<string, unknown> = { from, to };
+  const conditions = ["hour >= {from:DateTime64(3)}", "hour <= {to:DateTime64(3)}"];
+  const params: Record<string, unknown> = { from: toChDateTime(from), to: toChDateTime(to) };
 
   if (department) {
     conditions.push("department = {department:String}");

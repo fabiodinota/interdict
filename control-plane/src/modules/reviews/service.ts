@@ -243,7 +243,8 @@ export class ReviewService {
    * that do not already have a review_items row.
    */
   async syncEscalations(): Promise<number> {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    // Strip trailing 'Z' — ClickHouse DateTime64(3) params reject timezone suffixes
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString().replace("Z", "");
 
     // Get recent escalated bundles from ClickHouse
     const resultSet = await this.clickhouse.query({
