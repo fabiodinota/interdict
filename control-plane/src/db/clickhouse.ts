@@ -15,6 +15,8 @@ const config = getConfig();
 export const clickhouse = createClient({
   url: config.clickhouseUrl,
   database: config.clickhouseDatabase,
+  username: config.clickhouseUser,
+  password: config.clickhousePassword,
   request_timeout: 30_000,
   clickhouse_settings: {
     max_execution_time: 30,

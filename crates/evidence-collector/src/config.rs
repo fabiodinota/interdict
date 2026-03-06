@@ -12,6 +12,8 @@ pub struct CollectorConfig {
     pub grpc_listen_addr: String,
     pub clickhouse_url: String,
     pub clickhouse_database: String,
+    pub clickhouse_user: String,
+    pub clickhouse_password: String,
     pub s3_bucket: String,
     pub s3_region: String,
     pub signing_mode: SigningMode,
@@ -39,6 +41,8 @@ impl Default for CollectorConfig {
             grpc_listen_addr: "[::1]:50051".to_string(),
             clickhouse_url: "http://localhost:8123".to_string(),
             clickhouse_database: "interdict".to_string(),
+            clickhouse_user: "default".to_string(),
+            clickhouse_password: String::new(),
             s3_bucket: String::new(),
             s3_region: String::new(),
             signing_mode: SigningMode::Dev,
@@ -101,6 +105,10 @@ impl CollectorConfig {
                 .unwrap_or_else(|_| "http://localhost:8123".to_string()),
             clickhouse_database: std::env::var("CLICKHOUSE_DATABASE")
                 .unwrap_or_else(|_| "interdict".to_string()),
+            clickhouse_user: std::env::var("CLICKHOUSE_USER")
+                .unwrap_or_else(|_| "default".to_string()),
+            clickhouse_password: std::env::var("CLICKHOUSE_PASSWORD")
+                .unwrap_or_default(),
             s3_bucket: std::env::var("COLLECTOR_S3_BUCKET").unwrap_or_default(),
             s3_region: std::env::var("COLLECTOR_S3_REGION").unwrap_or_default(),
             signing_mode,

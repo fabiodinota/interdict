@@ -10,6 +10,8 @@ export interface Config {
   databaseUrl: string;
   clickhouseUrl: string;
   clickhouseDatabase: string;
+  clickhouseUser: string;
+  clickhousePassword: string;
   wasmStorageDir: string;
   opaBinaryPath: string;
   grpcPort: number;
@@ -46,6 +48,8 @@ export function loadConfig(): Config {
     ),
     clickhouseUrl: requireEnv("CLICKHOUSE_URL", "http://localhost:8123"),
     clickhouseDatabase: requireEnv("CLICKHOUSE_DATABASE", "interdict"),
+    clickhouseUser: process.env.CLICKHOUSE_USER ?? "default",
+    clickhousePassword: process.env.CLICKHOUSE_PASSWORD ?? "",
     wasmStorageDir: requireEnv("WASM_STORAGE_DIR", "./data/wasm"),
     opaBinaryPath: requireEnv("OPA_BINARY_PATH", "opa"),
     grpcPort: parseInt(process.env.INTERDICT_GRPC_PORT ?? "50052", 10),

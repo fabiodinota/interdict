@@ -50,9 +50,22 @@ pub struct ClickHouseWriter {
 }
 
 impl ClickHouseWriter {
-    pub async fn new(url: &str, database: &str) -> Result<Self> {
+    pub async fn new(url: &str, database: &str, user: &str, password: &str) -> Result<Self> {
+        // Create the database first using a client without database set
+        let bootstrap = Client::default()
+            .with_url(url)
+            .with_user(user)
+            .with_password(password);
+        bootstrap
+            .query(&format!("CREATE DATABASE IF NOT EXISTS {database}"))
+            .execute()
+            .await
+            .context("failed creating clickhouse database")?;
+
         let client = Client::default()
             .with_url(url)
+            .with_user(user)
+            .with_password(password)
             .with_database(database)
             .with_compression(Compression::Lz4);
 
