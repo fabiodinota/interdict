@@ -29,6 +29,9 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:25.1
+    environment:
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-interdict}
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     healthcheck:
@@ -106,6 +109,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgres://interdict:interdict@postgres:5432/interdict}
       CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
       CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-interdict}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-interdict}
       PORT: ${PORT:-3000}
       WASM_STORAGE_DIR: ${WASM_STORAGE_DIR:-./data/wasm}
       OPA_BINARY_PATH: ${OPA_BINARY_PATH:-opa}
@@ -122,7 +127,7 @@ services:
       DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:8080}
       SIGNING_KEY_OUTPUT_PATH: ${SIGNING_KEY_OUTPUT_PATH:-/data/keys/signing.key}
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - certs:/certs:ro
       - signing_keys:/data/keys
@@ -150,6 +155,8 @@ services:
       COLLECTOR_GRPC_LISTEN_ADDR: ${COLLECTOR_GRPC_LISTEN_ADDR:-[::]:50051}
       CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
       CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-interdict}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-interdict}
       COLLECTOR_S3_BUCKET: ${COLLECTOR_S3_BUCKET:-interdict-evidence}
       COLLECTOR_S3_REGION: ${COLLECTOR_S3_REGION:-us-east-1}
       COLLECTOR_SIGNING_MODE: ${COLLECTOR_SIGNING_MODE:-dev}
@@ -184,8 +191,17 @@ services:
         condition: service_completed_successfully
     environment:
       KERNEL_LISTEN_ADDR: ${KERNEL_LISTEN_ADDR:-0.0.0.0:8443}
+      KERNEL_CONNECT_TIMEOUT_MS: ${KERNEL_CONNECT_TIMEOUT_MS:-10000}
+      KERNEL_FIRST_BYTE_TIMEOUT_MS: ${KERNEL_FIRST_BYTE_TIMEOUT_MS:-30000}
+      KERNEL_STREAM_TIMEOUT_MS: ${KERNEL_STREAM_TIMEOUT_MS:-300000}
+      KERNEL_MAX_REQUEST_QUEUE: ${KERNEL_MAX_REQUEST_QUEUE:-1024}
       KERNEL_CA_CERT_PATH: ${KERNEL_CA_CERT_PATH:-/data/certs/ca.crt}
       KERNEL_CA_KEY_PATH: ${KERNEL_CA_KEY_PATH:-/data/certs/ca.key}
+      KERNEL_POOL_MAX_CONNECTIONS: ${KERNEL_POOL_MAX_CONNECTIONS:-4}
+      KERNEL_POOL_MAX_STREAMS: ${KERNEL_POOL_MAX_STREAMS:-100}
+      KERNEL_POOL_IDLE_TIMEOUT: ${KERNEL_POOL_IDLE_TIMEOUT:-60000}
+      KERNEL_REVIEW_DB_PATH: ${KERNEL_REVIEW_DB_PATH:-/data/review_queue.db}
+      KERNEL_POLICIES_DIR: ${KERNEL_POLICIES_DIR:-/app/policies/}
       KERNEL_DISTRIBUTION_ADDR: ${KERNEL_DISTRIBUTION_ADDR:-https://control-plane:50052}
       KERNEL_EVIDENCE_COLLECTOR_ADDR: ${KERNEL_EVIDENCE_COLLECTOR_ADDR:-https://evidence-collector:50051}
       KERNEL_MTLS_CA_CERT: ${KERNEL_MTLS_CA_CERT:-/certs/internal-ca.pem}
@@ -210,7 +226,7 @@ services:
       dockerfile: docker/dashboard/Dockerfile
       args:
         NEXT_PUBLIC_SAML_ENABLED: ${NEXT_PUBLIC_SAML_ENABLED:-false}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     depends_on:
       control-plane:
         condition: service_healthy
@@ -218,7 +234,7 @@ services:
       CONTROL_PLANE_URL: http://control-plane:3000
       NODE_ENV: production
       NEXT_PUBLIC_SAML_ENABLED: ${NEXT_PUBLIC_SAML_ENABLED:-false}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     ports:
       - "8080:3001"
     restart: unless-stopped
