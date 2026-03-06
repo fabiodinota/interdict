@@ -15,6 +15,13 @@
       "when": 1772406387542,
       "tag": "0001_white_dust",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772594919107,
+      "tag": "0002_deep_radioactive_man",
+      "breakpoints": true
     }
   ]
 }
