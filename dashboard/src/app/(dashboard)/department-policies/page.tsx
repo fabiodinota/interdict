@@ -57,7 +57,7 @@ export default function DepartmentPoliciesPage() {
   if (!user || departmentIds.length === 0) {
     return (
       <div className="space-y-4 p-6">
-        <h1 className="text-2xl font-bold">Department Policy Management</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Department Policy Management</h1>
         <div className="flex items-center justify-center rounded-lg border border-dashed p-12 text-muted-foreground">
           You are not assigned to any department. Contact your administrator to
           be assigned to a department before managing policy overrides.
@@ -70,8 +70,8 @@ export default function DepartmentPoliciesPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Department Policy Management</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight">Department Policy Management</h1>
+        <p className="text-muted-foreground mt-1">
           Toggle inherited policies for your department. Mandatory policies
           cannot be disabled.
         </p>

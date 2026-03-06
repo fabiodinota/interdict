@@ -92,14 +92,14 @@ export default function AnomaliesPage() {
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             Anomaly Detection
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mt-1">
             Statistical deviations from established user behavior baselines
           </p>
         </div>

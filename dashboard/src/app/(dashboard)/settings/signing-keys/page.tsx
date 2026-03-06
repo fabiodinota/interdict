@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSigningKeys, useRotateKey } from "@/hooks/use-signing-keys";
 import { SigningKeyTable } from "@/components/signing-keys/SigningKeyTable";
@@ -15,14 +14,11 @@ export default function SigningKeysPage() {
   const keys = data?.data ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-3">
-          <KeyRound className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">Signing Keys</h1>
-        </div>
-        <p className="text-muted-foreground">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Signing Keys</h1>
+        <p className="text-muted-foreground mt-1">
           Manage Ed25519 signing keys used for evidence bundle integrity. Rotate
           keys periodically -- retired keys remain valid for historical
           verification.

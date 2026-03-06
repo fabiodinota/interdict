@@ -4,7 +4,7 @@ import { VendorList } from "@/components/vendors/VendorList";
 
 export default function VendorsPage() {
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Vendor Management</h1>
         <p className="text-muted-foreground mt-1">

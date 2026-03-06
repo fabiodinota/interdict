@@ -8,7 +8,7 @@ export default function RegulatoryPage() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-6">
       {!selectedSlug && (
         <>
           <div>

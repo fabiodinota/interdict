@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ClipboardCheck, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReviewQueue } from "@/components/reviews/ReviewQueue";
 
@@ -46,16 +47,13 @@ export default function ReviewsPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-3">
-          <ClipboardCheck className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">
-            Human Review Queue
-          </h1>
-        </div>
-        <p className="text-muted-foreground">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Human Review Queue
+        </h1>
+        <p className="text-muted-foreground mt-1">
           Layer 3 escalated interactions requiring human judgment. Items enter
           this queue when policy enforcement flags an interaction for compliance
           officer review.
