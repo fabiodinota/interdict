@@ -96,7 +96,7 @@ export async function enrichAuditRecords(
       actor_identity: row.actor_identity,
       actor_display_name: userMap.get(row.actor_identity) ?? null,
       department: row.department,
-      department_display_name: null, // TODO: enrich when department lookup is needed
+      department_display_name: null,
       vendor: row.vendor,
       vendor_display_name: vendorMap.get(row.vendor) ?? null,
       model: row.model,

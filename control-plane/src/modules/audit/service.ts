@@ -107,15 +107,15 @@ export class AuditService {
   /**
    * Get hourly violation time series from materialized view.
    */
-  async getHourlyViolations(from: string, to: string) {
-    return queryHourlyViolations(this.clickhouse, from, to);
+  async getHourlyViolations(from: string, to: string, departmentIds?: string[]) {
+    return queryHourlyViolations(this.clickhouse, from, to, departmentIds);
   }
 
   /**
    * Get vendor usage stats from materialized view.
    */
-  async getVendorUsage(from: string, to: string, vendor?: string) {
-    return queryVendorUsage(this.clickhouse, from, to, vendor);
+  async getVendorUsage(from: string, to: string, vendor?: string, departmentIds?: string[]) {
+    return queryVendorUsage(this.clickhouse, from, to, vendor, departmentIds);
   }
 
   /**

@@ -3,13 +3,10 @@
  *
  * REST endpoints for regulatory framework management.
  * Prefix: /api/v1/regulatory
- *
- * NOTE: This module is exported as an Elysia plugin but NOT wired
- * into src/index.ts. Module wiring is handled by Plan 05-05 (Wave 3 integration).
  */
 
 import { Elysia, t } from "elysia";
-import { eq, and, desc, sql, isNull } from "drizzle-orm";
+import { eq, and, desc, sql, isNull, count } from "drizzle-orm";
 import {
   frameworks,
   frameworkPolicies,
@@ -41,48 +38,46 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .get("/frameworks", async (ctx: any) => {
     const db = (ctx.store as Record<string, unknown>).db as any;
 
-    // Query all frameworks
-    const allFrameworks = await db.select().from(frameworks).orderBy(frameworks.name);
+    // Bulk queries — exactly 3 DB round-trips regardless of framework count (HIGH-S1)
+    const [allFrameworks, allPolicyCounts, allActivations] = await Promise.all([
+      db.select().from(frameworks).orderBy(frameworks.name),
+      db
+        .select({
+          frameworkId: frameworkPolicies.frameworkId,
+          policyCount: count(),
+          activePolicyCount: sql<number>`count(*) filter (where ${frameworkPolicies.isRequired})`,
+        })
+        .from(frameworkPolicies)
+        .groupBy(frameworkPolicies.frameworkId),
+      db
+        .select({ frameworkId: frameworkActivations.frameworkId })
+        .from(frameworkActivations)
+        .where(eq(frameworkActivations.isActive, true)),
+    ]);
 
-    const result = await Promise.all(
-      allFrameworks.map(async (fw: any) => {
-        // Count policies
-        const policyRows = await db
-          .select()
-          .from(frameworkPolicies)
-          .where(eq(frameworkPolicies.frameworkId, fw.id));
-
-        const policyCount = policyRows.length;
-        const activePolicyCount = policyRows.filter(
-          (fp: any) => fp.isRequired
-        ).length;
-
-        // Check activation status
-        const activation = await db
-          .select()
-          .from(frameworkActivations)
-          .where(
-            and(
-              eq(frameworkActivations.frameworkId, fw.id),
-              eq(frameworkActivations.isActive, true)
-            )
-          )
-          .limit(1);
-
-        return {
-          id: fw.id,
-          slug: fw.slug,
-          name: fw.name,
-          description: fw.description,
-          jurisdiction: fw.jurisdiction,
-          version: fw.version,
-          isSeeded: fw.isSeeded,
-          isActive: activation.length > 0,
-          policyCount,
-          activePolicyCount,
-        };
-      })
+    const policyCountMap = new Map(
+      allPolicyCounts.map((r: any) => [
+        r.frameworkId,
+        { policyCount: Number(r.policyCount), activePolicyCount: Number(r.activePolicyCount) },
+      ])
     );
+    const activeSet = new Set(allActivations.map((r: any) => r.frameworkId));
+
+    const result = allFrameworks.map((fw: any) => {
+      const counts = policyCountMap.get(fw.id) ?? { policyCount: 0, activePolicyCount: 0 };
+      return {
+        id: fw.id,
+        slug: fw.slug,
+        name: fw.name,
+        description: fw.description,
+        jurisdiction: fw.jurisdiction,
+        version: fw.version,
+        isSeeded: fw.isSeeded,
+        isActive: activeSet.has(fw.id),
+        policyCount: counts.policyCount,
+        activePolicyCount: counts.activePolicyCount,
+      };
+    });
 
     return apiResponse(result);
   }, { auth: ["read_only_auditor"] })

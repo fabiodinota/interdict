@@ -159,7 +159,8 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
     async (ctx: any) => {
       const data = await ctx.auditService.getHourlyViolations(
         ctx.query.from,
-        ctx.query.to
+        ctx.query.to,
+        ctx.user.departmentIds  // HIGH-011: scope to user's visible departments
       );
       return apiResponse(data);
     },
@@ -171,7 +172,6 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
 
   // ---------------------------------------------------------------------------
   // GET /stats/vendor-usage -- Vendor usage time series (Read-Only Auditor+)
-  // Note: Per-department scoping deferred to Phase 11 advanced views
   // ---------------------------------------------------------------------------
   .get(
     "/stats/vendor-usage",
@@ -179,7 +179,8 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
       const data = await ctx.auditService.getVendorUsage(
         ctx.query.from,
         ctx.query.to,
-        ctx.query.vendor
+        ctx.query.vendor,
+        ctx.user.departmentIds  // HIGH-011: scope to user's visible departments
       );
       return apiResponse(data);
     },

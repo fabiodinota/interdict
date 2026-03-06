@@ -25,8 +25,8 @@ export {
 // Organization
 export { departments, teams, users } from "./organization";
 
-// Auth (API keys, user-department membership, role permissions)
-export { apiKeys, userDepartments, rolePermissions } from "./auth";
+// Auth (API keys, sessions, user-department membership, role permissions, SAML handoff codes)
+export { apiKeys, userDepartments, rolePermissions, sessions, signingKeys, samlHandoffCodes } from "./auth";
 
 // Reviews (human review queue for Layer 3 escalations)
 export { reviewItems } from "./reviews";

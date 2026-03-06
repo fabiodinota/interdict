@@ -79,14 +79,14 @@ export const userDepartments = pgTable(
 
 /**
  * Sessions table for SAML SSO and browser-based authentication.
- * Stores opaque session tokens (crypto.randomBytes(64).toString('hex')).
- * Tokens are indexed for fast lookup by the auth middleware.
+ * Stores SHA-256 hex digest of the raw session token (MED-006).
+ * Raw token is returned to the caller once and never stored.
  */
 export const sessions = pgTable(
   "sessions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    token: varchar("token", { length: 128 }).notNull().unique(),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(), // SHA-256(raw token) hex
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -94,8 +94,35 @@ export const sessions = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    index("sessions_token_idx").on(table.token),
+    index("sessions_token_hash_idx").on(table.tokenHash),
     index("sessions_user_idx").on(table.userId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// SAML Handoff Codes (CRIT-002: one-time code exchange)
+// ---------------------------------------------------------------------------
+
+/**
+ * Short-lived one-time codes used during SAML callback handoff.
+ * The ACS handler issues a code (60s TTL, single-use) instead of putting
+ * the raw session token in the redirect URL. The dashboard exchanges the
+ * code for the session token via a backchannel POST.
+ */
+export const samlHandoffCodes = pgTable(
+  "saml_handoff_codes",
+  {
+    code: varchar("code", { length: 64 }).primaryKey(), // 32 random bytes hex
+    sessionToken: varchar("session_token", { length: 128 }).notNull(), // raw token (shown to dashboard once)
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at").notNull(),
+    used: boolean("used").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("saml_handoff_codes_expires_idx").on(table.expiresAt),
   ],
 );
 

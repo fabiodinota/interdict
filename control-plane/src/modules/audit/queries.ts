@@ -189,17 +189,29 @@ export async function queryAuditTrail(
 export async function queryHourlyViolations(
   client: ClickHouseClient,
   from: string,
-  to: string
+  to: string,
+  departmentIds?: string[]  // HIGH-011: scope to user's visible departments
 ): Promise<unknown[]> {
+  const conditions = [
+    "hour >= {from:DateTime64(3)}",
+    "hour <= {to:DateTime64(3)}",
+  ];
+  const params: Record<string, unknown> = { from: toChDateTime(from), to: toChDateTime(to) };
+
+  if (departmentIds && departmentIds.length > 0) {
+    conditions.push("department IN {dept_ids:Array(String)}");
+    params.dept_ids = departmentIds;
+  }
+
   const resultSet = await client.query({
     query: `
       SELECT hour, policy_action, violation_count, unique_actors, unique_vendors
       FROM mv_hourly_violations
-      WHERE hour >= {from:DateTime64(3)} AND hour <= {to:DateTime64(3)}
+      WHERE ${conditions.join(" AND ")}
       ORDER BY hour ASC
     `,
     format: "JSONEachRow",
-    query_params: { from: toChDateTime(from), to: toChDateTime(to) },
+    query_params: params,
   });
 
   return resultSet.json();
@@ -212,7 +224,8 @@ export async function queryVendorUsage(
   client: ClickHouseClient,
   from: string,
   to: string,
-  vendor?: string
+  vendor?: string,
+  departmentIds?: string[]  // HIGH-011: scope to user's visible departments
 ): Promise<unknown[]> {
   const conditions = ["hour >= {from:DateTime64(3)}", "hour <= {to:DateTime64(3)}"];
   const params: Record<string, unknown> = { from: toChDateTime(from), to: toChDateTime(to) };
@@ -220,6 +233,11 @@ export async function queryVendorUsage(
   if (vendor) {
     conditions.push("vendor = {vendor:String}");
     params.vendor = vendor;
+  }
+
+  if (departmentIds && departmentIds.length > 0) {
+    conditions.push("department IN {dept_ids:Array(String)}");
+    params.dept_ids = departmentIds;
   }
 
   const where = `WHERE ${conditions.join(" AND ")}`;

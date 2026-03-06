@@ -81,6 +81,9 @@ impl WasmEngine {
         &self,
         compiled_bytes: &[u8],
     ) -> anyhow::Result<wasmtime::Module> {
+        // SAFETY: caller has verified bytes came from Module::serialize with the same
+        // engine version and configuration. Deserializing untrusted bytes is unsound;
+        // see the `# Safety` section on the enclosing `unsafe fn`.
         Ok(unsafe { wasmtime::Module::deserialize(&self.engine, compiled_bytes) }?)
     }
 }

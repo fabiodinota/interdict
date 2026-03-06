@@ -16,46 +16,63 @@
 import { Elysia } from "elysia";
 import { sp, idp, samlEnabled } from "./config";
 import { getSpMetadata } from "./metadata";
-import { createAuthService } from "../service";
+import { createAuthService, type AuthService } from "../service";
 import { db as pgDb } from "../../../db/postgres";
 
-const DASHBOARD_URL = process.env.DASHBOARD_URL || "http://localhost:8080";
+const DASHBOARD_URL =
+  process.env.DASHBOARD_URL ??
+  (process.env.NODE_ENV !== "production" ? "http://localhost:8080" : undefined);
+if (!DASHBOARD_URL) {
+  throw new Error("[saml] DASHBOARD_URL env var is required in production");
+}
 const SESSION_COOKIE_NAME = "interdict_session";
 const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60; // 8 hours
+
+/** Shape returned by samlify's parseLoginResponse */
+interface SamlExtract {
+  nameID?: string;
+  attributes?: Record<string, string | string[] | undefined>;
+  [key: string]: unknown;
+}
 
 /**
  * Extract SAML attributes from the parsed assertion.
  * Different IdPs use different attribute names, so we check common variants.
  */
-function extractAttributes(extract: any): {
+function extractAttributes(extract: SamlExtract): {
   email: string;
   displayName: string;
   roleHint: string | undefined;
 } {
-  const nameID = extract.nameID || "";
+  const nameID = extract.nameID ?? "";
 
   // Attributes may be in extract.attributes or directly on extract
-  const attrs = extract.attributes || extract;
+  const attrs: Record<string, string | string[] | undefined> =
+    extract.attributes ?? (extract as Record<string, string | string[] | undefined>);
+
+  const first = (v: string | string[] | undefined): string =>
+    Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
 
   const email =
     nameID ||
-    attrs["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] ||
-    attrs["email"] ||
-    attrs["Email"] ||
+    first(attrs["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"]) ||
+    first(attrs["email"]) ||
+    first(attrs["Email"]) ||
     "";
 
   const displayName =
-    attrs["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
-    attrs["displayName"] ||
-    attrs["DisplayName"] ||
-    attrs["name"] ||
+    first(attrs["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"]) ||
+    first(attrs["displayName"]) ||
+    first(attrs["DisplayName"]) ||
+    first(attrs["name"]) ||
     email.split("@")[0] ||
     "SAML User";
 
+  // roleHint is accepted but IGNORED for role assignment (CRIT-001)
   const roleHint =
-    attrs["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
-    attrs["role"] ||
-    attrs["Role"] ||
+    first(attrs["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]) ||
+    first(attrs["role"]) ||
+    first(attrs["Role"]) ||
     undefined;
 
   return { email, displayName, roleHint };
@@ -88,7 +105,16 @@ export function createSamlRoutes() {
     // -----------------------------------------------------------------------
     // POST /acs -- Assertion Consumer Service
     // -----------------------------------------------------------------------
-    .post("/acs", async ({ body, store, cookie, redirect }: any) => {
+    .post("/acs", async ({
+      body,
+      store,
+      redirect,
+    }: {
+      body: Record<string, unknown>;
+      store: { db?: typeof pgDb };
+      cookie: Record<string, { value: string }>;
+      redirect: (url: string) => Response;
+    }) => {
       try {
         // Parse and validate the SAML response
         const parseResult = await spRef.parseLoginResponse(idpRef, "post", {
@@ -96,7 +122,7 @@ export function createSamlRoutes() {
         });
 
         const { email, displayName, roleHint } = extractAttributes(
-          parseResult.extract
+          parseResult.extract as SamlExtract
         );
 
         if (!email) {
@@ -106,23 +132,27 @@ export function createSamlRoutes() {
         }
 
         // JIT provision user and create session
-        const authService = createAuthService(store.db ?? pgDb);
+        const authService: AuthService = createAuthService(store.db ?? pgDb);
         const user = await authService.findOrCreateSamlUser(
           email,
           displayName,
-          parseResult.extract.nameID || email,
+          (parseResult.extract as SamlExtract).nameID || email,
           roleHint
         );
 
         const sessionToken = await authService.createSession(user.id);
 
-        // Redirect to dashboard callback route with token.
-        // The dashboard sets the cookie on its own origin, solving
-        // the cross-origin cookie problem (control-plane origin != dashboard origin).
-        const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?token=${sessionToken}`;
+        // CRIT-002: issue a short-lived (60s) one-time code instead of
+        // putting the raw session token in the redirect URL.
+        const code = await authService.createSamlHandoffCode(
+          sessionToken,
+          user.id
+        );
+        const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?code=${code}`;
         return redirect(callbackUrl);
-      } catch (err: any) {
-        console.error("[SAML] ACS error:", err.message || err);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[SAML] ACS error:", msg);
         return new Response("SAML authentication failed", { status: 401 });
       }
     })
@@ -130,7 +160,10 @@ export function createSamlRoutes() {
     // -----------------------------------------------------------------------
     // GET /slo -- Single Logout
     // -----------------------------------------------------------------------
-    .get("/slo", async ({ cookie, redirect }: any) => {
+    .get("/slo", async ({ cookie, redirect }: {
+      cookie: Record<string, { set: (opts: Record<string, unknown>) => void }>;
+      redirect: (url: string) => Response;
+    }) => {
       // Clear session cookie
       cookie[SESSION_COOKIE_NAME].set({
         value: "",

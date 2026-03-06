@@ -279,7 +279,11 @@ async function seedIdentity(): Promise<void> {
     console.log("  GENERATED API KEYS (shown once -- save these securely)");
     console.log("=".repeat(72));
     for (const { email, key } of generatedKeys) {
-      console.log(`  [seed] API Key for ${email}: ${key}`);
+      if (process.env.SEED_SHOW_KEYS === "true") {
+        console.log(`  [seed] API key for ${email}: ${key}`);
+      } else {
+        console.log(`  [seed] API key created for ${email} (set SEED_SHOW_KEYS=true to reveal — local dev only)`);
+      }
     }
     console.log("=".repeat(72));
     console.log("");
