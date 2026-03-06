@@ -15,6 +15,8 @@ import { EvidenceVerificationService } from "./service";
 import { VerifyBundlesBody, BundlesQueryParams } from "./model";
 import { apiResponse, paginatedResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { db as pgDb } from "../../db/postgres";
+import { clickhouse as chClient } from "../../db/clickhouse";
 
 export const evidenceModule = new Elysia({ prefix: "/api/v1/evidence" })
   .use(authPlugin)
@@ -24,7 +26,7 @@ export const evidenceModule = new Elysia({ prefix: "/api/v1/evidence" })
   .derive(({ store }) => {
     const s = store as { db: any; clickhouse: any };
     return {
-      evidenceService: new EvidenceVerificationService(s.clickhouse, s.db),
+      evidenceService: new EvidenceVerificationService(s.clickhouse ?? chClient, s.db ?? pgDb),
     };
   })
 

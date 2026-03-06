@@ -10,13 +10,14 @@ import { Elysia } from "elysia";
 import { createSigningKeysService } from "./service";
 import { apiResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { db as pgDb } from "../../db/postgres";
 
 export const signingKeysModule = new Elysia({
   prefix: "/api/v1/admin/signing-keys",
 })
   .use(authPlugin)
   .derive(({ store }) => {
-    const db = (store as any).db;
+    const db = (store as any).db ?? pgDb;
     return { signingKeysService: createSigningKeysService(db) };
   })
 

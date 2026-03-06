@@ -13,6 +13,7 @@ import { AnomalyService } from "./service";
 import { AnomalyQueryParams } from "./model";
 import { apiResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { clickhouse as chClient } from "../../db/clickhouse";
 
 export const anomaliesModule = new Elysia({ prefix: "/api/v1/anomalies" })
   .use(authPlugin)
@@ -22,7 +23,7 @@ export const anomaliesModule = new Elysia({ prefix: "/api/v1/anomalies" })
   .derive(({ store }) => {
     const s = store as { clickhouse: any };
     return {
-      anomalyService: new AnomalyService(s.clickhouse),
+      anomalyService: new AnomalyService(s.clickhouse ?? chClient),
     };
   })
 

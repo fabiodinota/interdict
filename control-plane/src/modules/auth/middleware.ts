@@ -23,6 +23,7 @@
 import { Elysia } from "elysia";
 import { createAuthService, type AuthenticatedUser } from "./service";
 import { roleHierarchyLevel } from "./permissions";
+import { db } from "../../db/postgres";
 
 /** API key prefix used to distinguish API keys from session tokens */
 const API_KEY_PREFIX = "ik_live_";
@@ -60,7 +61,7 @@ export const authPlugin = new Elysia({ name: "auth" })
       const token = authHeader.slice(7);
 
       // 2. Dual-mode authentication: API key vs session token
-      const authService = createAuthService(store.db);
+      const authService = createAuthService(store?.db ?? db);
       let user: AuthenticatedUser | null = null;
 
       if (token.startsWith(API_KEY_PREFIX)) {

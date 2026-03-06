@@ -18,6 +18,8 @@ import {
   NotFoundError,
 } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { db as pgDb } from "../../db/postgres";
+import { clickhouse as chClient } from "../../db/clickhouse";
 
 export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
   .use(authPlugin)
@@ -27,7 +29,7 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
   .derive(({ store }) => {
     const s = store as { db: any; clickhouse: any };
     return {
-      reviewService: new ReviewService(s.clickhouse, s.db),
+      reviewService: new ReviewService(s.clickhouse ?? chClient, s.db ?? pgDb),
     };
   })
 
@@ -36,7 +38,7 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
   // ---------------------------------------------------------------------------
   .onStart(({ store }) => {
     const s = store as { db: any; clickhouse: any };
-    const service = new ReviewService(s.clickhouse, s.db);
+    const service = new ReviewService(s.clickhouse ?? chClient, s.db ?? pgDb);
     service.startBackgroundJobs();
   })
 

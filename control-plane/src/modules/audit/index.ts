@@ -23,6 +23,8 @@ import {
   paginatedResponse,
 } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { db as pgDb } from "../../db/postgres";
+import { clickhouse as chClient } from "../../db/clickhouse";
 
 export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   .use(authPlugin)
@@ -32,7 +34,7 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   .derive(({ store }) => {
     const s = store as { db: any; clickhouse: any };
     return {
-      auditService: new AuditService(s.clickhouse, s.db),
+      auditService: new AuditService(s.clickhouse ?? chClient, s.db ?? pgDb),
     };
   })
 

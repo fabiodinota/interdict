@@ -11,6 +11,8 @@ import { generatePDF } from "./pdf-generator";
 import { generateCSV } from "./csv-generator";
 import { ValidationError } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { db as pgDb } from "../../db/postgres";
+import { clickhouse as chClient } from "../../db/clickhouse";
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
@@ -46,7 +48,7 @@ export const reportsModule = new Elysia({ prefix: "/api/v1/reports" })
 
       // Gather report data
       const store = ctx.store as { db: any; clickhouse: any };
-      const reportService = new ReportService(store.clickhouse, store.db);
+      const reportService = new ReportService(store.clickhouse ?? chClient, store.db ?? pgDb);
       const reportData = await reportService.getReportData(from_date, to_date);
 
       // Generate file

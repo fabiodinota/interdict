@@ -10,11 +10,12 @@ import { eq } from "drizzle-orm";
 import { policyVersions } from "../../db/schema/policies";
 import { apiResponse } from "../../shared/utilities";
 import { NotFoundError } from "../../shared/utilities";
+import { db as pgDb } from "../../db/postgres";
 
 export const compilerModule = new Elysia({ prefix: "/api/v1/policies" }).get(
   "/:id/compilation-status",
   async ({ params, store }) => {
-    const db = (store as any).db;
+    const db = (store as any).db ?? pgDb;
 
     // Get the latest version for this policy
     const versions = await db

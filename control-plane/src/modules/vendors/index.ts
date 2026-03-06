@@ -17,11 +17,12 @@ import {
 import { createVendorService } from "./service";
 import { apiResponse, paginatedResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { db as pgDb } from "../../db/postgres";
 
 export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
   .use(authPlugin)
   .derive(({ store }) => {
-    const db = (store as any).db;
+    const db = (store as any).db ?? pgDb;
     return { vendorService: createVendorService(db) };
   })
 

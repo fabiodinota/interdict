@@ -17,6 +17,7 @@ import { Elysia } from "elysia";
 import { sp, idp, samlEnabled } from "./config";
 import { getSpMetadata } from "./metadata";
 import { createAuthService } from "../service";
+import { db as pgDb } from "../../../db/postgres";
 
 const DASHBOARD_URL = process.env.DASHBOARD_URL || "http://localhost:8080";
 const SESSION_COOKIE_NAME = "interdict_session";
@@ -105,7 +106,7 @@ export function createSamlRoutes() {
         }
 
         // JIT provision user and create session
-        const authService = createAuthService(store.db);
+        const authService = createAuthService(store.db ?? pgDb);
         const user = await authService.findOrCreateSamlUser(
           email,
           displayName,

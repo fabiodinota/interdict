@@ -21,11 +21,12 @@ import {
   ValidationError,
 } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { db as pgDb } from "../../db/postgres";
 
 export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
   .use(authPlugin)
   .derive(({ store }) => {
-    const db = (store as any).db;
+    const db = (store as any).db ?? pgDb;
     return { policyService: createPolicyService(db) };
   })
 

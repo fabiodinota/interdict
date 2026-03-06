@@ -19,6 +19,7 @@
 import { Elysia } from "elysia";
 import { authPlugin } from "./middleware";
 import { createAuthService } from "./service";
+import { db as pgDb } from "../../db/postgres";
 import {
   CreateApiKeyBody,
   ApiKeyListQuery,
@@ -34,7 +35,7 @@ import { createSamlRoutes } from "./saml/handlers";
 export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   .use(authPlugin)
   .derive(({ store }) => {
-    const db = (store as any).db;
+    const db = (store as any).db ?? pgDb;
     return { authService: createAuthService(db) };
   })
 

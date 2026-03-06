@@ -19,6 +19,7 @@ import {
 } from "./model";
 import { apiResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { db as pgDb } from "../../db/postgres";
 
 export const departmentOverridesModule = new Elysia({
   prefix: "/api/v1/department-overrides",
@@ -30,7 +31,7 @@ export const departmentOverridesModule = new Elysia({
   .derive(({ store }) => {
     const s = store as { db: any };
     return {
-      overrideService: new DepartmentOverrideService(s.db),
+      overrideService: new DepartmentOverrideService(s.db ?? pgDb),
     };
   })
 
