@@ -1,7 +1,9 @@
 # Build artifacts
 target/
 node_modules/
+**/node_modules/
 dist/
+**/.next/
 .bun/
 
 # IDE / OS

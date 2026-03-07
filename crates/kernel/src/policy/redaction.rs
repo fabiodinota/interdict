@@ -70,8 +70,11 @@ impl RedactionEngine {
     /// Create a redaction placeholder for a category.
     ///
     /// Used by StreamingDetector to generate placeholders for detected patterns.
-    pub fn create_placeholder(&self, category: &str, _original: &str) -> String {
-        format!("[REDACTED:{}]", category)
+    /// The placeholder is length-preserving: it replaces each character in the
+    /// original with `*` so the byte count stays identical. This is critical
+    /// for raw HTTP tunnel redaction where Content-Length must not change.
+    pub fn create_placeholder(&self, _category: &str, original: &str) -> String {
+        "*".repeat(original.len())
     }
 
     /// Apply all redaction rules to the given content.

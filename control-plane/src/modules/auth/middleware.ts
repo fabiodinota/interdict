@@ -43,8 +43,8 @@ export const authPlugin = new Elysia({ name: "auth" })
   .macro("auth", (options?: string[] | boolean) => ({
     async resolve({ headers, store, status }: {
       headers: Record<string, string | undefined>;
-      store: any;
-      status: any;
+      store: Record<string, unknown>;
+      status: (code: number, body: unknown) => { code: number; body: unknown };
     }) {
       // 1. Extract Bearer token from Authorization header
       const authHeader = headers["authorization"];
@@ -61,7 +61,7 @@ export const authPlugin = new Elysia({ name: "auth" })
       const token = authHeader.slice(7);
 
       // 2. Dual-mode authentication: API key vs session token
-      const authService = createAuthService(store?.db ?? db);
+      const authService = createAuthService((store?.db ?? db) as Parameters<typeof createAuthService>[0]);
       let user: AuthenticatedUser | null = null;
 
       if (token.startsWith(API_KEY_PREFIX)) {

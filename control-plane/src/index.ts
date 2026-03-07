@@ -52,13 +52,17 @@ const app = new Elysia()
   .onError(({ error, set }) => {
     // Map custom error classes to HTTP status codes
     if ("statusCode" in error && typeof error.statusCode === "number") {
-      set.status = error.statusCode as number;
+      const status = error.statusCode as number;
+      set.status = status;
+      const errCode = "code" in error ? String(error.code) : "INTERNAL_ERROR";
+      console.error("[error]", { code: errCode, status, message: error.message });
       return {
         success: false,
         error: {
-          code: "code" in error ? error.code : "INTERNAL_ERROR",
-          message: error.message,
-          details: "details" in error ? error.details : undefined,
+          code: errCode,
+          // LOW-010: never leak internal details for 5xx responses
+          message: status >= 500 ? "Internal server error" : error.message,
+          details: status < 500 && "details" in error ? error.details : undefined,
         },
       };
     }
@@ -75,14 +79,15 @@ const app = new Elysia()
       };
     }
 
-    // Unhandled errors
-    console.error("[error] Unhandled error:", error);
+    // Unhandled errors — log internally, return opaque message
+    const errCode = "code" in error ? String((error as { code: unknown }).code) : "UNKNOWN";
+    console.error("[error]", { code: errCode, status: 500, message: error.message });
     set.status = 500;
     return {
       success: false,
       error: {
-        code: "INTERNAL_ERROR",
-        message: "An unexpected error occurred",
+        code: errCode,
+        message: "Internal server error",
       },
     };
   })

@@ -11,12 +11,13 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { eq, and, desc, lt, or, gt } from "drizzle-orm";
-import { apiKeys, userDepartments, sessions } from "../../db/schema/auth";
+import { eq, and, desc, lt, or, gt, type SQL } from "drizzle-orm";
+import { apiKeys, userDepartments, sessions, samlHandoffCodes } from "../../db/schema/auth";
 import { users } from "../../db/schema/organization";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../db/schema";
 import {
   NotFoundError,
-  ForbiddenError,
   encodeCursor,
   decodeCursor,
   DEFAULT_PAGE_SIZE,
@@ -44,6 +45,17 @@ export interface AuthenticatedUser {
 
 /** API key prefix identifying Interdict live keys */
 const KEY_PREFIX_TAG = "ik_live_";
+
+/**
+ * Hash a session token using SHA-256.
+ * Returns a 64-character hex digest.
+ * Raw tokens are never stored — only this digest is persisted (MED-006).
+ */
+export function hashSessionToken(rawToken: string): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(rawToken);
+  return hasher.digest("hex") as string;
+}
 
 /**
  * Hash an API key using SHA-256.
@@ -116,6 +128,9 @@ export interface AuthService {
   }>;
   authenticateBySessionToken(token: string): Promise<AuthenticatedUser | null>;
   createSession(userId: string): Promise<string>;
+  revokeSession(rawToken: string): Promise<void>;
+  createSamlHandoffCode(sessionToken: string, userId: string): Promise<string>;
+  exchangeSamlHandoffCode(code: string): Promise<string | null>;
   findOrCreateSamlUser(
     email: string,
     displayName: string,
@@ -131,7 +146,7 @@ export interface AuthService {
 /**
  * Create an AuthService bound to a database instance.
  */
-export function createAuthService(db: any): AuthService {
+export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthService {
   return {
     /**
      * Authenticate a user by API key token.
@@ -253,7 +268,7 @@ export function createAuthService(db: any): AuthService {
     ) {
       const limit = Math.min(pageSize || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
-      const conditions: any[] = [];
+      const conditions: SQL<unknown>[] = [];
 
       // Super Admins with ?all=true see all keys; otherwise scoped to own
       if (showAll && roleInheritsFrom(userRole, "super_admin")) {
@@ -293,7 +308,7 @@ export function createAuthService(db: any): AuthService {
       const hasMore = rows.length > limit;
       const items = hasMore ? rows.slice(0, limit) : rows;
 
-      const serialized = items.map((r: any) => ({
+      const serialized = items.map((r) => ({
         id: r.id,
         prefix: r.keyPrefix,
         label: r.label,
@@ -354,12 +369,13 @@ export function createAuthService(db: any): AuthService {
     async authenticateBySessionToken(
       token: string
     ): Promise<AuthenticatedUser | null> {
+      const tokenHash = hashSessionToken(token);
       const [session] = await db
         .select()
         .from(sessions)
         .where(
           and(
-            eq(sessions.token, token),
+            eq(sessions.tokenHash, tokenHash),
             gt(sessions.expiresAt, new Date())
           )
         );
@@ -400,16 +416,54 @@ export function createAuthService(db: any): AuthService {
      * Returns the token string.
      */
     async createSession(userId: string): Promise<string> {
-      const token = randomBytes(64).toString("hex");
+      const rawToken = randomBytes(64).toString("hex"); // 128 hex chars
+      const tokenHash = hashSessionToken(rawToken); // stored; raw never persisted
       const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 hours
 
       await db.insert(sessions).values({
-        token,
+        tokenHash,
         userId,
         expiresAt,
       });
 
-      return token;
+      return rawToken; // returned to caller once; never stored
+    },
+
+    async revokeSession(rawToken: string): Promise<void> {
+      const tokenHash = hashSessionToken(rawToken);
+      await db.delete(sessions).where(eq(sessions.tokenHash, tokenHash));
+    },
+
+    async createSamlHandoffCode(
+      sessionToken: string,
+      userId: string
+    ): Promise<string> {
+      const code = randomBytes(32).toString("hex"); // 64 hex chars, 256 bits
+      const expiresAt = new Date(Date.now() + 60_000); // 60s TTL
+      await db.insert(samlHandoffCodes).values({
+        code,
+        sessionToken,
+        userId,
+        expiresAt,
+      });
+      return code;
+    },
+
+    async exchangeSamlHandoffCode(code: string): Promise<string | null> {
+      // Atomic UPDATE...RETURNING prevents TOCTOU race where two concurrent
+      // requests both pass the SELECT check before either UPDATE runs (NEW-TOCTOU).
+      const [row] = await db
+        .update(samlHandoffCodes)
+        .set({ used: true })
+        .where(
+          and(
+            eq(samlHandoffCodes.code, code),
+            eq(samlHandoffCodes.used, false),
+            gt(samlHandoffCodes.expiresAt, new Date())
+          )
+        )
+        .returning({ sessionToken: samlHandoffCodes.sessionToken });
+      return row?.sessionToken ?? null;
     },
 
     /**
@@ -442,18 +496,15 @@ export function createAuthService(db: any): AuthService {
             .where(eq(users.id, existingUser.id));
         }
       } else {
-        // Validate roleHint against known roles
-        const VALID_ROLES = [
-          "super_admin",
-          "compliance_officer",
-          "policy_admin",
-          "department_manager",
-          "read_only_auditor",
-        ];
-        const role =
-          roleHint && VALID_ROLES.includes(roleHint)
-            ? roleHint
-            : "read_only_auditor";
+        // CRIT-001: Never trust role claims from IdP assertions.
+        // All JIT-provisioned users start as read_only_auditor; admins
+        // must explicitly elevate roles via the admin API.
+        const role = "read_only_auditor";
+        // NEW-PII: log without email (PII) — use opaque message only
+        console.info(
+          `[auth] SAML JIT provisioning new user as read_only_auditor` +
+            (roleHint ? ` (IdP roleHint ignored)` : "")
+        );
 
         // JIT provision: create new user
         const [newUser] = await db
@@ -469,6 +520,7 @@ export function createAuthService(db: any): AuthService {
           .returning();
 
         userId = newUser.id;
+        console.info(`[auth] JIT provisioned user ${newUser.id}`);
       }
 
       // Fetch user with departments for AuthenticatedUser

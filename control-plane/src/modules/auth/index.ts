@@ -17,13 +17,16 @@
  */
 
 import { Elysia } from "elysia";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../db/schema";
 import { authPlugin } from "./middleware";
-import { createAuthService } from "./service";
+import { createAuthService, type AuthenticatedUser, type AuthService } from "./service";
 import { db as pgDb } from "../../db/postgres";
 import {
   CreateApiKeyBody,
   ApiKeyListQuery,
   RevokeApiKeyParams,
+  ExchangeCodeBody,
 } from "./model";
 import {
   apiResponse,
@@ -32,10 +35,21 @@ import {
 import { samlEnabled } from "./saml/config";
 import { createSamlRoutes } from "./saml/handlers";
 
+/** Typed context for auth module route handlers (injected by authPlugin + derive). */
+interface AuthCtx {
+  user: AuthenticatedUser;
+  authService: AuthService;
+  body: Record<string, unknown>;
+  query: Record<string, string | undefined>;
+  params: Record<string, string>;
+  headers: Record<string, string | undefined>;
+  set: { status: number };
+}
+
 export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   .use(authPlugin)
   .derive(({ store }) => {
-    const db = (store as any).db ?? pgDb;
+    const db = (store as { db?: PostgresJsDatabase<typeof schema> }).db ?? pgDb;
     return { authService: createAuthService(db) };
   })
 
@@ -44,7 +58,7 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .get(
     "/me",
-    async (ctx: any) => {
+    async (ctx: AuthCtx) => {
       const profile = await ctx.authService.whoAmI(ctx.user.id);
       return apiResponse(profile);
     },
@@ -56,10 +70,10 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .post(
     "/keys",
-    async (ctx: any) => {
+    async (ctx: AuthCtx) => {
       const result = await ctx.authService.createApiKey(
         ctx.user.id,
-        ctx.body.label
+        ctx.body.label as string | undefined
       );
       ctx.set.status = 201;
       return apiResponse({
@@ -81,7 +95,7 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .get(
     "/keys",
-    async (ctx: any) => {
+    async (ctx: AuthCtx) => {
       const pageSize = ctx.query.page_size
         ? Number(ctx.query.page_size)
         : undefined;
@@ -106,7 +120,7 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .delete(
     "/keys/:keyId",
-    async (ctx: any) => {
+    async (ctx: AuthCtx) => {
       await ctx.authService.revokeApiKey(
         ctx.params.keyId,
         ctx.user.id,
@@ -119,6 +133,43 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
       auth: true,
       params: RevokeApiKeyParams,
     }
+  )
+
+  // -------------------------------------------------------------------------
+  // POST /logout -- Revoke server-side session (HIGH-003)
+  // -------------------------------------------------------------------------
+  .post(
+    "/logout",
+    async (ctx: AuthCtx) => {
+      const authHeader = ctx.headers["authorization"];
+      const rawToken = authHeader?.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : null;
+      if (rawToken) {
+        await ctx.authService.revokeSession(rawToken);
+      }
+      ctx.set.status = 204;
+      return;
+    },
+    { auth: true }
+  )
+
+  // -------------------------------------------------------------------------
+  // POST /saml/exchange-code -- One-time code -> session token (CRIT-002)
+  // Unauthenticated: the code IS the credential for this one exchange.
+  // -------------------------------------------------------------------------
+  .post(
+    "/saml/exchange-code",
+    async (ctx: AuthCtx) => {
+      const code = ctx.body.code as string;
+      const sessionToken = await ctx.authService.exchangeSamlHandoffCode(code);
+      if (!sessionToken) {
+        ctx.set.status = 410;
+        return { success: false, error: { code: "CODE_EXPIRED", message: "Code is invalid, expired, or already used." } };
+      }
+      return { success: true, data: { token: sessionToken } };
+    },
+    { body: ExchangeCodeBody }
   )
 
   // -------------------------------------------------------------------------

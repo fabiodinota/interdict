@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionToken, getControlPlaneUrl } from "@/lib/auth";
 
+// Disable static caching for all proxy routes; required for SSE streaming to work
+export const dynamic = "force-dynamic";
+
 async function proxyRequest(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }

@@ -50,11 +50,22 @@ export async function generatePDF(reportData: ReportData): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    // Track page numbers for footer
+    // Track page numbers for footer.
+    // Guard against re-entrant pageAdded: footer text positioned near the bottom
+    // margin triggers another addPage() → pageAdded → infinite recursion.
     let pageNum = 0;
+    let addingFooter = false;
     doc.on("pageAdded", () => {
+      if (addingFooter) return;
       pageNum++;
-      addFooter(doc, reportData, pageNum);
+      addingFooter = true;
+      try {
+        addFooter(doc, reportData, pageNum);
+      } finally {
+        addingFooter = false;
+        // Reset cursor to top of new page after footer rendering
+        doc.y = doc.page.margins.top;
+      }
     });
 
     // --- Cover Page ---

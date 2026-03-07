@@ -12,7 +12,7 @@ export function VendorList() {
   const [searchQuery, setSearchQuery] = useState("");
   const { data, isLoading } = useVendors();
 
-  const vendors = data?.data ?? [];
+  const vendors = data?.data?.items ?? [];
 
   // Client-side filter by name/display_name
   const filteredVendors = searchQuery

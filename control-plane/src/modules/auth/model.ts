@@ -16,6 +16,11 @@ export const CreateApiKeyBody = t.Object({
   label: t.Optional(t.String({ maxLength: 255 })),
 });
 
+/** Body for POST /api/v1/auth/saml/exchange-code -- one-time code exchange (CRIT-002) */
+export const ExchangeCodeBody = t.Object({
+  code: t.String({ minLength: 64, maxLength: 64 }),
+});
+
 // ---------------------------------------------------------------------------
 // Query Parameters
 // ---------------------------------------------------------------------------

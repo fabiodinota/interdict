@@ -230,7 +230,12 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let evidence_collector_addr = std::env::var("INTERDICT_EVIDENCE_COLLECTOR_ADDR")
-        .unwrap_or_else(|_| "http://[::1]:50051".to_string());
+        .unwrap_or_else(|_| {
+            #[cfg(not(debug_assertions))]
+            panic!("INTERDICT_EVIDENCE_COLLECTOR_ADDR must be set in release builds");
+            #[cfg(debug_assertions)]
+            "http://[::1]:50051".to_string()
+        });
     let full_text_storage = std::env::var("INTERDICT_EVIDENCE_FULL_TEXT_STORAGE")
         .map(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
         .unwrap_or(false);
@@ -244,11 +249,11 @@ async fn main() -> anyhow::Result<()> {
         std::env::var("KERNEL_MTLS_CLIENT_CERT"),
         std::env::var("KERNEL_MTLS_CLIENT_KEY"),
     ) {
-        let ca = std::fs::read(&ca_path)
+        let ca = tokio::fs::read(&ca_path).await
             .unwrap_or_else(|e| panic!("failed to read mTLS CA cert {ca_path}: {e}"));
-        let cert = std::fs::read(&cert_path)
+        let cert = tokio::fs::read(&cert_path).await
             .unwrap_or_else(|e| panic!("failed to read mTLS client cert {cert_path}: {e}"));
-        let key = std::fs::read(&key_path)
+        let key = tokio::fs::read(&key_path).await
             .unwrap_or_else(|e| panic!("failed to read mTLS client key {key_path}: {e}"));
 
         tracing::info!(

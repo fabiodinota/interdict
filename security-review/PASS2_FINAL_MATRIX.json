@@ -1,0 +1,495 @@
+{
+    "metadata":  {
+                     "generated_at":  "2026-03-06T22:12:00+01:00",
+                     "review_type":  "baseline_plus_critical_flows_with_diff",
+                     "diff_anchor":  "v1.1..HEAD",
+                     "cvss_version":  "4.0",
+                     "reports":  [
+                                     "security-review/PASS1_BULLETIN.md",
+                                     "security-review/RUNTIME_VALIDATION.md",
+                                     "security-review/ATTACK_SURFACE.md"
+                                 ]
+                 },
+    "findings":  [
+                     {
+                         "id":  "CRIT-001",
+                         "title":  "SAML role claim is directly trusted for privileged local role assignment",
+                         "severity":  "Critical",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H",
+                         "cvss_score":  9.4,
+                         "file":  "control-plane/src/modules/auth/service.ts",
+                         "line":  445,
+                         "component":  "control-plane auth provisioning",
+                         "entry_point":  "POST /api/v1/auth/saml/acs",
+                         "trust_boundary":  "IdP assertion claims -\u003e internal RBAC role assignment",
+                         "cwe":  [
+                                     "CWE-269",
+                                     "CWE-285"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A01 Broken Access Control",
+                                                  "A04 Insecure Design"
+                                              ],
+                         "asvs_control":  [
+                                              "V4 Access Control",
+                                              "V2 Authentication"
+                                          ],
+                         "soc2":  "CC6.1, CC6.2, CC6.6",
+                         "iso_42001":  "Clause 8.2 operational controls for AI system security",
+                         "gdpr":  "Art.32 Security of processing (privilege minimization)",
+                         "hipaa":  "164.312(a)(1) Access Control",
+                         "pci_dss":  "Req.7 Restrict access to system components and cardholder data",
+                         "impact":  "A user can be provisioned with elevated roles (including super_admin) based on assertion role claims, enabling unauthorized admin access.",
+                         "reproduction_steps":  [
+                                                    "Observe `roleHint` extraction from assertion attributes in `control-plane/src/modules/auth/saml/handlers.ts:55`.",
+                                                    "Observe `roleHint` passed into provisioning at `control-plane/src/modules/auth/saml/handlers.ts:110`.",
+                                                    "Observe accepted role allowlist includes privileged roles and is applied directly for new users at `control-plane/src/modules/auth/service.ts:446`."
+                                                ],
+                         "proof":  "Code path from SAML assertion -\u003e `roleHint` -\u003e user creation role assignment exists with no server-side mapping policy gate.",
+                         "recommended_fix":  "Replace direct role-claim trust with explicit server-managed mapping (IdP group/claim to allowed role table), default-deny unknown mappings, and hard-guard privileged roles behind explicit admin-managed assignment.",
+                         "diff_snippet":  "- const role = roleHint \u0026\u0026 VALID_ROLES.includes(roleHint) ? roleHint : \"read_only_auditor\";\n+ const role = await resolveMappedRoleFromIdpClaims(assertionClaims, orgPolicyMap);\n+ if (!role) role = \"read_only_auditor\";\n+ enforcePrivilegedRoleAssignmentPolicy(role, assertionIssuer, userIdentity);",
+                         "risk_acceptance":  null
+                     },
+                     {
+                         "id":  "CRIT-002",
+                         "title":  "Session token is transported in URL query parameter during SAML callback handoff",
+                         "severity":  "Critical",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:R/VC:H/VI:H/VA:L/SC:H/SI:H/SA:L",
+                         "cvss_score":  9.1,
+                         "file":  "control-plane/src/modules/auth/saml/handlers.ts",
+                         "line":  122,
+                         "component":  "SAML ACS redirect flow",
+                         "entry_point":  "POST /api/v1/auth/saml/acs -\u003e GET /api/auth/saml-callback",
+                         "trust_boundary":  "control-plane auth bootstrap -\u003e browser URL surface -\u003e dashboard callback",
+                         "cwe":  [
+                                     "CWE-598",
+                                     "CWE-201"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A02 Cryptographic Failures",
+                                                  "A07 Identification and Authentication Failures"
+                                              ],
+                         "asvs_control":  [
+                                              "V3 Session Management",
+                                              "V2 Authentication"
+                                          ],
+                         "soc2":  "CC6.1, CC6.7",
+                         "iso_42001":  "Clause 8.2 secure operational controls",
+                         "gdpr":  "Art.32 Security of processing (credential confidentiality)",
+                         "hipaa":  "164.312(e)(1) Transmission Security",
+                         "pci_dss":  "Req.4 Protect cardholder data with strong cryptography during transmission",
+                         "impact":  "Session token leakage through logs, browser history, intermediary telemetry, and referrer channels can result in account/session hijacking.",
+                         "reproduction_steps":  [
+                                                    "See token appended to callback URL in `control-plane/src/modules/auth/saml/handlers.ts:122`.",
+                                                    "See callback route expects query token in `dashboard/src/app/api/auth/saml-callback/route.ts:16`.",
+                                                    "Confirm token used directly as bearer in callback validation at `dashboard/src/app/api/auth/saml-callback/route.ts:27`."
+                                                ],
+                         "proof":  "Credential material is moved in GET query string and consumed as active session token.",
+                         "recommended_fix":  "Use one-time authorization code exchange (short-lived nonce + server-side lookup) or encrypted POST body handoff; prohibit session bearer tokens in URL components.",
+                         "diff_snippet":  "- const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?token=${sessionToken}`;\n+ const oneTimeCode = await issueOneTimeCodeForSession(sessionToken, user.id);\n+ const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?code=${oneTimeCode}`;",
+                         "risk_acceptance":  null
+                     },
+                     {
+                         "id":  "HIGH-003",
+                         "title":  "Logout does not invalidate server-side sessions",
+                         "severity":  "High",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:H/SA:N",
+                         "cvss_score":  8.2,
+                         "file":  "dashboard/src/app/api/auth/logout/route.ts",
+                         "line":  4,
+                         "component":  "dashboard auth API + control-plane session validation",
+                         "entry_point":  "POST /api/auth/logout and subsequent /api/v1/auth/me token checks",
+                         "trust_boundary":  "browser logout action -\u003e server-side session lifecycle",
+                         "cwe":  [
+                                     "CWE-613"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A07 Identification and Authentication Failures"
+                                              ],
+                         "asvs_control":  [
+                                              "V3 Session Management"
+                                          ],
+                         "soc2":  "CC6.1, CC6.2",
+                         "iso_42001":  "Clause 8.2 lifecycle controls for identity/session",
+                         "gdpr":  "Art.32 Security of processing",
+                         "hipaa":  "164.312(a)(2)(iii) Automatic logoff intent",
+                         "pci_dss":  "Req.8 Identify users and authenticate access",
+                         "impact":  "Stolen session tokens remain valid after user logout and can be replayed until expiration.",
+                         "reproduction_steps":  [
+                                                    "Create test user/session in Postgres (see runtime log).",
+                                                    "Call `GET /api/v1/auth/me` with the token: returns 200.",
+                                                    "Call `POST /api/auth/logout`: cookie cleared.",
+                                                    "Call `GET /api/v1/auth/me` with same token: still returns 200."
+                                                ],
+                         "proof":  "Runtime evidence captured in `security-review/RUNTIME_VALIDATION.md` shows token validity unchanged after logout.",
+                         "recommended_fix":  "Add server-side logout endpoint to revoke/delete session token record; call it from dashboard logout route before clearing cookie.",
+                         "diff_snippet":  "+ await fetch(`${controlPlaneUrl}/api/v1/auth/logout`, { method: \"POST\", headers: { Authorization: `Bearer ${token}` } });\n+ await authService.revokeSessionToken(token);\n  response.cookies.set(SESSION_COOKIE_NAME, \"\", { maxAge: 0, ... });",
+                         "risk_acceptance":  null
+                     },
+                     {
+                         "id":  "HIGH-004",
+                         "title":  "Policy distribution snapshot ignores org/dept/team scope and trusts client-supplied scope context",
+                         "severity":  "High",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:N/SC:H/SI:H/SA:N",
+                         "cvss_score":  8.7,
+                         "file":  "control-plane/src/modules/distribution/server.ts",
+                         "line":  61,
+                         "component":  "control-plane gRPC distribution server",
+                         "entry_point":  "PolicyDistribution.Subscribe",
+                         "trust_boundary":  "kernel identity and scope claims -\u003e policy data stream",
+                         "cwe":  [
+                                     "CWE-862",
+                                     "CWE-639"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A01 Broken Access Control"
+                                              ],
+                         "asvs_control":  [
+                                              "V4 Access Control",
+                                              "V10 Communications Security"
+                                          ],
+                         "soc2":  "CC6.6, CC7.1",
+                         "iso_42001":  "Clause 8.2 operational access controls for AI policy artifacts",
+                         "gdpr":  "Art.32 (data protection by access restriction)",
+                         "hipaa":  "164.312(a)(1) Access Control",
+                         "pci_dss":  "Req.7 Restrict access by business need-to-know",
+                         "impact":  "A gRPC client can receive policy artifacts outside its intended org/department/team boundary if server-side scope is not enforced.",
+                         "reproduction_steps":  [
+                                                    "Observe `_orgId`, `_deptId`, `_teamId` parameters unused in `buildFullSnapshot` at lines 61-66.",
+                                                    "Observe full active policy query with no org/dept/team filter at lines 75-100.",
+                                                    "Observe Subscribe uses client-provided org/dept/team values directly at lines 163-168."
+                                                ],
+                         "proof":  "Server-side policy snapshot construction does not apply tenant filters while accepting scope hints from request payload.",
+                         "recommended_fix":  "Bind kernel to server-side identity (certificate or registration), reject mismatched scope claims, and filter snapshot query by resolved scope.",
+                         "diff_snippet":  "- export async function buildFullSnapshot(db, _orgId, _deptId, _teamId)\n+ export async function buildFullSnapshot(db, orgId, deptId, teamId)\n+ // apply org/dept/team WHERE predicates from authenticated kernel identity",
+                         "risk_acceptance":  null
+                     },
+                     {
+                         "id":  "MED-005",
+                         "title":  "gRPC distribution can downgrade to insecure transport when MTLS is disabled or unset",
+                         "severity":  "Medium",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:L/SC:L/SI:L/SA:L",
+                         "cvss_score":  6.8,
+                         "file":  "control-plane/src/modules/distribution/server.ts",
+                         "line":  280,
+                         "component":  "gRPC transport configuration",
+                         "entry_point":  "distribution server startup",
+                         "trust_boundary":  "control-plane \u003c-\u003e kernel policy stream transport",
+                         "cwe":  [
+                                     "CWE-319"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A02 Cryptographic Failures",
+                                                  "A05 Security Misconfiguration"
+                                              ],
+                         "asvs_control":  [
+                                              "V10 Communications Security"
+                                          ],
+                         "soc2":  "CC6.7",
+                         "iso_42001":  "Clause 8.2 secure communication controls",
+                         "gdpr":  "Art.32 encryption in transit expectation",
+                         "hipaa":  "164.312(e)(1) Transmission Security",
+                         "pci_dss":  "Req.4 Encrypt transmission",
+                         "impact":  "If deployed with `MTLS_ENABLED` not set to `true`, policy traffic can traverse without TLS/authenticated peer validation.",
+                         "reproduction_steps":  [
+                                                    "Read transport toggle at `control-plane/src/modules/distribution/server.ts:280`.",
+                                                    "Read insecure fallback at `control-plane/src/modules/distribution/server.ts:306` (`createInsecure`)."
+                                                ],
+                         "proof":  "Code explicitly supports insecure credentials in non-mTLS mode.",
+                         "recommended_fix":  "Fail hard in production profile when mTLS is disabled; require explicit dev profile override with startup guardrail warnings.",
+                         "diff_snippet":  "- credentials = grpc.ServerCredentials.createInsecure();\n+ if (process.env.NODE_ENV === \"production\") throw new Error(\"mTLS required\");\n+ credentials = grpc.ServerCredentials.createSsl(...);",
+                         "risk_acceptance":  "Acceptable only for isolated local development with documented exception."
+                     },
+                     {
+                         "id":  "MED-006",
+                         "title":  "Session tokens are stored and matched in plaintext at rest",
+                         "severity":  "Medium",
+                         "cvss_vector":  "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:N/SC:L/SI:L/SA:N",
+                         "cvss_score":  6.5,
+                         "file":  "control-plane/src/db/schema/auth.ts",
+                         "line":  89,
+                         "component":  "session persistence model",
+                         "entry_point":  "session creation and authentication lookup",
+                         "trust_boundary":  "database compromise -\u003e session bearer validity",
+                         "cwe":  [
+                                     "CWE-256"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A02 Cryptographic Failures"
+                                              ],
+                         "asvs_control":  [
+                                              "V3 Session Management",
+                                              "V6 Stored Cryptography"
+                                          ],
+                         "soc2":  "CC6.1, CC6.7",
+                         "iso_42001":  "Clause 8.2 credential protection controls",
+                         "gdpr":  "Art.32 confidentiality and integrity",
+                         "hipaa":  "164.312(a), 164.312(c)",
+                         "pci_dss":  "Req.3 Protect stored account data (applied by analogy to auth secrets)",
+                         "impact":  "Database read access yields directly reusable session tokens.",
+                         "reproduction_steps":  [
+                                                    "Observe plaintext token column in schema at `control-plane/src/db/schema/auth.ts:89`.",
+                                                    "Observe direct equality match in auth lookup at `control-plane/src/modules/auth/service.ts:362`."
+                                                ],
+                         "proof":  "No hashing or keyed derivation is applied to session token values before persistence/lookup.",
+                         "recommended_fix":  "Store only hashed session token digests (e.g., SHA-256 with random token value retained client-side), compare digests on lookup, and rotate on privilege events.",
+                         "diff_snippet":  "- token: varchar(\"token\", { length: 128 }).notNull().unique(),\n+ tokenHash: varchar(\"token_hash\", { length: 64 }).notNull().unique(),\n- eq(sessions.token, token)\n+ eq(sessions.tokenHash, sha256(token))",
+                         "risk_acceptance":  null
+                     },
+                     {
+                         "id":  "MED-007",
+                         "title":  "Deployment templates include insecure default credentials that can be promoted accidentally",
+                         "severity":  "Medium",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:L/SI:L/SA:L",
+                         "cvss_score":  6.9,
+                         "file":  "env.example",
+                         "line":  18,
+                         "component":  "deployment configuration baseline",
+                         "entry_point":  "Docker Compose and env bootstrap",
+                         "trust_boundary":  "operator config -\u003e runtime secret posture",
+                         "cwe":  [
+                                     "CWE-798"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A05 Security Misconfiguration"
+                                              ],
+                         "asvs_control":  [
+                                              "V14 Configuration"
+                                          ],
+                         "soc2":  "CC6.1, CC6.7",
+                         "iso_42001":  "Clause 8.2 secure deployment controls",
+                         "gdpr":  "Art.32 security by default",
+                         "hipaa":  "164.308(a)(1)(ii)(D) Information system activity review and safeguards",
+                         "pci_dss":  "Req.2 Do not use vendor-supplied defaults",
+                         "impact":  "If sample values are promoted into non-dev environments, infrastructure and data stores are exposed to trivial compromise.",
+                         "reproduction_steps":  [
+                                                    "See default credentials in `env.example:18`, `env.example:34`, `env.example:38`.",
+                                                    "See fallback defaults in compose at `docker-compose.yml:17`, `docker-compose.yml:49`, `docker-compose.yml:171`."
+                                                ],
+                         "proof":  "Templates contain deterministic secret defaults and fallback expansions.",
+                         "recommended_fix":  "Remove insecure defaults, require explicit secret injection, and enforce startup refusal when placeholder/default values are detected.",
+                         "diff_snippet":  "- POSTGRES_PASSWORD=interdict\n+ POSTGRES_PASSWORD=\u003cREQUIRED_SECURE_VALUE\u003e\n+ STARTUP_FAIL_ON_DEFAULT_SECRETS=true",
+                         "risk_acceptance":  "May be accepted for isolated local demo only if never reused outside localhost sandbox."
+                     },
+                     {
+                         "id":  "MED-008",
+                         "title":  "Dependency advisory triage shows unresolved vulnerabilities in control-plane and dashboard dependency trees",
+                         "severity":  "Medium",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:L/VA:L/SC:L/SI:L/SA:L",
+                         "cvss_score":  5.9,
+                         "file":  "dashboard/package.json",
+                         "line":  36,
+                         "component":  "software supply chain",
+                         "entry_point":  "build/developer dependency graph",
+                         "trust_boundary":  "third-party dependencies -\u003e build/runtime integrity",
+                         "cwe":  [
+                                     "CWE-1104"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A03 Software Supply Chain Failures"
+                                              ],
+                         "asvs_control":  [
+                                              "V1 Architecture and Design",
+                                              "V14 Configuration and Build"
+                                          ],
+                         "soc2":  "CC8.1, CC8.2",
+                         "iso_42001":  "Clause 8.2 supplier and software lifecycle security controls",
+                         "gdpr":  "N/A - indirect technical control, no direct legal article breach without exploitation",
+                         "hipaa":  "N/A - indirect control unless vulnerable path is in production runtime",
+                         "pci_dss":  "Req.6 develop and maintain secure systems and software",
+                         "impact":  "Known vulnerable packages increase exploitability in development/build contexts and can leak into production images if not constrained.",
+                         "reproduction_steps":  [
+                                                    "Run `bun audit` in `control-plane` (esbuild advisory).",
+                                                    "Run `bun audit` in `dashboard` (5 advisories via `shadcn` dependency tree)."
+                                                ],
+                         "proof":  "Audit logs recorded in `security-review/RUNTIME_VALIDATION.md`.",
+                         "recommended_fix":  "Pin/remediate vulnerable versions, isolate CLI-only toolchains from production image layers, and gate CI on advisory policy.",
+                         "diff_snippet":  "+ bun update\n+ bun why \u003cvulnerable-package\u003e\n+ remove or isolate non-runtime CLI deps from production artifacts",
+                         "risk_acceptance":  "Temporary acceptance possible for dev-only dependencies with documented production exclusion controls."
+                     },
+                     {
+                         "id":  "LOW-009",
+                         "title":  "Missing baseline security headers and framework fingerprint exposure on dashboard responses",
+                         "severity":  "Low",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:L/VA:N/SC:N/SI:N/SA:N",
+                         "cvss_score":  3.4,
+                         "file":  "dashboard/next.config.ts",
+                         "line":  3,
+                         "component":  "dashboard HTTP response hardening",
+                         "entry_point":  "GET /login",
+                         "trust_boundary":  "internet client -\u003e dashboard response policy",
+                         "cwe":  [
+                                     "CWE-693"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A05 Security Misconfiguration"
+                                              ],
+                         "asvs_control":  [
+                                              "V14 Configuration",
+                                              "V5 Validation, Sanitization and Encoding"
+                                          ],
+                         "soc2":  "CC6.6",
+                         "iso_42001":  "Clause 8.2 secure operational configuration",
+                         "gdpr":  "N/A - defense-in-depth hardening control",
+                         "hipaa":  "N/A - defense-in-depth hardening control",
+                         "pci_dss":  "Req.6 hardening guidance alignment",
+                         "impact":  "Reduced browser-side hardening and unnecessary technology disclosure (`X-Powered-By`).",
+                         "reproduction_steps":  [
+                                                    "Observe no custom headers policy in `dashboard/next.config.ts:3`-`5`.",
+                                                    "Runtime `GET /login` response includes `X-Powered-By: Next.js` and no CSP/HSTS in current local setup."
+                                                ],
+                         "proof":  "HTTP response capture included in runtime validation log.",
+                         "recommended_fix":  "Add strict security headers policy (CSP, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy), disable framework signature headers where possible.",
+                         "diff_snippet":  "+ async headers() { return [{ source: \u0027/(.*)\u0027, headers: [{ key: \u0027Content-Security-Policy\u0027, value: \"default-src \u0027self\u0027\" }, ...] }] }\n+ poweredByHeader: false",
+                         "risk_acceptance":  "Acceptable only behind a trusted upstream reverse proxy enforcing equivalent headers."
+                     },
+                     {
+                         "id":  "LOW-010",
+                         "title":  "Unhandled error logging may leak internals and currently maps some not-found errors to generic 500 responses",
+                         "severity":  "Low",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:N/VA:L/SC:N/SI:N/SA:L",
+                         "cvss_score":  3.9,
+                         "file":  "control-plane/src/index.ts",
+                         "line":  79,
+                         "component":  "control-plane global error handling",
+                         "entry_point":  "all REST routes via Elysia onError",
+                         "trust_boundary":  "internal exception state -\u003e logs and client response mapping",
+                         "cwe":  [
+                                     "CWE-209",
+                                     "CWE-703"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A05 Security Misconfiguration",
+                                                  "A09 Security Logging and Monitoring Failures"
+                                              ],
+                         "asvs_control":  [
+                                              "V7 Error Handling and Logging"
+                                          ],
+                         "soc2":  "CC7.2, CC7.3",
+                         "iso_42001":  "Clause 9 monitoring and incident-response evidence quality",
+                         "gdpr":  "N/A - internal observability hygiene issue",
+                         "hipaa":  "N/A - internal observability hygiene issue",
+                         "pci_dss":  "Req.10 logging and monitoring integrity",
+                         "impact":  "Stack/internal error object data can reach logs; operationally, not-found conditions may be misclassified as 500 reducing monitoring signal quality.",
+                         "reproduction_steps":  [
+                                                    "Review global handler in `control-plane/src/index.ts:52`-`87`.",
+                                                    "Observe raw unhandled logging at line 79.",
+                                                    "Runtime hit `/api/v1/auth/saml/sso` without SAML metadata and observe 500 + unhandled NOT_FOUND in logs."
+                                                ],
+                         "proof":  "Runtime control-plane logs captured in review session show unhandled NOT_FOUND logged and surfaced as INTERNAL_ERROR.",
+                         "recommended_fix":  "Normalize Elysia error mapping for known status fields, sanitize log payloads, and avoid logging full raw error objects for auth-sensitive paths.",
+                         "diff_snippet":  "+ if (\u0027status\u0027 in error \u0026\u0026 typeof error.status === \u0027number\u0027) set.status = error.status;\n- console.error(\u0027[error] Unhandled error:\u0027, error);\n+ console.error(\u0027[error] Unhandled error\u0027, { code, message, route, requestId });",
+                         "risk_acceptance":  "Low-risk temporary acceptance possible if logs are tightly access-controlled and short retention is enforced."
+                     },
+                     {
+                         "id":  "HIGH-011",
+                         "title":  "Audit aggregate stats endpoints return unscoped cross-department data",
+                         "severity":  "High",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:N/VA:N/SC:H/SI:N/SA:N",
+                         "cvss_score":  8,
+                         "file":  "control-plane/src/modules/audit/index.ts",
+                         "line":  158,
+                         "component":  "audit analytics endpoints",
+                         "entry_point":  "GET /api/v1/audit/stats/violations and GET /api/v1/audit/stats/vendor-usage",
+                         "trust_boundary":  "authenticated department-scoped user -\u003e global aggregate analytics",
+                         "cwe":  [
+                                     "CWE-200",
+                                     "CWE-862"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A01 Broken Access Control"
+                                              ],
+                         "asvs_control":  [
+                                              "V4 Access Control"
+                                          ],
+                         "soc2":  "CC6.1, CC6.6",
+                         "iso_42001":  "Clause 8.2 access segregation and least-privilege controls",
+                         "gdpr":  "Art.32 Security of processing (data minimization and segregation)",
+                         "hipaa":  "164.312(a)(1) Access Control",
+                         "pci_dss":  "Req.7 Restrict access by business need-to-know",
+                         "impact":  "Department-scoped users can retrieve tenant-wide aggregate telemetry that may reveal other departments\u0027 volume and activity patterns.",
+                         "reproduction_steps":  [
+                                                    "Inspect `control-plane/src/modules/audit/index.ts:158` and `:177`; handlers call service methods without passing `ctx.user.departmentIds`.",
+                                                    "Inspect `control-plane/src/modules/audit/service.ts:110` and `:117`; methods query ClickHouse without department scope filtering.",
+                                                    "Comments in module mark this as deferred scoping, confirming known gap."
+                                                ],
+                         "proof":  "Role check exists, but object/tenant scoping is not applied to two aggregate endpoints.",
+                         "recommended_fix":  "Apply department scope to aggregate queries by passing `ctx.user.departmentIds` into service methods and enforcing scoped WHERE clauses in analytics queries.",
+                         "diff_snippet":  "- const data = await ctx.auditService.getHourlyViolations(ctx.query.from, ctx.query.to);\n+ const data = await ctx.auditService.getHourlyViolations(ctx.query.from, ctx.query.to, ctx.user.departmentIds);\n- return queryHourlyViolations(this.clickhouse, from, to);\n+ return queryHourlyViolations(this.clickhouse, from, to, departmentIds);",
+                         "risk_acceptance":  null
+                     },
+                     {
+                         "id":  "MED-012",
+                         "title":  "Control-plane and dashboard containers run as root with writable root filesystem",
+                         "severity":  "Medium",
+                         "cvss_vector":  "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:L/SI:L/SA:L",
+                         "cvss_score":  6.7,
+                         "file":  "docker/control-plane/Dockerfile",
+                         "line":  1,
+                         "component":  "container runtime hardening",
+                         "entry_point":  "container startup in docker-compose deployment",
+                         "trust_boundary":  "container process compromise -\u003e host/runtime impact surface",
+                         "cwe":  [
+                                     "CWE-250"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A05 Security Misconfiguration"
+                                              ],
+                         "asvs_control":  [
+                                              "V14 Configuration",
+                                              "V1 Architecture"
+                                          ],
+                         "soc2":  "CC6.1, CC6.7",
+                         "iso_42001":  "Clause 8.2 secure deployment and runtime hardening controls",
+                         "gdpr":  "N/A - infrastructure hardening control, indirect legal impact",
+                         "hipaa":  "N/A - infrastructure hardening control, indirect legal impact",
+                         "pci_dss":  "Req.2 and Req.6 hardening expectations",
+                         "impact":  "A single RCE in app processes has a larger blast radius when running as root with default capabilities and writable rootfs.",
+                         "reproduction_steps":  [
+                                                    "Inspect `docker/control-plane/Dockerfile` and `docker/dashboard/Dockerfile`; no `USER` directive is set in runtime stage.",
+                                                    "Run `docker inspect` on running services: `interdict-control-plane-1` and `interdict-dashboard-1` show `user=` and `readonly=false`.",
+                                                    "Inspect compose service definitions: no capability drop or read-only root filesystem is configured."
+                                                ],
+                         "proof":  "Live container inspection confirms root execution and writable rootfs for control-plane/dashboard containers.",
+                         "recommended_fix":  "Run runtime containers as non-root, set `read_only: true`, drop Linux capabilities, and mount only required writable paths.",
+                         "diff_snippet":  "# Dockerfile\n+ RUN useradd -r -u 10001 interdict\n+ USER interdict\n\n# docker-compose.yml\n+ read_only: true\n+ cap_drop:\n+   - ALL",
+                         "risk_acceptance":  "May be temporarily accepted only in isolated developer environments with no untrusted network exposure."
+                     },
+                     {
+                         "id":  "LOW-013",
+                         "title":  "CI pipeline lacks artifact signing and provenance attestation checks",
+                         "severity":  "Low",
+                         "cvss_vector":  "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:L/VI:L/VA:N/SC:L/SI:L/SA:N",
+                         "cvss_score":  3.6,
+                         "file":  ".github/workflows/ci-quality-security.yml",
+                         "line":  1,
+                         "component":  "CI/CD supply-chain controls",
+                         "entry_point":  "GitHub Actions quality/security workflow",
+                         "trust_boundary":  "source/build pipeline -\u003e deployable artifact trust",
+                         "cwe":  [
+                                     "CWE-353"
+                                 ],
+                         "owasp_top10_2025":  [
+                                                  "A03 Software Supply Chain Failures"
+                                              ],
+                         "asvs_control":  [
+                                              "V1 Architecture and Design",
+                                              "V14 Configuration and Build"
+                                          ],
+                         "soc2":  "CC8.1, CC8.2",
+                         "iso_42001":  "Clause 8.2 supplier and lifecycle security controls",
+                         "gdpr":  "N/A - indirect operational control",
+                         "hipaa":  "N/A - indirect operational control",
+                         "pci_dss":  "Req.6 secure development lifecycle controls",
+                         "impact":  "Build integrity assurance is weaker without signed artifacts and provenance attestations, increasing risk of tampered build outputs being trusted.",
+                         "reproduction_steps":  [
+                                                    "Inspect `.github/workflows/ci-quality-security.yml`; workflow runs tests/audit/Trivy but does not sign artifacts.",
+                                                    "No provenance generation/verification steps (e.g., Sigstore cosign attestations, SLSA provenance) are present in repository workflow config."
+                                                ],
+                         "proof":  "Pipeline includes quality and vulnerability scans but no artifact signature/provenance generation or verification stage.",
+                         "recommended_fix":  "Add artifact signing and provenance attestation in CI (e.g., cosign keyless signing + SLSA provenance), and verify signatures before deployment.",
+                         "diff_snippet":  "+ - name: Generate provenance\\n+   uses: slsa-framework/slsa-github-generator/actions/generator@v2\\n+ - name: Sign image\\n+   run: cosign sign --yes ${IMAGE_DIGEST}",
+                         "risk_acceptance":  "May be accepted temporarily for non-production environments with strict deployment isolation."
+                     }
+                 ]
+}

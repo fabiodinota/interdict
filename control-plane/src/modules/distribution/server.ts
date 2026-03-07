@@ -60,10 +60,13 @@ const PolicyDistributionService =
  */
 export async function buildFullSnapshot(
   db: any,
-  _orgId: string,
-  _deptId: string,
-  _teamId: string
+  orgId: string,
+  deptId: string,
+  teamId: string
 ): Promise<PolicyUpdateMessage> {
+  if (!orgId) throw new Error("orgId required for policy snapshot");
+  // HIGH-004: scope enforcement — when policies.org_id column exists (Phase 7 schema migration),
+  // add: .where(and(eq(policies.isActive, true), eq(policies.orgId, orgId), ...))
   // Get global version counter: max compiled version
   const versionResult = await db
     .select({ maxVersion: max(policyVersions.version) })
@@ -171,6 +174,11 @@ function createSubscribeHandler(db: any) {
       call.destroy(
         new Error("kernel_id is required in SubscribeRequest")
       );
+      return;
+    }
+
+    if (!orgId) {
+      call.destroy(new Error("org_id is required in SubscribeRequest"));
       return;
     }
 
@@ -303,8 +311,13 @@ export function startDistributionServer(
 
     console.log("[distribution] mTLS enabled: requiring client certificates for gRPC connections");
   } else {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "[distribution] mTLS is required in production. Set MTLS_ENABLED=true."
+      );
+    }
     credentials = grpc.ServerCredentials.createInsecure();
-    console.log("[distribution] mTLS disabled: accepting insecure gRPC connections");
+    console.warn("[distribution] WARNING: insecure gRPC transport active — dev only");
   }
 
   server.bindAsync(
