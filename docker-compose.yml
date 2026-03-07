@@ -204,6 +204,7 @@ services:
       KERNEL_POLICIES_DIR: ${KERNEL_POLICIES_DIR:-/app/policies/}
       KERNEL_DISTRIBUTION_ADDR: ${KERNEL_DISTRIBUTION_ADDR:-https://control-plane:50052}
       KERNEL_EVIDENCE_COLLECTOR_ADDR: ${KERNEL_EVIDENCE_COLLECTOR_ADDR:-https://evidence-collector:50051}
+      INTERDICT_EVIDENCE_COLLECTOR_ADDR: ${KERNEL_EVIDENCE_COLLECTOR_ADDR:-https://evidence-collector:50051}
       KERNEL_MTLS_CA_CERT: ${KERNEL_MTLS_CA_CERT:-/certs/internal-ca.pem}
       KERNEL_MTLS_CLIENT_CERT: ${KERNEL_MTLS_CLIENT_CERT:-/certs/kernel-client.pem}
       KERNEL_MTLS_CLIENT_KEY: ${KERNEL_MTLS_CLIENT_KEY:-/certs/kernel-client-key.pem}

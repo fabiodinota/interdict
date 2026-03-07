@@ -22,6 +22,7 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.test.example
 
 # Local AI tool config
 .claude/mcp/servers.local.json
