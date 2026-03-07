@@ -112,11 +112,13 @@ export function createVendorService(db: any): VendorService {
 
         return serializeVendor(vendor);
       } catch (err: any) {
-        // Handle unique constraint violation
+        // Handle unique constraint violation (DrizzleQueryError wraps PG error in .cause)
+        const pgCode = err.code ?? err.cause?.code;
+        const msg = (err.message ?? "") + (err.cause?.message ?? "");
         if (
-          err.message?.includes("unique") ||
-          err.message?.includes("duplicate") ||
-          err.code === "23505"
+          pgCode === "23505" ||
+          msg.includes("unique") ||
+          msg.includes("duplicate")
         ) {
           throw new ConflictError(
             `Vendor with name '${body.name}' already exists`
@@ -303,10 +305,12 @@ export function createVendorService(db: any): VendorService {
 
         return serializeModel(model);
       } catch (err: any) {
+        const pgCode = err.code ?? err.cause?.code;
+        const msg = (err.message ?? "") + (err.cause?.message ?? "");
         if (
-          err.message?.includes("unique") ||
-          err.message?.includes("duplicate") ||
-          err.code === "23505"
+          pgCode === "23505" ||
+          msg.includes("unique") ||
+          msg.includes("duplicate")
         ) {
           throw new ConflictError(
             `Model '${body.model_name}' already exists for this vendor`

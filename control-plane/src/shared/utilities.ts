@@ -91,10 +91,9 @@ export function paginatedResponse<T>(
 ) {
   return {
     success: true as const,
-    data: items,
-    pagination: {
+    data: {
+      items,
       nextCursor,
-      hasMore: nextCursor !== null,
       ...(total !== undefined ? { total } : {}),
     },
   };

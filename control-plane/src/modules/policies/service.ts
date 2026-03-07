@@ -115,40 +115,54 @@ export function createPolicyService(db: any): PolicyService {
      * Returns immediately with compilation_status 'pending'.
      */
     async create(body: CreatePolicyInput) {
-      const entrypoint = body.entrypoint || "interdict/policy/verdict";
+      const entrypoint = body.entrypoint || "data.interdict.policy.verdict";
 
-      const result = await db.transaction(async (tx: any) => {
-        // Insert policy
-        const [policy] = await tx
-          .insert(policies)
-          .values({
-            name: body.name,
-            description: body.description || null,
-          })
-          .returning();
+      try {
+        const result = await db.transaction(async (tx: any) => {
+          // Insert policy
+          const [policy] = await tx
+            .insert(policies)
+            .values({
+              name: body.name,
+              description: body.description || null,
+            })
+            .returning();
 
-        // Insert first version
-        const [version] = await tx
-          .insert(policyVersions)
-          .values({
-            policyId: policy.id,
-            version: 1,
-            regoSource: body.rego_source,
-            entrypoint,
-            compilationStatus: "pending",
-          })
-          .returning();
+          // Insert first version
+          const [version] = await tx
+            .insert(policyVersions)
+            .values({
+              policyId: policy.id,
+              version: 1,
+              regoSource: body.rego_source,
+              entrypoint,
+              compilationStatus: "pending",
+            })
+            .returning();
 
-        // Set current_version_id
-        await tx
-          .update(policies)
-          .set({ currentVersionId: version.id })
-          .where(eq(policies.id, policy.id));
+          // Set current_version_id
+          await tx
+            .update(policies)
+            .set({ currentVersionId: version.id })
+            .where(eq(policies.id, policy.id));
 
-        return { policy: { ...policy, currentVersionId: version.id }, version };
-      });
+          return { policy: { ...policy, currentVersionId: version.id }, version };
+        });
 
-      return serializePolicy(result.policy, result.version);
+        return serializePolicy(result.policy, result.version);
+      } catch (err: any) {
+        // Handle unique constraint violation (DrizzleQueryError wraps PG error in .cause)
+        const pgCode = err.code ?? err.cause?.code;
+        const msg = (err.message ?? "") + (err.cause?.message ?? "");
+        if (
+          pgCode === "23505" ||
+          msg.includes("unique") ||
+          msg.includes("duplicate")
+        ) {
+          throw new ConflictError(`Policy with name '${body.name}' already exists`);
+        }
+        throw err;
+      }
     },
 
     /**

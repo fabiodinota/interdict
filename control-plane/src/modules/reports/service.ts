@@ -137,7 +137,7 @@ export class ReportService {
             uniq(actor_identity) as unique_actors,
             uniq(vendor) as unique_vendors
           FROM evidence_bundles
-          WHERE timestamp >= {from:String} AND timestamp <= {to:String}
+          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
         `,
         query_params: { from, to },
         format: "JSONEachRow",
@@ -163,7 +163,7 @@ export class ReportService {
         query: `
           SELECT policy_action as action, count() as count
           FROM evidence_bundles
-          WHERE timestamp >= {from:String} AND timestamp <= {to:String}
+          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
           GROUP BY policy_action
           ORDER BY count DESC
         `,
@@ -184,7 +184,7 @@ export class ReportService {
         query: `
           SELECT department, count() as count
           FROM evidence_bundles
-          WHERE timestamp >= {from:String} AND timestamp <= {to:String}
+          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
             AND policy_action IN ('block', 'redact')
           GROUP BY department
           ORDER BY count DESC
@@ -207,7 +207,7 @@ export class ReportService {
         query: `
           SELECT vendor, count() as count
           FROM evidence_bundles
-          WHERE timestamp >= {from:String} AND timestamp <= {to:String}
+          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
             AND policy_action IN ('block', 'redact')
           GROUP BY vendor
           ORDER BY count DESC
@@ -236,7 +236,7 @@ export class ReportService {
             policy_action as action,
             token_count as tokenCount
           FROM evidence_bundles
-          WHERE timestamp >= {from:String} AND timestamp <= {to:String}
+          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
             AND policy_action IN ('block', 'redact')
           ORDER BY timestamp DESC
           LIMIT 10

@@ -23,6 +23,7 @@ import {
   TogglePolicyBody,
 } from "./model";
 import { authPlugin } from "../auth/middleware";
+import { db as pgDb } from "../../db/postgres";
 
 /**
  * Create a Drizzle-backed regulatory service.
@@ -36,7 +37,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    * GET /frameworks - List all frameworks with activation status (Read-Only Auditor+)
    */
   .get("/frameworks", async (ctx: any) => {
-    const db = (ctx.store as Record<string, unknown>).db as any;
+    const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
 
     // Bulk queries — exactly 3 DB round-trips regardless of framework count (HIGH-S1)
     const [allFrameworks, allPolicyCounts, allActivations] = await Promise.all([
@@ -88,7 +89,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .get(
     "/frameworks/:slug",
     async (ctx: any) => {
-      const db = (ctx.store as Record<string, unknown>).db as any;
+      const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
       const params = ctx.params;
 
       const fwRows = await db
@@ -184,7 +185,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .post(
     "/frameworks/:slug/activate",
     async (ctx: any) => {
-      const db = (ctx.store as Record<string, unknown>).db as any;
+      const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
       const params = ctx.params;
       const body = ctx.body;
 
@@ -236,7 +237,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .post(
     "/frameworks/:slug/deactivate",
     async (ctx: any) => {
-      const db = (ctx.store as Record<string, unknown>).db as any;
+      const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
       const params = ctx.params;
 
       const fwRows = await db
@@ -289,7 +290,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .put(
     "/frameworks/:slug/policies/:policyId/toggle",
     async (ctx: any) => {
-      const db = (ctx.store as Record<string, unknown>).db as any;
+      const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
       const params = ctx.params;
       const body = ctx.body;
 
@@ -346,7 +347,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    * GET /active-policies - Get all currently active policy IDs (additive merge)
    */
   .get("/active-policies", async (ctx: any) => {
-    const db = (ctx.store as Record<string, unknown>).db as any;
+    const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
 
     // 1. Get all directly active custom policies (not in any framework)
     const allActivePolicies = await db
