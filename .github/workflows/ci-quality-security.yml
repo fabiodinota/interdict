@@ -37,8 +37,11 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Tests
-        run: cargo test --workspace --all-targets
+      - name: Tests (evidence-collector, serialized)
+        run: cargo test -p evidence-collector --all-targets -- --test-threads=1
+
+      - name: Tests (remaining crates)
+        run: cargo test --workspace --all-targets --exclude evidence-collector
 
       - name: Content inspection integration gate
         run: cargo test -p kernel --test content_inspection_test
