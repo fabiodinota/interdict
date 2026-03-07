@@ -107,8 +107,7 @@ impl CollectorConfig {
                 .unwrap_or_else(|_| "interdict".to_string()),
             clickhouse_user: std::env::var("CLICKHOUSE_USER")
                 .unwrap_or_else(|_| "default".to_string()),
-            clickhouse_password: std::env::var("CLICKHOUSE_PASSWORD")
-                .unwrap_or_default(),
+            clickhouse_password: std::env::var("CLICKHOUSE_PASSWORD").unwrap_or_default(),
             s3_bucket: std::env::var("COLLECTOR_S3_BUCKET").unwrap_or_default(),
             s3_region: std::env::var("COLLECTOR_S3_REGION").unwrap_or_default(),
             signing_mode,

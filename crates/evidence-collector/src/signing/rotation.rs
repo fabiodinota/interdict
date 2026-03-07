@@ -185,18 +185,14 @@ mod tests {
         let sig2 = rotating.current().sign(msg2).await.expect("sign msg2");
 
         // Verify signature 1 with public key A
-        let vk_a = VerifyingKey::from_bytes(
-            &<[u8; 32]>::try_from(pub_a.as_slice()).unwrap(),
-        )
-        .unwrap();
+        let vk_a =
+            VerifyingKey::from_bytes(&<[u8; 32]>::try_from(pub_a.as_slice()).unwrap()).unwrap();
         let s1 = Signature::from_bytes(&<[u8; 64]>::try_from(sig1.as_slice()).unwrap());
         assert!(vk_a.verify(msg1, &s1).is_ok(), "sig1 verifies with key A");
 
         // Verify signature 2 with public key B
-        let vk_b = VerifyingKey::from_bytes(
-            &<[u8; 32]>::try_from(pub_b.as_slice()).unwrap(),
-        )
-        .unwrap();
+        let vk_b =
+            VerifyingKey::from_bytes(&<[u8; 32]>::try_from(pub_b.as_slice()).unwrap()).unwrap();
         let s2 = Signature::from_bytes(&<[u8; 64]>::try_from(sig2.as_slice()).unwrap());
         assert!(vk_b.verify(msg2, &s2).is_ok(), "sig2 verifies with key B");
 

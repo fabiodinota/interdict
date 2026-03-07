@@ -74,9 +74,12 @@ async fn evidence_flusher(
     mtls: Option<MtlsCerts>,
 ) {
     let mut client = match mtls {
-        Some(certs) => {
-            EvidenceGrpcClient::with_mtls(collector_addr, certs.ca_cert, certs.client_cert, certs.client_key)
-        }
+        Some(certs) => EvidenceGrpcClient::with_mtls(
+            collector_addr,
+            certs.ca_cert,
+            certs.client_cert,
+            certs.client_key,
+        ),
         None => EvidenceGrpcClient::new(collector_addr),
     };
     let mut interval = tokio::time::interval(FLUSH_INTERVAL);

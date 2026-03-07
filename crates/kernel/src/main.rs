@@ -249,11 +249,14 @@ async fn main() -> anyhow::Result<()> {
         std::env::var("KERNEL_MTLS_CLIENT_CERT"),
         std::env::var("KERNEL_MTLS_CLIENT_KEY"),
     ) {
-        let ca = tokio::fs::read(&ca_path).await
+        let ca = tokio::fs::read(&ca_path)
+            .await
             .unwrap_or_else(|e| panic!("failed to read mTLS CA cert {ca_path}: {e}"));
-        let cert = tokio::fs::read(&cert_path).await
+        let cert = tokio::fs::read(&cert_path)
+            .await
             .unwrap_or_else(|e| panic!("failed to read mTLS client cert {cert_path}: {e}"));
-        let key = tokio::fs::read(&key_path).await
+        let key = tokio::fs::read(&key_path)
+            .await
             .unwrap_or_else(|e| panic!("failed to read mTLS client key {key_path}: {e}"));
 
         tracing::info!(
@@ -272,8 +275,11 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    let (evidence_buffer, evidence_flusher_handle) =
-        evidence::EvidenceBuffer::new(evidence_collector_addr.clone(), kernel_id.clone(), mtls_certs.clone());
+    let (evidence_buffer, evidence_flusher_handle) = evidence::EvidenceBuffer::new(
+        evidence_collector_addr.clone(),
+        kernel_id.clone(),
+        mtls_certs.clone(),
+    );
     let evidence_buffer = Arc::new(evidence_buffer);
 
     tracing::info!(
