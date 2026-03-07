@@ -127,7 +127,7 @@ impl CollectorConfig {
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(2555),
             mtls_enabled: std::env::var("MTLS_ENABLED")
-                .map(|v| v.to_ascii_lowercase() == "true")
+                .map(|v| v.eq_ignore_ascii_case("true"))
                 .unwrap_or(false),
             mtls_ca_cert_path: std::env::var("MTLS_CA_CERT_PATH").ok(),
             mtls_cert_path: std::env::var("MTLS_CERT_PATH").ok(),
