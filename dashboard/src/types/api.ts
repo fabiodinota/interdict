@@ -36,29 +36,27 @@ export type UserRole =
   | "super_admin";
 
 // Policies
+export interface PolicyVersion {
+  id: string;
+  version: number;
+  rego_source: string;
+  entrypoint: string | null;
+  compilation_status: "pending" | "compiling" | "compiled" | "failed";
+  compilation_error: string | null;
+  wasm_hash: string | null;
+  wasm_size_bytes: number | null;
+  created_at: string;
+  change_description: string | null;
+}
+
 export interface Policy {
   id: string;
   name: string;
-  description: string;
-  category: string;
-  regoSource: string;
-  wasmHash: string | null;
-  enabled: boolean;
-  version: number;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PolicyVersion {
-  id: string;
-  policyId: string;
-  version: number;
-  regoSource: string;
-  wasmHash: string | null;
-  changeDescription: string | null;
-  createdBy: string;
-  createdAt: string;
+  description: string | null;
+  current_version: PolicyVersion | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // Vendors

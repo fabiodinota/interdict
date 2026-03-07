@@ -134,11 +134,11 @@ export function PolicyVersionHistory({
               )}
               <span className="font-medium">v{version.version}</span>
               <span className="text-muted-foreground">
-                {format(new Date(version.createdAt), "MMM d, yyyy HH:mm")}
+                {format(new Date(version.created_at), "MMM d, yyyy HH:mm")}
               </span>
-              {version.changeDescription && (
+              {version.change_description && (
                 <span className="text-muted-foreground truncate">
-                  - {version.changeDescription}
+                  - {version.change_description}
                 </span>
               )}
               {isCurrent && (
@@ -180,13 +180,13 @@ export function PolicyVersionHistory({
                 {isDiffShown && (
                   <SimpleDiff
                     current={currentRegoSource}
-                    selected={version.regoSource}
+                    selected={version.rego_source}
                   />
                 )}
 
                 {!isDiffShown && (
                   <pre className="rounded-md bg-muted/50 p-3 text-xs font-mono overflow-x-auto max-h-60 overflow-y-auto">
-                    {version.regoSource}
+                    {version.rego_source}
                   </pre>
                 )}
               </div>

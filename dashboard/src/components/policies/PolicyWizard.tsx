@@ -138,9 +138,9 @@ export function PolicyWizard() {
   if (isEditMode && existingPolicy && !editDataLoaded) {
     setState((prev) => ({
       ...prev,
-      rawRego: existingPolicy.regoSource,
+      rawRego: existingPolicy.current_version?.rego_source ?? "",
       policyName: existingPolicy.name,
-      policyDescription: existingPolicy.description,
+      policyDescription: existingPolicy.description ?? "",
       rawMode: true,
     }));
     setEditDataLoaded(true);

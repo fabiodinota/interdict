@@ -79,18 +79,18 @@ export function PolicyRow({ policy }: PolicyRowProps) {
 
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">
-              {policy.enabled ? "Active" : "Inactive"}
+              {policy.is_active ? "Active" : "Inactive"}
             </span>
             <Switch
               size="sm"
-              checked={policy.enabled}
+              checked={policy.is_active}
               onCheckedChange={handleToggleActive}
               disabled={updatePolicy.isPending}
             />
           </div>
 
           <span className="text-xs text-muted-foreground hidden sm:inline">
-            {format(new Date(policy.createdAt), "MMM d, yyyy")}
+            {format(new Date(policy.created_at), "MMM d, yyyy")}
           </span>
 
           <Button
@@ -118,7 +118,7 @@ export function PolicyRow({ policy }: PolicyRowProps) {
         <div className="border-t">
           <PolicyVersionHistory
             policyId={policy.id}
-            currentRegoSource={policy.regoSource}
+            currentRegoSource={policy.current_version?.rego_source ?? ""}
           />
         </div>
       )}

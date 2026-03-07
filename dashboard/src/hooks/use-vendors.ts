@@ -33,10 +33,9 @@ export interface Vendor {
 
 interface VendorListResponse {
   success: boolean;
-  data: Vendor[];
-  pagination: {
+  data: {
+    items: Vendor[];
     nextCursor: string | null;
-    hasMore: boolean;
   };
 }
 
