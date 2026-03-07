@@ -219,7 +219,15 @@ impl PolicyPipeline {
             // For filesystem-loaded policies, derive from the filename convention:
             // "policies/vendor.rego" -> "data.interdict.policy.vendor.verdict"
             let rule = if let Some(ref entrypoint) = policy.entrypoint {
-                entrypoint.clone()
+                // Normalize: convert slash-separated paths to Rego dot notation
+                // and ensure the "data." prefix is present.
+                // e.g. "interdict/policy/verdict" -> "data.interdict.policy.verdict"
+                let normalized = entrypoint.replace('/', ".");
+                if normalized.starts_with("data.") {
+                    normalized
+                } else {
+                    format!("data.{}", normalized)
+                }
             } else {
                 format!(
                     "data.interdict.policy.{}.verdict",
@@ -251,10 +259,14 @@ impl PolicyPipeline {
             .skip(1)
             .any(|v| v.action == VerdictAction::Allow && v.reason.is_none());
 
-        // Explicit verdict: Block, Redact, or all explicit Allows (no "no match")
+        // Explicit verdict: Block, Redact, or all explicit Allows (no "no match").
+        // Also treat "no content" as explicit: content-level policies (PII, etc.)
+        // can't meaningfully escalate to L2/L3 without a body to inspect, so we
+        // enforce the L1 verdict (allow/block) immediately at CONNECT time.
         let has_explicit_verdict = l1_merged.final_action == VerdictAction::Block
             || l1_merged.final_action == VerdictAction::Redact
-            || !has_no_match;
+            || !has_no_match
+            || ctx.content.is_none();
 
         if has_explicit_verdict {
             // Enforce L1 verdict immediately.

@@ -28,6 +28,7 @@ pub fn default_patterns() -> Vec<PatternRule> {
         email_pattern(),
         phone_us_pattern(),
         phone_international_pattern(),
+        phone_international_00_pattern(),
         ssn_pattern(),
         address_pattern(),
         // ═══════════════════════════════════════════════════════════════
@@ -102,6 +103,26 @@ fn phone_international_pattern() -> PatternRule {
             "tel".to_string(),
             "call".to_string(),
             "mobile".to_string(),
+        ],
+    }
+}
+
+/// International dialing prefix phone pattern (00CCCXXXXXXXXX format).
+///
+/// Matches numbers using the `00` international exit code followed by
+/// country code + subscriber number, e.g. 004917612345678.
+fn phone_international_00_pattern() -> PatternRule {
+    PatternRule {
+        category: "PHONE".to_string(),
+        pattern: Regex::new(r"\b00\d{10,14}\b").unwrap(),
+        validator: None,
+        base_confidence: 0.88,
+        context_boosters: vec![
+            "phone".to_string(),
+            "tel".to_string(),
+            "call".to_string(),
+            "mobile".to_string(),
+            "number".to_string(),
         ],
     }
 }
