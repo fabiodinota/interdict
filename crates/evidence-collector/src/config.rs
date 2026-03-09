@@ -107,8 +107,7 @@ impl CollectorConfig {
                 .unwrap_or_else(|_| "interdict".to_string()),
             clickhouse_user: std::env::var("CLICKHOUSE_USER")
                 .unwrap_or_else(|_| "default".to_string()),
-            clickhouse_password: std::env::var("CLICKHOUSE_PASSWORD")
-                .unwrap_or_default(),
+            clickhouse_password: std::env::var("CLICKHOUSE_PASSWORD").unwrap_or_default(),
             s3_bucket: std::env::var("COLLECTOR_S3_BUCKET").unwrap_or_default(),
             s3_region: std::env::var("COLLECTOR_S3_REGION").unwrap_or_default(),
             signing_mode,
@@ -128,7 +127,7 @@ impl CollectorConfig {
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(2555),
             mtls_enabled: std::env::var("MTLS_ENABLED")
-                .map(|v| v.to_ascii_lowercase() == "true")
+                .map(|v| v.eq_ignore_ascii_case("true"))
                 .unwrap_or(false),
             mtls_ca_cert_path: std::env::var("MTLS_CA_CERT_PATH").ok(),
             mtls_cert_path: std::env::var("MTLS_CERT_PATH").ok(),
@@ -144,21 +143,22 @@ mod tests {
 
     /// SAFETY: These tests mutate environment variables and must run with
     /// `--test-threads=1` to avoid data races between tests.
-
     unsafe fn clear_collector_env() {
-        std::env::remove_var("COLLECTOR_GRPC_LISTEN_ADDR");
-        std::env::remove_var("CLICKHOUSE_URL");
-        std::env::remove_var("CLICKHOUSE_DATABASE");
-        std::env::remove_var("COLLECTOR_S3_BUCKET");
-        std::env::remove_var("COLLECTOR_S3_REGION");
-        std::env::remove_var("COLLECTOR_SIGNING_MODE");
-        std::env::remove_var("COLLECTOR_SIGNING_KEY_PATH");
-        std::env::remove_var("COLLECTOR_KMS_KEY_ID");
-        std::env::remove_var("COLLECTOR_MERKLE_WINDOW_SECS");
-        std::env::remove_var("COLLECTOR_MERKLE_MAX_LEAVES");
-        std::env::remove_var("COLLECTOR_FULL_TEXT_STORAGE");
-        std::env::remove_var("COLLECTOR_RETENTION_DAYS");
-        std::env::remove_var("SIGNING_KEY_WATCH_PATH");
+        unsafe {
+            std::env::remove_var("COLLECTOR_GRPC_LISTEN_ADDR");
+            std::env::remove_var("CLICKHOUSE_URL");
+            std::env::remove_var("CLICKHOUSE_DATABASE");
+            std::env::remove_var("COLLECTOR_S3_BUCKET");
+            std::env::remove_var("COLLECTOR_S3_REGION");
+            std::env::remove_var("COLLECTOR_SIGNING_MODE");
+            std::env::remove_var("COLLECTOR_SIGNING_KEY_PATH");
+            std::env::remove_var("COLLECTOR_KMS_KEY_ID");
+            std::env::remove_var("COLLECTOR_MERKLE_WINDOW_SECS");
+            std::env::remove_var("COLLECTOR_MERKLE_MAX_LEAVES");
+            std::env::remove_var("COLLECTOR_FULL_TEXT_STORAGE");
+            std::env::remove_var("COLLECTOR_RETENTION_DAYS");
+            std::env::remove_var("SIGNING_KEY_WATCH_PATH");
+        }
     }
 
     #[test]

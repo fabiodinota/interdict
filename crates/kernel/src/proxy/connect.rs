@@ -283,11 +283,9 @@ pub async fn handle_connect(
         // 3d. Relay bytes with content inspection on outbound direction
         let relay_result = tokio::time::timeout(stream_timeout, async {
             if let Some(ref inspector) = content_inspector {
-                use tokio::io::AsyncWriteExt;
-
                 // Split TLS streams into read/write halves
-                let (client_read, mut client_write) = tokio::io::split(client_tls);
-                let (mut upstream_read, upstream_write) = tokio::io::split(upstream_tls);
+                let (client_read, client_write) = tokio::io::split(client_tls);
+                let (upstream_read, upstream_write) = tokio::io::split(upstream_tls);
 
                 // Outbound (client -> upstream): inspect before forwarding
                 let outbound_future = relay::inspecting_relay_outbound(
@@ -296,20 +294,21 @@ pub async fn handle_connect(
                     inspector.clone(),
                 );
 
-                // Inbound (upstream -> client): raw copy (InspectingRelay for streaming
-                // responses is wired separately when HTTP body parsing is added)
-                let inbound_future = tokio::io::copy(&mut upstream_read, &mut client_write);
+                // Inbound (upstream -> client): inspect responses before forwarding
+                let inbound_inspector = inspector.clone();
+                let inbound_future = relay::inspecting_relay_inbound(
+                    upstream_read,
+                    client_write,
+                    inbound_inspector,
+                );
 
-                // Run both directions concurrently; use select! so a block on outbound
-                // causes both to terminate
+                // Run both directions concurrently; use select! so a block on either
+                // direction causes both to terminate (dropping the other future
+                // closes its IO handles, propagating EOF).
                 tokio::select! {
                     result = outbound_future => {
                         match result {
-                            Ok(bytes) => {
-                                // Shut down the write side to upstream so inbound sees EOF
-                                let _ = client_write.shutdown().await;
-                                Ok((bytes, 0u64))
-                            }
+                            Ok(bytes) => Ok((bytes, 0u64)),
                             Err(reason) => {
                                 tracing::warn!(
                                     vendor = %host,
@@ -324,7 +323,20 @@ pub async fn handle_connect(
                         }
                     }
                     result = inbound_future => {
-                        result.map(|bytes| (0u64, bytes))
+                        match result {
+                            Ok(bytes) => Ok((0u64, bytes)),
+                            Err(reason) => {
+                                tracing::warn!(
+                                    vendor = %host,
+                                    reason = %reason,
+                                    "inbound content redacted or blocked"
+                                );
+                                Err(std::io::Error::new(
+                                    std::io::ErrorKind::ConnectionAborted,
+                                    reason,
+                                ))
+                            }
+                        }
                     }
                 }
             } else {

@@ -134,6 +134,76 @@ where
     Ok(total_forwarded)
 }
 
+/// Relay bytes from `reader` to `writer` with content inspection (inbound/response direction).
+///
+/// Same as `inspecting_relay_outbound` but for the response path (upstream -> client).
+/// Redacts detected PII in responses before forwarding to the client.
+pub async fn inspecting_relay_inbound<R, W>(
+    mut reader: R,
+    mut writer: W,
+    inspector: Arc<ContentInspector>,
+) -> Result<u64, String>
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    let mut buf = BytesMut::with_capacity(8192);
+    let mut total_forwarded: u64 = 0;
+
+    loop {
+        buf.clear();
+        buf.resize(8192, 0);
+
+        let n = reader
+            .read(&mut buf)
+            .await
+            .map_err(|e| format!("read error: {}", e))?;
+
+        if n == 0 {
+            break;
+        }
+
+        let chunk = &buf[..n];
+        let result: InspectionResult = inspector.inspect_request(chunk);
+
+        match result.action {
+            VerdictAction::Block => {
+                tracing::warn!(
+                    detections = ?result.detections,
+                    "inbound content blocked by inspector"
+                );
+                return Err(format!("blocked: {}", result.reason));
+            }
+            VerdictAction::Redact => {
+                let to_write = result.redacted_content.as_deref().unwrap_or(chunk);
+                writer
+                    .write_all(to_write)
+                    .await
+                    .map_err(|e| format!("write error: {}", e))?;
+                total_forwarded += to_write.len() as u64;
+                tracing::debug!(
+                    categories = ?result.detections,
+                    "inbound content redacted"
+                );
+            }
+            VerdictAction::Allow => {
+                writer
+                    .write_all(chunk)
+                    .await
+                    .map_err(|e| format!("write error: {}", e))?;
+                total_forwarded += n as u64;
+            }
+        }
+    }
+
+    writer
+        .flush()
+        .await
+        .map_err(|e| format!("flush error: {}", e))?;
+
+    Ok(total_forwarded)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

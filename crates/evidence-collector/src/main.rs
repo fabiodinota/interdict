@@ -59,8 +59,15 @@ async fn main() -> Result<()> {
     let chain_manager = Arc::new(Mutex::new(ChainManager::new()));
 
     // Initialize ClickHouse batched writer (runs DDL on startup).
-    let clickhouse_writer =
-        Arc::new(ClickHouseWriter::new(&cfg.clickhouse_url, &cfg.clickhouse_database, &cfg.clickhouse_user, &cfg.clickhouse_password).await?);
+    let clickhouse_writer = Arc::new(
+        ClickHouseWriter::new(
+            &cfg.clickhouse_url,
+            &cfg.clickhouse_database,
+            &cfg.clickhouse_user,
+            &cfg.clickhouse_password,
+        )
+        .await?,
+    );
 
     // Initialize hourly Merkle builder.
     let current_hour = Utc::now()
