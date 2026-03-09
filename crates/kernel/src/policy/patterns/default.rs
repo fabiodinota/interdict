@@ -29,6 +29,7 @@ pub fn default_patterns() -> Vec<PatternRule> {
         phone_us_pattern(),
         phone_international_pattern(),
         phone_international_00_pattern(),
+        phone_local_pattern(),
         ssn_pattern(),
         address_pattern(),
         // ═══════════════════════════════════════════════════════════════
@@ -123,6 +124,28 @@ fn phone_international_00_pattern() -> PatternRule {
             "call".to_string(),
             "mobile".to_string(),
             "number".to_string(),
+        ],
+    }
+}
+
+/// Local phone number pattern (0-prefixed, no separators).
+///
+/// Matches European/Australian local mobile and landline formats:
+/// 0470205049, 0412345678, 02012345678
+/// Requires 9-10 digits after the leading zero.
+fn phone_local_pattern() -> PatternRule {
+    PatternRule {
+        category: "PHONE".to_string(),
+        pattern: Regex::new(r"\b0\d{9,10}\b").unwrap(),
+        validator: None,
+        base_confidence: 0.80,
+        context_boosters: vec![
+            "phone".to_string(),
+            "tel".to_string(),
+            "call".to_string(),
+            "mobile".to_string(),
+            "number".to_string(),
+            "format".to_string(),
         ],
     }
 }
@@ -309,6 +332,21 @@ mod tests {
         assert!(pattern.pattern.is_match("+1 123-456-7890"));
         assert!(pattern.pattern.is_match("+44 20 1234 5678"));
         assert!(pattern.pattern.is_match("+33 1 23 45 67 89"));
+    }
+
+    #[test]
+    fn test_phone_local_pattern() {
+        let pattern = phone_local_pattern();
+        // Belgian mobile
+        assert!(pattern.pattern.is_match("0470205049"));
+        // Australian mobile
+        assert!(pattern.pattern.is_match("0412345678"));
+        // UK landline (11 digits)
+        assert!(pattern.pattern.is_match("02012345678"));
+        // Too short (8 digits after 0)
+        assert!(!pattern.pattern.is_match("041234567"));
+        // Too long (12 digits after 0)
+        assert!(!pattern.pattern.is_match("0412345678901"));
     }
 
     #[test]
