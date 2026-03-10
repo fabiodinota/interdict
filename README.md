@@ -86,20 +86,50 @@ proto/                 Protobuf definitions (gRPC)
 .planning/             Milestone roadmaps and project state
 ```
 
-## Verification
+## Local Verification
+
+### Prerequisites
+
+| Tool | Version | Used for |
+|------|---------|----------|
+| Rust (stable) | 1.80+ | Kernel and evidence-collector |
+| Bun | 1.1+ | Control plane API |
+| Node.js | 20+ | Dashboard build |
+| Docker + Compose | 24+ | Full-stack integration |
+
+**Windows note**: Rust compilation requires either MSVC Build Tools (for `windows-msvc` target) or MinGW with `dlltool.exe` (for `windows-gnu` target). If neither is available, Rust checks can be run inside Docker or deferred to CI.
+
+### Running checks
 
 ```bash
-# Rust (requires toolchain)
+# Rust data plane (Linux/macOS, or CI)
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --all-targets
+cargo test -p kernel --test content_inspection_test
 
-# Control Plane (requires Bun)
-cd control-plane && bunx tsc --noEmit && bun test
+# Control plane (TypeScript)
+cd control-plane
+bunx tsc --noEmit        # type check
+bun test                 # 139+ tests
 
-# Dashboard (requires Node.js)
-cd dashboard && npm test && npm run build
+# Dashboard
+cd dashboard
+npm test                 # 62+ tests (vitest)
+npm run build            # production build (checks types + lint)
+
+# Dependency audits
+cd dashboard && npm audit
 ```
+
+### CI
+
+All checks run automatically on push via `.github/workflows/ci-quality-security.yml`:
+
+- **quality**: `cargo fmt`, `cargo clippy`, `cargo test` (3 deployment modes)
+- **security**: `cargo audit`, `cargo deny`, Trivy filesystem scan
+- **control-plane**: `tsc --noEmit`, `bun test`
+- **dashboard**: ESLint, `vitest`, `next build`
 
 ## License
 

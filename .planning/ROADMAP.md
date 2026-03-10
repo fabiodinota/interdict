@@ -8,7 +8,7 @@ Interdict.io is an AI governance kernel for regulated enterprises. v1.0 shipped 
 
 - **v1.0 MVP** -- Phases 1-6.1 (shipped 2026-03-01)
 - **v1.1 Pilot Ready** -- Phases 7-15 (shipped 2026-03-04)
-- **v1.2 Trustworthiness & Hardening** -- Phases 16-24 (in progress, 8/9 phases complete)
+- **v1.2 Trustworthiness & Hardening** -- Phases 16-24 (completed 2026-03-10)
 
 ## Phases
 
@@ -54,8 +54,8 @@ Full details archived in `milestones/v1.1-ROADMAP.md`
 - [x] Phase 20: Review Workflow Consolidation -- completed 2026-03-10 (bdd762c)
 - [x] Phase 21: Kernel and Control Plane Maintainability -- completed 2026-03-10 (770a0d3)
 - [x] Phase 22: Dashboard Reliability and Operator Trust -- completed 2026-03-10 (8caad88)
-- [x] Phase 23: Deployment Truth and Artifact Hardening -- completed 2026-03-10
-- [ ] Phase 24: Platform Hardening and Release Gate
+- [x] Phase 23: Deployment Truth and Artifact Hardening -- completed 2026-03-10 (03785bd)
+- [x] Phase 24: Platform Hardening and Release Gate -- completed 2026-03-10
 
 Full details in `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADMAP.md`
 
@@ -67,8 +67,8 @@ Full details in `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADM
 |-------|-----------|----------------|--------|-----------|
 | 1-6.1 | v1.0 | 28/28 | Complete | 2026-03-01 |
 | 7-15 | v1.1 | 24/24 | Complete | 2026-03-04 |
-| 16-24 | v1.2 | 8/9 phases | In Progress | - |
+| 16-24 | v1.2 | 9/9 phases | Complete | 2026-03-10 |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-10 -- Phase 23 complete, Phase 24 remaining*
+*Last updated: 2026-03-10 -- v1.2 milestone complete (all 9 phases)*

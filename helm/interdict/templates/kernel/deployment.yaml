@@ -20,6 +20,8 @@ spec:
       {{- include "interdict.imagePullSecrets" . | nindent 6 }}
       securityContext:
         fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-control-plane
           image: busybox:1.36
@@ -72,6 +74,10 @@ spec:
             runAsUser: 1000
             runAsGroup: 1000
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: certs
               mountPath: /certs

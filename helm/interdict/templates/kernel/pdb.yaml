@@ -1,0 +1,19 @@
+{{- if .Values.kernel.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "interdict.fullname" . }}-kernel
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kernel
+spec:
+  {{- if .Values.kernel.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.kernel.podDisruptionBudget.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ .Values.kernel.podDisruptionBudget.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "interdict.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: kernel
+{{- end }}

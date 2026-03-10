@@ -1,0 +1,19 @@
+{{- if .Values.evidenceCollector.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "interdict.fullname" . }}-evidence-collector
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: evidence-collector
+spec:
+  {{- if .Values.evidenceCollector.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.evidenceCollector.podDisruptionBudget.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ .Values.evidenceCollector.podDisruptionBudget.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "interdict.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: evidence-collector
+{{- end }}

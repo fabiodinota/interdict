@@ -1,0 +1,23 @@
+{{- if .Values.kernel.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "interdict.fullname" . }}-kernel
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kernel
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "interdict.fullname" . }}-kernel
+  minReplicas: {{ .Values.kernel.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.kernel.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.kernel.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

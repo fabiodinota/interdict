@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Trustworthiness & Hardening
-status: executing
-stopped_at: Phase 23 complete, Phase 24 next
+status: complete
+stopped_at: All 9 phases complete
 last_updated: "2026-03-10"
-last_activity: 2026-03-10 -- Phase 23 deployment hardening committed
+last_activity: 2026-03-10 -- Phase 24 platform hardening and release gate committed
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 0
   completed_plans: 0
-  percent: 89
+  percent: 100
 ---
 
 # Project State
@@ -21,12 +21,12 @@ progress:
 See: `.planning/PROJECT.md` and `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADMAP.md`
 
 **Core value:** Every AI action an employee takes is routed through a policy-enforcing kernel -- logged, signed, and regulatorily mapped -- before it reaches any model
-**Current focus:** Final phase (24) of v1.2 trustworthiness and hardening milestone
+**Current focus:** v1.2 milestone complete. Ready for next milestone planning.
 
 ## Current Position
 
-Milestone v1.2 Trustworthiness & Hardening: EXECUTING
-8 of 9 phases complete. Phase 24 (Platform Hardening and Release Gate) remaining.
+Milestone v1.2 Trustworthiness & Hardening: COMPLETE
+All 9 phases finished. Milestone exit criteria satisfied.
 
 - Phase 16: Evidence Verification Truth -- COMPLETE (9bf2b24)
 - Phase 17: Auth Secret Hardening and JS Gates -- COMPLETE (30bdf0b)
@@ -35,10 +35,21 @@ Milestone v1.2 Trustworthiness & Hardening: EXECUTING
 - Phase 20: Review Workflow Consolidation -- COMPLETE (bdd762c)
 - Phase 21: Kernel and Control Plane Maintainability -- COMPLETE (770a0d3)
 - Phase 22: Dashboard Reliability and Operator Trust -- COMPLETE (8caad88)
-- Phase 23: Deployment Truth and Artifact Hardening -- COMPLETE (pending commit)
-- Phase 24: Platform Hardening and Release Gate -- NOT STARTED
+- Phase 23: Deployment Truth and Artifact Hardening -- COMPLETE (03785bd)
+- Phase 24: Platform Hardening and Release Gate -- COMPLETE (pending commit)
 
-Next action: Execute Phase 24
+## Milestone Exit Criteria Assessment
+
+1. Evidence verification is internally consistent across all verification surfaces -- YES (Phase 16)
+2. Auth bootstrap no longer persists raw bearer credentials -- YES (Phase 17)
+3. JS/TS correctness is enforced in CI -- YES (Phase 17)
+4. Reporting and policy-scope behavior are honest and complete -- YES (Phase 18)
+5. Evidence attribution and durability match audit expectations -- YES (Phase 19)
+6. Review workflow architecture has one source of truth -- YES (Phase 20)
+7. Core kernel and control-plane change hotspots have been reduced -- YES (Phase 21)
+8. Dashboard trust-sensitive workflows are automated and verified -- YES (Phase 22)
+9. Deployment artifacts and docs no longer overclaim production readiness -- YES (Phase 23)
+10. Final product language matches what the platform can actually prove -- YES (Phase 24)
 
 ## Accumulated Context
 
@@ -52,6 +63,7 @@ v1.2 decisions:
 - Postgres is single authoritative store for review items; kernel SQLite is local-only (Phase 20)
 - 27 route-handler `ctx: any` annotations intentionally preserved (Elysia type inference limitation) (Phase 21)
 - OPA download isolated into multi-stage Dockerfile for air-gapped cache replacement (Phase 23)
+- NetworkPolicy, PDB, HPA disabled by default; opt-in via values.yaml (Phase 24)
 
 ### Blockers/Concerns
 
@@ -61,6 +73,5 @@ v1.2 decisions:
 ## Session Continuity
 
 **Last session:** 2026-03-10
-**Stopped at:** Phase 23 committed, Phase 24 next
-**Resume file:** `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADMAP.md`
-**Next action:** Execute Phase 24 -- Platform Hardening and Release Gate
+**Stopped at:** v1.2 milestone complete
+**Next action:** Plan v1.3 milestone or proceed to pilot deployment

@@ -1,0 +1,49 @@
+{{- if .Values.kernel.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "interdict.fullname" . }}-kernel
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kernel
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "interdict.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: kernel
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Accept HTTPS proxy traffic from any source (user-facing)
+    - ports:
+        - port: 8443
+          protocol: TCP
+  egress:
+    # Control plane (gRPC policy distribution)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: control-plane
+      ports:
+        - port: {{ .Values.controlPlane.grpcPort }}
+          protocol: TCP
+    # Evidence collector (gRPC evidence delivery)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: evidence-collector
+      ports:
+        - port: {{ .Values.evidenceCollector.grpcPort }}
+          protocol: TCP
+    # DNS resolution
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Upstream AI vendor HTTPS
+    - ports:
+        - port: 443
+          protocol: TCP
+{{- end }}

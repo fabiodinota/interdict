@@ -1,0 +1,49 @@
+{{- if .Values.controlPlane.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "interdict.fullname" . }}-control-plane
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "interdict.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-plane
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # HTTP API from dashboard
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: dashboard
+      ports:
+        - port: {{ .Values.controlPlane.port }}
+          protocol: TCP
+    # gRPC from kernel (policy distribution)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: kernel
+      ports:
+        - port: {{ .Values.controlPlane.grpcPort }}
+          protocol: TCP
+  egress:
+    # PostgreSQL
+    - ports:
+        - port: 5432
+          protocol: TCP
+    # ClickHouse
+    - ports:
+        - port: 8123
+          protocol: TCP
+    # DNS resolution
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+{{- end }}

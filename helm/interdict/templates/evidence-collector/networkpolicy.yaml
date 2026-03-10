@@ -1,0 +1,43 @@
+{{- if .Values.evidenceCollector.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "interdict.fullname" . }}-evidence-collector
+  labels:
+    {{- include "interdict.labels" . | nindent 4 }}
+    app.kubernetes.io/component: evidence-collector
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "interdict.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: evidence-collector
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # gRPC from kernel (evidence delivery)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: kernel
+      ports:
+        - port: {{ .Values.evidenceCollector.grpcPort }}
+          protocol: TCP
+  egress:
+    # ClickHouse
+    - ports:
+        - port: 8123
+          protocol: TCP
+    # S3/MinIO
+    - ports:
+        - port: 9000
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+    # DNS resolution
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+{{- end }}

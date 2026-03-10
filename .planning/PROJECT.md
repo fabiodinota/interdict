@@ -78,7 +78,7 @@ Every AI action an employee takes is routed through a policy-enforcing kernel â€
 - [x] Core kernel and control-plane change hotspots have been reduced (Phase 21)
 - [x] Dashboard trust-sensitive workflows are automated and verified (Phase 22)
 - [x] Deployment artifacts and docs no longer overclaim production readiness (Phase 23)
-- [ ] Final product language matches what the platform can actually prove (Phase 24)
+- [x] Final product language matches what the platform can actually prove (Phase 24)
 
 ### Out of Scope
 
@@ -99,7 +99,7 @@ Every AI action an employee takes is routed through a policy-enforcing kernel â€
 
 ## Context
 
-**v1.2 in progress (2026-03-10).** 8 of 9 hardening phases complete. Evidence verification, auth, reporting, scope, evidence delivery, review workflow, maintainability, dashboard testing, and deployment artifacts all hardened. Phase 24 (final release gate) remaining.
+**v1.2 complete (2026-03-10).** All 9 hardening phases finished. Evidence verification, auth, reporting, scope, evidence delivery, review workflow, maintainability, dashboard testing, deployment artifacts, and Kubernetes security controls all hardened.
 
 **v1.1 shipped 2026-03-04.** Full platform operational: Rust kernel + evidence pipeline + control plane API + Next.js dashboard + Docker Compose + Helm chart. ~61,000 LOC across Rust, TypeScript, and Helm. 16 phases, 52 plans across 2 milestones. 21/21 v1.1 requirements satisfied with 8 tech debt items tracked (none blocking).
 
@@ -139,4 +139,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel â€
 | KEP-753 native sidecar pattern | Kubernetes-native lifecycle management | âœ“ Good â€” initContainer with restartPolicy |
 
 ---
-*Last updated: 2026-03-10 after v1.2 Phase 23 completion*
+*Last updated: 2026-03-10 after v1.2 milestone completion*
