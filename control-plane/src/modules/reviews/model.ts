@@ -69,6 +69,8 @@ export interface ReviewItemResponse {
   resolvedAt: string | null;
   resolution: string | null;
   resolutionNotes: string | null;
+  /** Source of escalation: "kernel_l3" | "session_pattern" | null (legacy) */
+  escalationSource: string | null;
   // Enriched from ClickHouse
   actorIdentity: string;
   vendor: string;

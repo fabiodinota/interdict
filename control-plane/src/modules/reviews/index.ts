@@ -2,18 +2,23 @@
  * Reviews Module - Elysia Plugin
  *
  * REST endpoints for the human review queue workflow:
- * queue listing, claim with optimistic locking, and resolve
- * with mandatory category + reasoning.
+ * queue listing, claim with optimistic locking, resolve
+ * with mandatory category + reasoning, and deterministic
+ * review creation via evidence ingest webhook.
+ *
+ * Architecture (Phase 20):
+ * - POST /ingest creates review items deterministically at evidence ingest time.
+ * - Background reconciler catches missed escalations (catch-up, not primary path).
+ * - ClickHouse is read-model only for enrichment.
  *
  * Prefix: /api/v1/reviews
  */
 
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { ReviewService } from "./service";
 import { ReviewQueueParams, ResolveReviewBody } from "./model";
 import {
   apiResponse,
-  paginatedResponse,
   ConflictError,
   NotFoundError,
 } from "../../shared/utilities";
@@ -34,13 +39,55 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
   })
 
   // ---------------------------------------------------------------------------
-  // Start background sync jobs on module init
+  // Start background reconciliation jobs on module init
   // ---------------------------------------------------------------------------
   .onStart(({ store }) => {
     const s = store as { db: any; clickhouse: any };
     const service = new ReviewService(s.clickhouse ?? chClient, s.db ?? pgDb);
     service.startBackgroundJobs();
   })
+
+  // ---------------------------------------------------------------------------
+  // POST /ingest -- Deterministic review creation (called at evidence ingest)
+  // ---------------------------------------------------------------------------
+  .post(
+    "/ingest",
+    async (ctx: any) => {
+      const { bundle_id, escalated_at, source } = ctx.body;
+      const escalatedDate = new Date(escalated_at);
+      if (isNaN(escalatedDate.getTime())) {
+        ctx.set.status = 400;
+        return { success: false, error: "Invalid escalated_at timestamp" };
+      }
+
+      const result = await ctx.reviewService.createReviewItem(
+        bundle_id,
+        escalatedDate,
+        source ?? "kernel_l3"
+      );
+
+      ctx.set.status = result.created ? 201 : 200;
+      return {
+        success: true,
+        data: { id: result.id, created: result.created },
+      };
+    },
+    {
+      // Internal endpoint: called by evidence-collector or kernel services.
+      // No user-level auth required — service-to-service authentication
+      // is handled by mTLS at the transport layer.
+      body: t.Object({
+        bundle_id: t.String({ minLength: 1 }),
+        escalated_at: t.String(),
+        source: t.Optional(
+          t.Union([
+            t.Literal("kernel_l3"),
+            t.Literal("session_pattern"),
+          ])
+        ),
+      }),
+    }
+  )
 
   // ---------------------------------------------------------------------------
   // GET /queue -- Paginated review queue sorted by SLA urgency

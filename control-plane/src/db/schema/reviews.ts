@@ -13,6 +13,7 @@ import {
   text,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { users } from "./organization";
 
@@ -37,11 +38,16 @@ export const reviewItems = pgTable(
     // false_positive | violation_confirmed | needs_policy_update | insufficient_context
     resolutionNotes: text("resolution_notes"),
     autoEscalatedTo: uuid("auto_escalated_to").references(() => users.id),
+    /// Source of escalation: "kernel_l3" (policy pipeline) or "session_pattern"
+    /// (slow-leak/exfiltration detection). NULL for legacy sync-created items.
+    escalationSource: varchar("escalation_source", { length: 50 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("review_items_status_sla_idx").on(table.status, table.slaDeadline),
-    index("review_items_bundle_idx").on(table.bundleId),
+    // UNIQUE on bundle_id enforces idempotent review creation.
+    // The same evidence bundle can only produce one review item.
+    uniqueIndex("review_items_bundle_id_uniq").on(table.bundleId),
   ]
 );

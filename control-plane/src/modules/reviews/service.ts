@@ -3,7 +3,17 @@
  *
  * Business logic for the human review queue. Manages review items
  * with optimistic locking on claims, mandatory resolution validation,
- * and background sync of ClickHouse escalations to Postgres.
+ * and deterministic review creation.
+ *
+ * Architecture (Phase 20):
+ * - Postgres `review_items` is the single authoritative workflow store.
+ * - ClickHouse is read-model only: used for enrichment (actor, vendor, etc.)
+ *   but never as the source of workflow state.
+ * - Review items are created deterministically via `createReviewItem()`,
+ *   called from the evidence ingest endpoint when `policy_action = 'escalate'`.
+ * - A background reconciler (`reconcileEscalations`) runs as catch-up only,
+ *   not as the primary creation path.
+ * - `bundle_id` has a UNIQUE constraint — duplicate creation is idempotent.
  */
 
 import type { ClickHouseClient } from "@clickhouse/client";
@@ -24,8 +34,8 @@ import {
 // SLA duration: 4 hours in milliseconds
 const SLA_DURATION_MS = 4 * 60 * 60 * 1000;
 
-// Background sync interval: 60 seconds
-const SYNC_INTERVAL_MS = 60_000;
+// Background reconciliation interval: 5 minutes (catch-up, not primary path).
+const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // ReviewService
@@ -34,11 +44,84 @@ const SYNC_INTERVAL_MS = 60_000;
 export class ReviewService {
   private clickhouse: ClickHouseClient;
   private db: any;
-  private syncTimer: ReturnType<typeof setInterval> | null = null;
+  private reconcileTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(clickhouse: ClickHouseClient, db: any) {
     this.clickhouse = clickhouse;
     this.db = db;
+  }
+
+  // -------------------------------------------------------------------------
+  // Deterministic Review Creation (Phase 20)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Create a review item for an escalated evidence bundle.
+   *
+   * This is the primary creation path — called at evidence ingest time
+   * when `policy_action = 'escalate'`.
+   *
+   * Idempotent: if a review item for this `bundleId` already exists,
+   * returns the existing item without error (UNIQUE constraint on bundle_id).
+   *
+   * @param bundleId  - Evidence bundle ID from ClickHouse
+   * @param escalatedAt - Timestamp when the escalation occurred
+   * @param source - Escalation source: "kernel_l3" or "session_pattern"
+   * @returns The created (or existing) review item ID, or null if insert was a no-op.
+   */
+  async createReviewItem(
+    bundleId: string,
+    escalatedAt: Date,
+    source: "kernel_l3" | "session_pattern" = "kernel_l3"
+  ): Promise<{ id: string; created: boolean }> {
+    const slaDeadline = new Date(escalatedAt.getTime() + SLA_DURATION_MS);
+
+    try {
+      const result = await this.db
+        .insert(reviewItems)
+        .values({
+          bundleId,
+          escalatedAt,
+          slaDeadline,
+          status: "pending",
+          escalationSource: source,
+        })
+        .onConflictDoNothing({ target: reviewItems.bundleId })
+        .returning({ id: reviewItems.id });
+
+      if (result && result.length > 0) {
+        return { id: result[0].id, created: true };
+      }
+
+      // Conflict: review already exists for this bundle. Look it up.
+      const existing = await this.db
+        .select({ id: reviewItems.id })
+        .from(reviewItems)
+        .where(eq(reviewItems.bundleId, bundleId))
+        .limit(1);
+
+      return {
+        id: existing[0]?.id ?? bundleId,
+        created: false,
+      };
+    } catch (err: unknown) {
+      // Handle race condition: UNIQUE violation from concurrent inserts.
+      const message =
+        err instanceof Error ? err.message : String(err);
+      if (message.includes("unique") || message.includes("duplicate")) {
+        const existing = await this.db
+          .select({ id: reviewItems.id })
+          .from(reviewItems)
+          .where(eq(reviewItems.bundleId, bundleId))
+          .limit(1);
+
+        return {
+          id: existing[0]?.id ?? bundleId,
+          created: false,
+        };
+      }
+      throw err;
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -202,28 +285,35 @@ export class ReviewService {
   }
 
   // -------------------------------------------------------------------------
-  // Background Jobs
+  // Background Reconciliation (catch-up only, not primary creation path)
   // -------------------------------------------------------------------------
 
   /**
-   * Start background sync and auto-escalation jobs.
+   * Start background reconciliation and auto-escalation jobs.
+   *
+   * The reconciler is a safety net: it catches any escalated bundles that
+   * were missed by the primary deterministic creation path (e.g., if the
+   * control plane was down during evidence ingest). It runs every 5 minutes
+   * instead of every 60 seconds, since it is no longer the primary path.
    */
   startBackgroundJobs(): void {
-    this.syncTimer = setInterval(async () => {
+    this.reconcileTimer = setInterval(async () => {
       try {
-        await this.syncEscalations();
-      } catch (err) {
-        console.error("[reviews] syncEscalations error:", err);
+        await this.reconcileEscalations();
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[reviews] reconcileEscalations error:", message);
       }
       try {
         await this.autoEscalateExpired();
-      } catch (err) {
-        console.error("[reviews] autoEscalateExpired error:", err);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[reviews] autoEscalateExpired error:", message);
       }
-    }, SYNC_INTERVAL_MS);
+    }, RECONCILE_INTERVAL_MS);
 
     console.log(
-      `[reviews] Background sync started (${SYNC_INTERVAL_MS / 1000}s interval)`
+      `[reviews] Background reconciliation started (${RECONCILE_INTERVAL_MS / 1000}s interval, catch-up only)`
     );
   }
 
@@ -231,20 +321,26 @@ export class ReviewService {
    * Stop background jobs (for graceful shutdown).
    */
   stopBackgroundJobs(): void {
-    if (this.syncTimer) {
-      clearInterval(this.syncTimer);
-      this.syncTimer = null;
+    if (this.reconcileTimer) {
+      clearInterval(this.reconcileTimer);
+      this.reconcileTimer = null;
     }
   }
 
   /**
-   * Sync escalated bundles from ClickHouse to review_items table.
-   * Finds bundles with policy_action = 'escalate' from the last hour
-   * that do not already have a review_items row.
+   * Reconcile escalated bundles from ClickHouse into review_items.
+   *
+   * This is the catch-up reconciler — NOT the primary creation path.
+   * It finds escalated bundles in ClickHouse that don't yet have a
+   * corresponding review_items row and creates them idempotently.
+   *
+   * Returns the number of newly created review items.
    */
-  async syncEscalations(): Promise<number> {
+  async reconcileEscalations(): Promise<number> {
     // Strip trailing 'Z' — ClickHouse DateTime64(3) params reject timezone suffixes
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString().replace("Z", "");
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+      .toISOString()
+      .replace("Z", "");
 
     // Get recent escalated bundles from ClickHouse
     const resultSet = await this.clickhouse.query({
@@ -275,32 +371,32 @@ export class ReviewService {
       .where(inArray(reviewItems.bundleId, bundleIds));
 
     const existingBundleIds = new Set(
-      existingRows.map((r: any) => r.bundleId)
+      existingRows.map((r: { bundleId: string }) => r.bundleId)
     );
 
-    // Create review items for new escalations
+    // Create review items for new escalations (idempotent via UNIQUE constraint)
     const newItems = escalatedBundles.filter(
       (b) => !existingBundleIds.has(b.bundle_id)
     );
 
     if (newItems.length === 0) return 0;
 
-    const insertRows = newItems.map((b) => {
-      const escalatedAt = new Date(b.timestamp);
-      return {
-        bundleId: b.bundle_id,
-        escalatedAt,
-        slaDeadline: new Date(escalatedAt.getTime() + SLA_DURATION_MS),
-        status: "pending",
-      };
-    });
+    let created = 0;
+    for (const b of newItems) {
+      const result = await this.createReviewItem(
+        b.bundle_id,
+        new Date(b.timestamp),
+        "kernel_l3"
+      );
+      if (result.created) created++;
+    }
 
-    await this.db.insert(reviewItems).values(insertRows);
-
-    console.log(
-      `[reviews] Synced ${insertRows.length} new escalation(s) to review queue`
-    );
-    return insertRows.length;
+    if (created > 0) {
+      console.log(
+        `[reviews] Reconciler created ${created} review item(s) (catch-up)`
+      );
+    }
+    return created;
   }
 
   /**
@@ -337,6 +433,7 @@ export class ReviewService {
 
   /**
    * Enrich review items with ClickHouse evidence bundle details.
+   * ClickHouse is read-model only — enrichment failure does not break the queue.
    */
   private async enrichWithBundleDetails(
     rows: any[]
@@ -372,8 +469,9 @@ export class ReviewService {
       for (const b of bundles) {
         bundleMap.set(b.bundle_id, b);
       }
-    } catch (err) {
-      console.error("[reviews] ClickHouse enrichment error:", err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[reviews] ClickHouse enrichment failed (read-model only, queue unaffected):", message);
     }
 
     return rows.map((row: any) => {
@@ -399,12 +497,13 @@ export class ReviewService {
         resolvedAt: row.resolvedAt?.toISOString?.() ?? row.resolvedAt,
         resolution: row.resolution,
         resolutionNotes: row.resolutionNotes,
+        escalationSource: row.escalationSource ?? null,
         actorIdentity: bundle?.actor_identity ?? "unknown",
         vendor: bundle?.vendor ?? "unknown",
         model: bundle?.model ?? "unknown",
         policyAction: bundle?.policy_action ?? "escalate",
         policyRules,
-        riskScore: bundle?.token_count ?? 0, // risk_score not in ClickHouse schema; use token_count as proxy
+        riskScore: bundle?.token_count ?? 0,
         promptHash: bundle?.prompt_hash ?? "",
         responseHash: bundle?.response_hash ?? "",
       };
@@ -413,6 +512,7 @@ export class ReviewService {
 
   /**
    * Get queue statistics for the KPI summary cards.
+   * Uses COUNT aggregation instead of loading all rows.
    */
   private async getQueueStats(): Promise<{
     pending: number;
@@ -423,31 +523,22 @@ export class ReviewService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const allRows = await this.db
+    // Single query with conditional counts instead of loading all rows.
+    const result = await this.db
       .select({
-        status: reviewItems.status,
-        resolvedAt: reviewItems.resolvedAt,
+        pending: sql<number>`count(*) filter (where ${reviewItems.status} = 'pending')`,
+        claimed: sql<number>`count(*) filter (where ${reviewItems.status} = 'claimed')`,
+        expired: sql<number>`count(*) filter (where ${reviewItems.status} = 'auto_escalated')`,
+        resolvedToday: sql<number>`count(*) filter (where ${reviewItems.status} in ('approved', 'rejected') and ${reviewItems.resolvedAt} >= ${todayStart.toISOString()})`,
       })
       .from(reviewItems);
 
-    let pending = 0;
-    let claimed = 0;
-    let resolvedToday = 0;
-    let expired = 0;
-
-    for (const row of allRows) {
-      if (row.status === "pending") pending++;
-      else if (row.status === "claimed") claimed++;
-      else if (row.status === "auto_escalated") expired++;
-      else if (
-        (row.status === "approved" || row.status === "rejected") &&
-        row.resolvedAt &&
-        new Date(row.resolvedAt) >= todayStart
-      ) {
-        resolvedToday++;
-      }
-    }
-
-    return { pending, claimed, resolvedToday, expired };
+    const row = result[0];
+    return {
+      pending: Number(row?.pending ?? 0),
+      claimed: Number(row?.claimed ?? 0),
+      resolvedToday: Number(row?.resolvedToday ?? 0),
+      expired: Number(row?.expired ?? 0),
+    };
   }
 }
