@@ -60,7 +60,13 @@ impl EvidenceCollectorService {
         bundle.signing_key_id = signed.signing_key_id.clone();
         bundle.dev_signed = signed.dev_signed;
 
-        let row = map_bundle_to_row(&bundle, &chain_hash, &previous_hash, &signed.signature)?;
+        let row = map_bundle_to_row(
+            &bundle,
+            &chain_hash,
+            &previous_hash,
+            &signed.signature,
+            &bundle_bytes,
+        )?;
         self.clickhouse_writer.write(row).await?;
 
         let mut builder = self.merkle_builder.lock().await;
@@ -164,6 +170,7 @@ fn map_bundle_to_row(
     chain_hash: &[u8; 32],
     previous_hash: &[u8; 32],
     signature: &[u8],
+    content_bytes: &[u8],
 ) -> Result<EvidenceRow> {
     let timestamp = bundle
         .timestamp
@@ -195,6 +202,7 @@ fn map_bundle_to_row(
         signing_key_id: bundle.signing_key_id.clone(),
         dev_signed: u8::from(bundle.dev_signed),
         schema_version: bundle.schema_version,
+        content_bytes: hex::encode(content_bytes),
     })
 }
 
@@ -259,11 +267,14 @@ mod tests {
             schema_version: 1,
             ..Default::default()
         };
+        let content = b"test-content-bytes";
         let row =
-            map_bundle_to_row(&bundle, &[1u8; 32], &[0u8; 32], &[2u8; 64]).expect("map to row");
+            map_bundle_to_row(&bundle, &[1u8; 32], &[0u8; 32], &[2u8; 64], content)
+                .expect("map to row");
 
         assert_eq!(row.chain_hash, "01".repeat(32));
         assert_eq!(row.previous_hash, "00".repeat(32));
         assert_eq!(row.signature, "02".repeat(64));
+        assert_eq!(row.content_bytes, hex::encode(content));
     }
 }

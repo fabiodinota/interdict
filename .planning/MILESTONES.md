@@ -1,4 +1,25 @@
 # Milestones
+## v1.2 Trustworthiness & Hardening (Planned: 2026-03-10)
+
+**Phases planned:** 9 phases
+**Status:** Planning complete, execution not started
+**Roadmap:** `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADMAP.md`
+
+**Delivered by this planning step:** A ruthless ordered execution program focused on evidence truth, auth hardening, JS/TS quality gates, scope enforcement, identity attribution, durable evidence delivery, workflow consolidation, deployment hardening, observability, and final release gating.
+
+**Planned phases:**
+- Phase 16: Evidence Verification Truth
+- Phase 17: Auth Secret Hardening and JS Gates
+- Phase 18: Reporting Integrity and Scope Truth
+- Phase 19: Identity Attribution and Durable Evidence Delivery
+- Phase 20: Review Workflow Consolidation
+- Phase 21: Kernel and Control Plane Maintainability
+- Phase 22: Dashboard Reliability and Operator Trust
+- Phase 23: Deployment Truth and Artifact Hardening
+- Phase 24: Platform Hardening and Release Gate
+
+---
+
 ## v1.1 Pilot Ready (Shipped: 2026-03-04)
 
 **Phases completed:** 9 phases, 24 plans

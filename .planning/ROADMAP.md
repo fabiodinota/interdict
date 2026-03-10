@@ -8,6 +8,7 @@ Interdict.io is an AI governance kernel for regulated enterprises. v1.0 shipped 
 
 - ✅ **v1.0 MVP** -- Phases 1-6.1 (shipped 2026-03-01)
 - ✅ **v1.1 Pilot Ready** -- Phases 7-15 (shipped 2026-03-04)
+- 🟡 **v1.2 Trustworthiness & Hardening** -- Phases 16-24 (planned 2026-03-10)
 
 ## Phases
 
@@ -43,13 +44,31 @@ Full details archived in `milestones/v1.1-ROADMAP.md`
 
 </details>
 
+<details>
+<summary>v1.2 Trustworthiness & Hardening (Phases 16-24) -- PLANNED 2026-03-10</summary>
+
+- [ ] Phase 16: Evidence Verification Truth
+- [ ] Phase 17: Auth Secret Hardening and JS Gates
+- [ ] Phase 18: Reporting Integrity and Scope Truth
+- [ ] Phase 19: Identity Attribution and Durable Evidence Delivery
+- [ ] Phase 20: Review Workflow Consolidation
+- [ ] Phase 21: Kernel and Control Plane Maintainability
+- [ ] Phase 22: Dashboard Reliability and Operator Trust
+- [ ] Phase 23: Deployment Truth and Artifact Hardening
+- [ ] Phase 24: Platform Hardening and Release Gate
+
+Full details in `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADMAP.md`
+
+</details>
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-6.1 | v1.0 | 28/28 | Complete | 2026-03-01 |
 | 7-15 | v1.1 | 24/24 | Complete | 2026-03-04 |
+| 16-24 | v1.2 | 0/0 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-04 after v1.1 milestone completion*
+*Last updated: 2026-03-10 after adding the v1.2 trustworthiness and hardening roadmap*

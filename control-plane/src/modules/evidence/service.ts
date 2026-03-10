@@ -1,10 +1,25 @@
 /**
  * Evidence Verification Service
  *
- * Three-step cryptographic verification of evidence bundles:
- * 1. Hash chain linkage (chain_hash[n] links to previous_hash[n] = chain_hash[n-1])
- * 2. Ed25519 signature validation (verify signature over chain_hash bytes)
- * 3. Merkle proof inclusion (deferred - requires S3 access)
+ * Two-step cryptographic verification of evidence bundles, plus a deferred
+ * Merkle anchoring check:
+ *
+ * 1. Hash chain integrity — recomputes chain_hash from content bytes and
+ *    verifies linkage to the predecessor bundle.  Matches the algorithm in
+ *    the Rust `interdict-verify` tool: chain_hash = SHA-256(previous_hash ‖ content_bytes).
+ *
+ * 2. Ed25519 signature validation — verifies the collector's signature over
+ *    the protobuf content bytes (bundle with chain/signature fields zeroed),
+ *    matching the Rust collector's signing semantics.
+ *
+ * 3. Merkle proof (deferred) — the Merkle anchoring infrastructure exists in
+ *    the Rust evidence-collector (hourly S3 WORM anchoring), but the control
+ *    plane does not have S3 access.  Use the Rust `interdict-verify` CLI for
+ *    full Merkle verification.
+ *
+ * Verification is server-side.  For independent offline verification use the
+ * `interdict-verify` CLI tool, which loads bundles from ClickHouse exports
+ * and recomputes all hashes from protobuf-serialized content.
  *
  * Uses ClickHouse for bundle data and Postgres for signing key lookup.
  */
@@ -44,19 +59,48 @@ const EVIDENCE_COLUMNS = [
   "model",
   "policy_action",
   "department",
+  "content_bytes",
 ].join(", ");
 
 // ---------------------------------------------------------------------------
-// Helper: hex decode
+// Helpers: hex decode / SHA-256
 // ---------------------------------------------------------------------------
 
 function hexToBytes(hex: string): Uint8Array {
+  if (hex.length % 2 !== 0) {
+    throw new Error(`hexToBytes: odd-length hex string (${hex.length} chars)`);
+  }
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
     bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
   }
   return bytes;
 }
+
+async function sha256(data: Uint8Array): Promise<Uint8Array> {
+  const hash = await crypto.subtle.digest("SHA-256", data as unknown as BufferSource);
+  return new Uint8Array(hash);
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  const total = arrays.reduce((sum, a) => sum + a.length, 0);
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
+}
+
+// 32 zero bytes (hex-encoded) — the genesis sentinel for previous_hash
+const GENESIS_PREVIOUS_HEX = "0".repeat(64);
 
 // ---------------------------------------------------------------------------
 // EvidenceVerificationService
@@ -186,7 +230,7 @@ export class EvidenceVerificationService {
               details: { error: "Bundle not found" },
             },
             {
-              name: "Merkle Proof",
+              name: "Merkle Anchor",
               passed: null,
               details: { reason: "Bundle not found" },
             },
@@ -198,21 +242,24 @@ export class EvidenceVerificationService {
 
       const steps: VerificationStep[] = [];
 
-      // Step 1: Hash chain linkage verification
+      // Step 1: Hash chain integrity verification (with recomputation)
       const chainStep = await this.verifyHashChain(bundle);
       steps.push(chainStep);
 
-      // Step 2: Ed25519 signature verification
+      // Step 2: Ed25519 signature verification (over content bytes)
       const sigStep = await this.verifySignature(bundle);
       steps.push(sigStep);
 
-      // Step 3: Merkle proof (deferred)
+      // Step 3: Merkle anchor (deferred — requires S3 access)
       steps.push({
-        name: "Merkle Proof",
+        name: "Merkle Anchor",
         passed: null,
         details: {
-          reason: "Merkle root storage not yet available",
-          note: "Merkle anchors are stored in S3; control plane lacks S3 access. Future enhancement: merkle_anchors Postgres table.",
+          status: "Deferred",
+          reason:
+            "Merkle root anchoring is implemented in the Rust evidence-collector " +
+            "(hourly S3 WORM anchoring). The control plane does not have S3 access. " +
+            "Use the `interdict-verify` CLI tool with --anchor-dir for full Merkle verification.",
         },
       });
 
@@ -260,7 +307,7 @@ export class EvidenceVerificationService {
     kernelId: string,
     sequenceNumber: number
   ): Promise<EvidenceBundleRow | null> {
-    if (sequenceNumber <= 0) return null;
+    if (sequenceNumber <= 1) return null;
 
     const resultSet = await this.clickhouse.query({
       query: `SELECT ${EVIDENCE_COLUMNS} FROM evidence_bundles WHERE kernel_id = {kernel_id:String} AND sequence_number = {seq:UInt64} LIMIT 1`,
@@ -276,8 +323,13 @@ export class EvidenceVerificationService {
   }
 
   /**
-   * Step 1: Verify hash chain linkage.
-   * Check that previous_hash of the current bundle matches chain_hash of predecessor.
+   * Step 1: Verify hash chain integrity.
+   *
+   * For each bundle the check is:
+   * - Genesis (sequence_number == 1): previous_hash must be 32 zero bytes.
+   * - Non-genesis: previous_hash must equal predecessor's chain_hash.
+   * - If content_bytes are available, recompute chain_hash = SHA-256(previous_hash || content_bytes)
+   *   and verify it matches the stored chain_hash (same algorithm as interdict-verify).
    */
   private async verifyHashChain(
     bundle: EvidenceBundleRow
@@ -287,29 +339,49 @@ export class EvidenceVerificationService {
         ? parseInt(bundle.sequence_number, 10)
         : bundle.sequence_number;
 
-    // First bundle in chain -- previous_hash should be zeros or empty
-    if (seqNum === 0) {
+    // Genesis bundle: sequence_number == 1, previous_hash must be 32 zero bytes
+    if (seqNum === 1) {
       const isGenesisValid =
-        bundle.previous_hash === "" ||
-        bundle.previous_hash ===
-          "0000000000000000000000000000000000000000000000000000000000000000";
+        bundle.previous_hash === GENESIS_PREVIOUS_HEX;
+
+      // If content_bytes are available, also verify chain_hash recomputation
+      let chainHashValid: boolean | null = null;
+      let recomputedChainHash = "";
+      if (bundle.content_bytes && bundle.content_bytes.length > 0) {
+        const prevBytes = hexToBytes(GENESIS_PREVIOUS_HEX);
+        const contentBytes = hexToBytes(bundle.content_bytes);
+        const hashInput = concatBytes(prevBytes, contentBytes);
+        const computedHash = await sha256(hashInput);
+        recomputedChainHash = bytesToHex(computedHash);
+        chainHashValid = recomputedChainHash === bundle.chain_hash;
+      }
+
+      const passed = isGenesisValid && (chainHashValid === null || chainHashValid);
 
       return {
         name: "Hash Chain",
-        passed: isGenesisValid,
+        passed,
         details: {
           bundle_id: bundle.bundle_id,
           sequence_number: String(seqNum),
           previous_hash: bundle.previous_hash,
-          status: isGenesisValid
-            ? "Genesis bundle (first in chain)"
-            : "Genesis bundle has unexpected previous_hash",
+          status: passed
+            ? "Genesis bundle verified"
+            : isGenesisValid
+              ? "Genesis previous_hash valid but chain_hash recomputation failed"
+              : "Genesis bundle has unexpected previous_hash",
           chain_hash: bundle.chain_hash,
+          ...(chainHashValid !== null
+            ? {
+                chain_hash_recomputed: recomputedChainHash,
+                chain_hash_match: chainHashValid ? "true" : "false",
+              }
+            : { chain_hash_recomputed: "skipped (no content_bytes stored)" }),
         },
       };
     }
 
-    // Fetch predecessor
+    // Non-genesis: fetch predecessor
     const predecessor = await this.fetchPredecessor(
       bundle.kernel_id,
       seqNum
@@ -328,11 +400,29 @@ export class EvidenceVerificationService {
       };
     }
 
-    const chainValid = bundle.previous_hash === predecessor.chain_hash;
+    const linkageValid = bundle.previous_hash === predecessor.chain_hash;
+
+    // If content_bytes are available, also verify chain_hash recomputation
+    let chainHashValid: boolean | null = null;
+    let recomputedChainHash = "";
+    if (
+      linkageValid &&
+      bundle.content_bytes &&
+      bundle.content_bytes.length > 0
+    ) {
+      const prevBytes = hexToBytes(bundle.previous_hash);
+      const contentBytes = hexToBytes(bundle.content_bytes);
+      const hashInput = concatBytes(prevBytes, contentBytes);
+      const computedHash = await sha256(hashInput);
+      recomputedChainHash = bytesToHex(computedHash);
+      chainHashValid = recomputedChainHash === bundle.chain_hash;
+    }
+
+    const passed = linkageValid && (chainHashValid === null || chainHashValid);
 
     return {
       name: "Hash Chain",
-      passed: chainValid,
+      passed,
       details: {
         bundle_id: bundle.bundle_id,
         sequence_number: String(seqNum),
@@ -340,18 +430,47 @@ export class EvidenceVerificationService {
         predecessor_chain_hash: predecessor.chain_hash,
         predecessor_bundle_id: predecessor.bundle_id,
         predecessor_sequence: String(seqNum - 1),
-        match: chainValid ? "true" : "false",
+        linkage_match: linkageValid ? "true" : "false",
+        ...(chainHashValid !== null
+          ? {
+              chain_hash_recomputed: recomputedChainHash,
+              chain_hash_match: chainHashValid ? "true" : "false",
+            }
+          : { chain_hash_recomputed: "skipped (no content_bytes stored)" }),
       },
     };
   }
 
   /**
    * Step 2: Verify Ed25519 signature.
-   * The evidence collector signs chain_hash bytes with Ed25519.
+   *
+   * The evidence collector signs the protobuf content bytes (bundle with
+   * chain/signature metadata fields zeroed) using Ed25519.  This matches the
+   * verification semantics of the Rust `interdict-verify` tool.
+   *
+   * If content_bytes are not available (pre-migration bundles), the signature
+   * check is skipped with an explicit explanation rather than producing a
+   * false failure.
    */
   private async verifySignature(
     bundle: EvidenceBundleRow
   ): Promise<VerificationStep> {
+    // content_bytes are required for correct signature verification
+    if (!bundle.content_bytes || bundle.content_bytes.length === 0) {
+      return {
+        name: "Ed25519 Signature",
+        passed: null,
+        details: {
+          signing_key_id: bundle.signing_key_id,
+          status: "Skipped",
+          reason:
+            "Bundle was stored before content_bytes column was added. " +
+            "Signature verification requires content_bytes to reconstruct the " +
+            "signed payload. Use the `interdict-verify` CLI for offline verification.",
+        },
+      };
+    }
+
     // Look up signing key in Postgres
     const keys = await this.db
       .select()
@@ -375,24 +494,47 @@ export class EvidenceVerificationService {
     try {
       // Decode hex values
       const signatureBytes = hexToBytes(bundle.signature);
-      const messageBytes = hexToBytes(bundle.chain_hash);
+      const contentBytes = hexToBytes(bundle.content_bytes);
       const publicKeyBytes = hexToBytes(publicKeyHex);
+
+      // Validate expected sizes
+      if (publicKeyBytes.length !== 32) {
+        return {
+          name: "Ed25519 Signature",
+          passed: false,
+          details: {
+            signing_key_id: bundle.signing_key_id,
+            error: `Public key must be 32 bytes, got ${publicKeyBytes.length}`,
+          },
+        };
+      }
+      if (signatureBytes.length !== 64) {
+        return {
+          name: "Ed25519 Signature",
+          passed: false,
+          details: {
+            signing_key_id: bundle.signing_key_id,
+            error: `Signature must be 64 bytes, got ${signatureBytes.length}`,
+          },
+        };
+      }
 
       // Import public key as Ed25519 CryptoKey
       const cryptoKey = await crypto.subtle.importKey(
         "raw",
-        publicKeyBytes,
+        publicKeyBytes as unknown as BufferSource,
         { name: "Ed25519" },
         false,
         ["verify"]
       );
 
-      // Verify signature
+      // Verify signature over the protobuf content bytes (not chain_hash).
+      // This matches the collector's signing: Ed25519.sign(content_bytes).
       const valid = await crypto.subtle.verify(
         "Ed25519",
         cryptoKey,
-        signatureBytes,
-        messageBytes
+        signatureBytes as unknown as BufferSource,
+        contentBytes as unknown as BufferSource
       );
 
       return {
@@ -402,7 +544,7 @@ export class EvidenceVerificationService {
           signing_key_id: bundle.signing_key_id,
           public_key_hex: publicKeyHex,
           signature_hex: bundle.signature.substring(0, 32) + "...",
-          chain_hash: bundle.chain_hash,
+          content_bytes_length: String(contentBytes.length),
           valid: valid ? "true" : "false",
         },
       };

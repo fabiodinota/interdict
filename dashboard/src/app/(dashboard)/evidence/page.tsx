@@ -30,9 +30,9 @@ export default function EvidenceVerificationPage() {
           Evidence Verification
         </h1>
         <p className="text-muted-foreground mt-1">
-          Independently verify evidence bundle integrity through three
-          cryptographic checks: hash chain linkage, Ed25519 signature
-          validation, and Merkle proof inclusion.
+          Verify evidence bundle integrity through cryptographic checks:
+          hash chain recomputation, Ed25519 signature validation, and
+          Merkle anchor verification (via CLI).
         </p>
       </div>
 

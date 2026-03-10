@@ -62,6 +62,9 @@ export interface EvidenceBundleRow {
   model: string;
   policy_action: string;
   department: string;
+  /** Hex-encoded protobuf content bytes (bundle with chain/sig fields zeroed).
+   *  May be empty for bundles stored before the content_bytes column was added. */
+  content_bytes: string;
 }
 
 // ---------------------------------------------------------------------------

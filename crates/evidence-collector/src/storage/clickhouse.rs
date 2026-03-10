@@ -31,6 +31,10 @@ pub struct EvidenceRow {
     pub signing_key_id: String,
     pub dev_signed: u8,
     pub schema_version: u32,
+    /// Hex-encoded protobuf content bytes (bundle with chain/sig fields zeroed).
+    /// Enables the control plane to perform full signature and chain-hash
+    /// verification identical to the Rust `interdict-verify` tool.
+    pub content_bytes: String,
 }
 
 impl EvidenceRow {
@@ -149,6 +153,15 @@ async fn initialize_schema(client: &Client) -> Result<()> {
         .await
         .context("failed creating evidence_bundles table")?;
 
+    // Run schema migrations (safe to re-run; uses ADD COLUMN IF NOT EXISTS).
+    for ddl in migration_ddls() {
+        client
+            .query(&ddl)
+            .execute()
+            .await
+            .context("failed running clickhouse schema migration")?;
+    }
+
     for view in materialized_view_ddls() {
         client
             .query(&view)
@@ -184,13 +197,24 @@ sequence_number UInt64,
 signature String,
 signing_key_id String,
 dev_signed UInt8 DEFAULT 0,
-schema_version UInt32 DEFAULT 1
+schema_version UInt32 DEFAULT 1,
+content_bytes String DEFAULT ''
 ) ENGINE = MergeTree
 PARTITION BY toYYYYMMDD(event_date)
 ORDER BY (kernel_id, sequence_number)
 TTL event_date + INTERVAL 7 YEAR DELETE
 SETTINGS index_granularity = 8192"
         .to_string()
+}
+
+/// Returns DDL statements to add columns introduced after the initial schema.
+/// These use ALTER TABLE ... ADD COLUMN IF NOT EXISTS so they are safe to run
+/// on already-upgraded tables.
+pub fn migration_ddls() -> Vec<String> {
+    vec![
+        "ALTER TABLE evidence_bundles ADD COLUMN IF NOT EXISTS content_bytes String DEFAULT ''"
+            .to_string(),
+    ]
 }
 
 pub fn materialized_view_ddls() -> [String; 3] {
@@ -236,6 +260,7 @@ mod tests {
             signing_key_id: "key-1".to_string(),
             dev_signed: 1,
             schema_version: 1,
+            content_bytes: "deadbeef".to_string(),
         };
 
         let encoded = serde_json::to_string(&row).expect("serialize row");
@@ -250,5 +275,6 @@ mod tests {
         assert!(ddl.contains("PARTITION BY toYYYYMMDD(event_date)"));
         assert!(ddl.contains("TTL event_date + INTERVAL 7 YEAR DELETE"));
         assert!(ddl.contains("ORDER BY (kernel_id, sequence_number)"));
+        assert!(ddl.contains("content_bytes String DEFAULT ''"));
     }
 }

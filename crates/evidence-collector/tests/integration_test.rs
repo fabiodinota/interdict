@@ -382,6 +382,7 @@ fn test_clickhouse_row_serialization() {
         signing_key_id: "key-1".to_string(),
         dev_signed: 1,
         schema_version: 1,
+        content_bytes: "cafebabe".to_string(),
     };
 
     // Serialize to JSON (the format ClickHouse crate uses for row insertion).

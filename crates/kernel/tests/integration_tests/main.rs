@@ -12,6 +12,7 @@
 
 mod helpers;
 
+mod adversarial;
 mod allowlist;
 mod backpressure;
 mod connect_tunnel;
