@@ -41,13 +41,11 @@ const API_KEY_PREFIX = "ik_live_";
  */
 export const authPlugin = new Elysia({ name: "auth" })
   .macro("auth", (options?: string[] | boolean) => ({
-    async resolve({ headers, store, status }: {
-      headers: Record<string, string | undefined>;
-      store: Record<string, unknown>;
-      status: (code: number, body: unknown) => { code: number; body: unknown };
-    }) {
+    async resolve(ctx: any) {
+      const { headers, store, status } = ctx;
+
       // 1. Extract Bearer token from Authorization header
-      const authHeader = headers["authorization"];
+      const authHeader = (headers as Record<string, string | undefined>)["authorization"];
       if (!authHeader?.startsWith("Bearer ")) {
         return status(401, {
           success: false,
@@ -61,7 +59,7 @@ export const authPlugin = new Elysia({ name: "auth" })
       const token = authHeader.slice(7);
 
       // 2. Dual-mode authentication: API key vs session token
-      const authService = createAuthService((store?.db ?? db) as Parameters<typeof createAuthService>[0]);
+      const authService = createAuthService(((store as any)?.db ?? db) as Parameters<typeof createAuthService>[0]);
       let user: AuthenticatedUser | null = null;
 
       if (token.startsWith(API_KEY_PREFIX)) {

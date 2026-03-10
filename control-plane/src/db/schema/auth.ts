@@ -107,13 +107,16 @@ export const sessions = pgTable(
  * Short-lived one-time codes used during SAML callback handoff.
  * The ACS handler issues a code (60s TTL, single-use) instead of putting
  * the raw session token in the redirect URL. The dashboard exchanges the
- * code for the session token via a backchannel POST.
+ * code for a newly minted session token via a backchannel POST.
+ *
+ * SECURITY (Phase 17): Raw session tokens are NEVER stored in this table.
+ * Only the userId is persisted; the session is created on-the-fly during
+ * the atomic code exchange, so no bearer credential sits in Postgres.
  */
 export const samlHandoffCodes = pgTable(
   "saml_handoff_codes",
   {
     code: varchar("code", { length: 64 }).primaryKey(), // 32 random bytes hex
-    sessionToken: varchar("session_token", { length: 128 }).notNull(), // raw token (shown to dashboard once)
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

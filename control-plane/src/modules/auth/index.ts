@@ -35,7 +35,15 @@ import {
 import { samlEnabled } from "./saml/config";
 import { createSamlRoutes } from "./saml/handlers";
 
-/** Typed context for auth module route handlers (injected by authPlugin + derive). */
+/**
+ * Auth route handler context.
+ *
+ * Elysia macro-injected properties (like `user` from authPlugin) are not
+ * visible to tsc via the inferred context type.  We cast handler params to
+ * this interface so business logic gets full type safety while keeping tsc
+ * happy.  The cast is safe because all routes using `{ auth: true }` are
+ * guaranteed to have `user` injected by the resolve macro.
+ */
 interface AuthCtx {
   user: AuthenticatedUser;
   authService: AuthService;
@@ -58,7 +66,8 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .get(
     "/me",
-    async (ctx: AuthCtx) => {
+    async (rawCtx) => {
+      const ctx = rawCtx as unknown as AuthCtx;
       const profile = await ctx.authService.whoAmI(ctx.user.id);
       return apiResponse(profile);
     },
@@ -70,7 +79,8 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .post(
     "/keys",
-    async (ctx: AuthCtx) => {
+    async (rawCtx) => {
+      const ctx = rawCtx as unknown as AuthCtx;
       const result = await ctx.authService.createApiKey(
         ctx.user.id,
         ctx.body.label as string | undefined
@@ -95,7 +105,8 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .get(
     "/keys",
-    async (ctx: AuthCtx) => {
+    async (rawCtx) => {
+      const ctx = rawCtx as unknown as AuthCtx;
       const pageSize = ctx.query.page_size
         ? Number(ctx.query.page_size)
         : undefined;
@@ -120,7 +131,8 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .delete(
     "/keys/:keyId",
-    async (ctx: AuthCtx) => {
+    async (rawCtx) => {
+      const ctx = rawCtx as unknown as AuthCtx;
       await ctx.authService.revokeApiKey(
         ctx.params.keyId,
         ctx.user.id,
@@ -140,7 +152,8 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .post(
     "/logout",
-    async (ctx: AuthCtx) => {
+    async (rawCtx) => {
+      const ctx = rawCtx as unknown as AuthCtx;
       const authHeader = ctx.headers["authorization"];
       const rawToken = authHeader?.startsWith("Bearer ")
         ? authHeader.slice(7)
@@ -160,7 +173,8 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   .post(
     "/saml/exchange-code",
-    async (ctx: AuthCtx) => {
+    async (rawCtx) => {
+      const ctx = rawCtx as unknown as AuthCtx;
       const code = ctx.body.code as string;
       const sessionToken = await ctx.authService.exchangeSamlHandoffCode(code);
       if (!sessionToken) {

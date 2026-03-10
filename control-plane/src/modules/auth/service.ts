@@ -129,7 +129,7 @@ export interface AuthService {
   authenticateBySessionToken(token: string): Promise<AuthenticatedUser | null>;
   createSession(userId: string): Promise<string>;
   revokeSession(rawToken: string): Promise<void>;
-  createSamlHandoffCode(sessionToken: string, userId: string): Promise<string>;
+  createSamlHandoffCode(userId: string): Promise<string>;
   exchangeSamlHandoffCode(code: string): Promise<string | null>;
   findOrCreateSamlUser(
     email: string,
@@ -434,24 +434,29 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
       await db.delete(sessions).where(eq(sessions.tokenHash, tokenHash));
     },
 
-    async createSamlHandoffCode(
-      sessionToken: string,
-      userId: string
-    ): Promise<string> {
+    /**
+     * Create a short-lived one-time handoff code for SAML callback.
+     * SECURITY (Phase 17): No raw session token is stored. Only the userId
+     * is persisted; the session is minted on-the-fly during exchange.
+     */
+    async createSamlHandoffCode(userId: string): Promise<string> {
       const code = randomBytes(32).toString("hex"); // 64 hex chars, 256 bits
       const expiresAt = new Date(Date.now() + 60_000); // 60s TTL
       await db.insert(samlHandoffCodes).values({
         code,
-        sessionToken,
         userId,
         expiresAt,
       });
       return code;
     },
 
+    /**
+     * Exchange a one-time handoff code for a fresh session token.
+     * SECURITY (Phase 17): The session is created on-the-fly here so the
+     * raw token never sits in Postgres between ACS and exchange.
+     * Atomic UPDATE...RETURNING prevents TOCTOU race (NEW-TOCTOU).
+     */
     async exchangeSamlHandoffCode(code: string): Promise<string | null> {
-      // Atomic UPDATE...RETURNING prevents TOCTOU race where two concurrent
-      // requests both pass the SELECT check before either UPDATE runs (NEW-TOCTOU).
       const [row] = await db
         .update(samlHandoffCodes)
         .set({ used: true })
@@ -462,8 +467,23 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
             gt(samlHandoffCodes.expiresAt, new Date())
           )
         )
-        .returning({ sessionToken: samlHandoffCodes.sessionToken });
-      return row?.sessionToken ?? null;
+        .returning({ userId: samlHandoffCodes.userId });
+
+      if (!row) return null;
+
+      // Mint a fresh session — raw token only exists in memory and is
+      // returned to the caller. Only the SHA-256 hash is persisted.
+      const rawToken = randomBytes(64).toString("hex");
+      const tokenHash = hashSessionToken(rawToken);
+      const sessionExpiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8h
+
+      await db.insert(sessions).values({
+        tokenHash,
+        userId: row.userId,
+        expiresAt: sessionExpiresAt,
+      });
+
+      return rawToken;
     },
 
     /**

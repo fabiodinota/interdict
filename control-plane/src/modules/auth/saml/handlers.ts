@@ -105,16 +105,12 @@ export function createSamlRoutes() {
     // -----------------------------------------------------------------------
     // POST /acs -- Assertion Consumer Service
     // -----------------------------------------------------------------------
-    .post("/acs", async ({
-      body,
-      store,
-      redirect,
-    }: {
-      body: Record<string, unknown>;
-      store: { db?: typeof pgDb };
-      cookie: Record<string, { value: string }>;
-      redirect: (url: string) => Response;
-    }) => {
+    .post("/acs", async (rawCtx) => {
+      const { body, store, redirect } = rawCtx as {
+        body: Record<string, unknown>;
+        store: { db?: typeof pgDb };
+        redirect: (url: string) => Response;
+      };
       try {
         // Parse and validate the SAML response
         const parseResult = await spRef.parseLoginResponse(idpRef, "post", {
@@ -140,14 +136,10 @@ export function createSamlRoutes() {
           roleHint
         );
 
-        const sessionToken = await authService.createSession(user.id);
-
-        // CRIT-002: issue a short-lived (60s) one-time code instead of
-        // putting the raw session token in the redirect URL.
-        const code = await authService.createSamlHandoffCode(
-          sessionToken,
-          user.id
-        );
+        // CRIT-002 + Phase 17: issue a short-lived (60s) one-time code.
+        // No session is created here — it is minted on-the-fly during the
+        // backchannel code exchange so no raw token ever sits in Postgres.
+        const code = await authService.createSamlHandoffCode(user.id);
         const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?code=${code}`;
         return redirect(callbackUrl);
       } catch (err: unknown) {
@@ -160,10 +152,12 @@ export function createSamlRoutes() {
     // -----------------------------------------------------------------------
     // GET /slo -- Single Logout
     // -----------------------------------------------------------------------
-    .get("/slo", async ({ cookie, redirect }: {
-      cookie: Record<string, { set: (opts: Record<string, unknown>) => void }>;
-      redirect: (url: string) => Response;
-    }) => {
+    .get("/slo", async (rawCtx) => {
+      const { cookie, redirect } = rawCtx as {
+        cookie: Record<string, { set: (opts: Record<string, unknown>) => void }>;
+        redirect: (url: string) => Response;
+      };
+
       // Clear session cookie
       cookie[SESSION_COOKIE_NAME].set({
         value: "",
@@ -180,7 +174,7 @@ export function createSamlRoutes() {
         idpMeta?.getSingleLogoutService?.("redirect") ||
         null;
 
-      if (sloUrl) {
+      if (sloUrl && typeof sloUrl === "string") {
         return redirect(sloUrl);
       }
 

@@ -56,7 +56,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
         .where(eq(frameworkActivations.isActive, true)),
     ]);
 
-    const policyCountMap = new Map(
+    const policyCountMap = new Map<string, { policyCount: number; activePolicyCount: number }>(
       allPolicyCounts.map((r: any) => [
         r.frameworkId,
         { policyCount: Number(r.policyCount), activePolicyCount: Number(r.activePolicyCount) },

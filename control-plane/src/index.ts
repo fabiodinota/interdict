@@ -50,38 +50,46 @@ const app = new Elysia()
   .decorate("db", db)
   .decorate("clickhouse", clickhouse)
   .onError(({ error, set }) => {
+    // Safely extract message — ElysiaCustomStatusResponse may lack .message
+    const errMessage =
+      error instanceof Error
+        ? error.message
+        : "message" in error
+          ? String((error as { message: unknown }).message)
+          : "Unknown error";
+
     // Map custom error classes to HTTP status codes
     if ("statusCode" in error && typeof error.statusCode === "number") {
       const status = error.statusCode as number;
       set.status = status;
       const errCode = "code" in error ? String(error.code) : "INTERNAL_ERROR";
-      console.error("[error]", { code: errCode, status, message: error.message });
+      console.error("[error]", { code: errCode, status, message: errMessage });
       return {
         success: false,
         error: {
           code: errCode,
           // LOW-010: never leak internal details for 5xx responses
-          message: status >= 500 ? "Internal server error" : error.message,
+          message: status >= 500 ? "Internal server error" : errMessage,
           details: status < 500 && "details" in error ? error.details : undefined,
         },
       };
     }
 
     // Elysia validation errors
-    if (error.message?.includes("VALIDATION")) {
+    if (errMessage.includes("VALIDATION")) {
       set.status = 400;
       return {
         success: false,
         error: {
           code: "VALIDATION_ERROR",
-          message: error.message,
+          message: errMessage,
         },
       };
     }
 
     // Unhandled errors — log internally, return opaque message
     const errCode = "code" in error ? String((error as { code: unknown }).code) : "UNKNOWN";
-    console.error("[error]", { code: errCode, status: 500, message: error.message });
+    console.error("[error]", { code: errCode, status: 500, message: errMessage });
     set.status = 500;
     return {
       success: false,
@@ -135,9 +143,10 @@ const shutdown = async (signal: string) => {
   console.log(`[control-plane] Received ${signal}, shutting down...`);
   try {
     await stopDistributionServer(grpcServer);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error(
-      `[control-plane] Error stopping gRPC server: ${err.message}`
+      `[control-plane] Error stopping gRPC server: ${msg}`
     );
   }
   process.exit(0);

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 function highlightRego(source: string): React.ReactNode[] {
   const lines = source.split("\n");
   return lines.map((line, i) => {
-    let highlighted = line;
+    const highlighted = line;
 
     // Comments
     if (highlighted.trimStart().startsWith("#")) {
@@ -24,7 +24,7 @@ function highlightRego(source: string): React.ReactNode[] {
 
     // Simple keyword/string highlighting with spans
     const parts: React.ReactNode[] = [];
-    let remaining = highlighted;
+    const remaining = highlighted;
     let partIdx = 0;
 
     // Match keywords, strings, numbers
