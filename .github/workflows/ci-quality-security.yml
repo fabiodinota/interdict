@@ -111,6 +111,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Phase 17: Dashboard build + lint gate
+  # Phase 22: Dashboard test gate
   # ---------------------------------------------------------------------------
   dashboard:
     name: dashboard
@@ -134,6 +135,9 @@ jobs:
 
       - name: Lint
         run: npx eslint
+
+      - name: Tests
+        run: npm test
 
       - name: Build
         run: npm run build

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -97,19 +97,6 @@ function QuickVerifyButton({ record }: { record: AuditRecord }) {
       />
     </>
   );
-}
-
-function actionBadgeVariant(action: string) {
-  switch (action) {
-    case "allow":
-      return "default" as const;
-    case "block":
-      return "destructive" as const;
-    case "redact":
-      return "secondary" as const;
-    default:
-      return "outline" as const;
-  }
 }
 
 function actionBadgeClass(action: string) {

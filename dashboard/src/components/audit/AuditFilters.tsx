@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { format, subDays, startOfQuarter, startOfYear } from "date-fns";
+import { useRouter } from "next/navigation";
+import { format, subDays } from "date-fns";
 import { CalendarIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,6 @@ const DATE_PRESETS = [
 
 export function AuditFilters({ filters, onFiltersChange }: AuditFiltersProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { data: vendorOptions } = useVendorOptions();
 
   const [localDepartment, setLocalDepartment] = useState(filters.department ?? "");

@@ -107,7 +107,7 @@ async function proxyRequest(
       status: res.status,
       headers: responseHeaders,
     });
-  } catch (err) {
+  } catch {
     // JSON parse failures are now scoped only to actual JSON responses
     return NextResponse.json(
       { success: false, error: { message: "Proxy request failed" } },

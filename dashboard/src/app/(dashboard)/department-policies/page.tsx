@@ -33,7 +33,7 @@ export default function DepartmentPoliciesPage() {
     error,
   } = useEffectivePolicies(activeDepartmentId);
 
-  const policies = effectiveData?.data ?? [];
+  const policies = useMemo(() => effectiveData?.data ?? [], [effectiveData]);
 
   // Summary stats
   const stats = useMemo(() => {

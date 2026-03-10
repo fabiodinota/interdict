@@ -227,6 +227,7 @@ export function BatchVerifyTable({
         cell: (info) => overallBadge(info.row.original.bundle_id),
       }),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- toggleAll and overallBadge are stable within the same render cycle
     [selectedIds, bundles, verificationResults]
   );
 
