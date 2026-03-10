@@ -22,6 +22,7 @@ import {
   apiResponse,
   paginatedResponse,
 } from "../../shared/utilities";
+import type { AppStore } from "../../shared/types";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
@@ -32,7 +33,7 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   // Derive AuditService from decorated db and clickhouse
   // ---------------------------------------------------------------------------
   .derive(({ store }) => {
-    const s = store as { db: any; clickhouse: any };
+    const s = store as unknown as Partial<AppStore>;
     return {
       auditService: new AuditService(s.clickhouse ?? chClient, s.db ?? pgDb),
     };

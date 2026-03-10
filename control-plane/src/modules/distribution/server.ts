@@ -24,6 +24,7 @@ import {
   type PolicyUpdateMessage,
   type PolicyEntryMessage,
 } from "./tracker";
+import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // Proto Loading
@@ -101,7 +102,7 @@ function scopeMatchesKernel(
  * default to org-wide (backward compatible).
  */
 export async function buildFullSnapshot(
-  db: any,
+  db: AppDb,
   orgId: string,
   deptId: string,
   teamId: string
@@ -144,8 +145,8 @@ export async function buildFullSnapshot(
     );
 
   // Bulk-load scope assignments for all active policies
-  const policyIds = activePolicies.map((p: any) => p.policyId as string);
-  const scopeRows: any[] = policyIds.length > 0
+  const policyIds = activePolicies.map((p) => p.policyId as string);
+  const scopeRows = policyIds.length > 0
     ? await db
         .select()
         .from(policyScopeAssignments)
@@ -244,7 +245,7 @@ export async function buildFullSnapshot(
  * keeps the stream open for future delta pushes. Stream stays alive until
  * the client disconnects or an error occurs.
  */
-function createSubscribeHandler(db: any) {
+function createSubscribeHandler(db: AppDb) {
   return (call: grpc.ServerWritableStream<any, any>) => {
     const request = call.request;
     const kernelId: string = request.kernel_id || "";
@@ -352,7 +353,7 @@ function createAcknowledgeHandler() {
  * Serves the PolicyDistribution service with Subscribe and Acknowledge RPCs.
  */
 export function startDistributionServer(
-  db: any,
+  db: AppDb,
   grpcPort: number,
   maxMessageSize: number
 ): grpc.Server {

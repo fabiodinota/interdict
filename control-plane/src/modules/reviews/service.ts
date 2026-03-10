@@ -25,6 +25,7 @@ import {
   ConflictError,
   ValidationError,
 } from "../../shared/utilities";
+import type { AppDb } from "../../shared/types";
 import {
   ALLOWED_RESOLUTIONS,
   type ReviewItemResponse,
@@ -43,10 +44,10 @@ const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
 export class ReviewService {
   private clickhouse: ClickHouseClient;
-  private db: any;
+  private db: AppDb;
   private reconcileTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(clickhouse: ClickHouseClient, db: any) {
+  constructor(clickhouse: ClickHouseClient, db: AppDb) {
     this.clickhouse = clickhouse;
     this.db = db;
   }
@@ -144,7 +145,7 @@ export class ReviewService {
     const limit = Math.min(pageSize ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
     // Build WHERE conditions
-    const conditions: any[] = [];
+    const conditions: ReturnType<typeof eq>[] = [];
     if (statusFilter === "pending") {
       conditions.push(eq(reviewItems.status, "pending"));
     } else if (statusFilter === "claimed") {
@@ -226,7 +227,7 @@ export class ReviewService {
     notes: string
   ): Promise<ReviewItemResponse | null> {
     // Validate resolution category
-    if (!ALLOWED_RESOLUTIONS.includes(resolution as any)) {
+    if (!(ALLOWED_RESOLUTIONS as readonly string[]).includes(resolution)) {
       throw new ValidationError(
         `Invalid resolution. Must be one of: ${ALLOWED_RESOLUTIONS.join(", ")}`
       );
@@ -371,7 +372,7 @@ export class ReviewService {
       .where(inArray(reviewItems.bundleId, bundleIds));
 
     const existingBundleIds = new Set(
-      existingRows.map((r: { bundleId: string }) => r.bundleId)
+      existingRows.map((r) => r.bundleId)
     );
 
     // Create review items for new escalations (idempotent via UNIQUE constraint)
@@ -436,11 +437,11 @@ export class ReviewService {
    * ClickHouse is read-model only — enrichment failure does not break the queue.
    */
   private async enrichWithBundleDetails(
-    rows: any[]
+    rows: Array<typeof reviewItems.$inferSelect>
   ): Promise<ReviewItemResponse[]> {
     if (rows.length === 0) return [];
 
-    const bundleIds = rows.map((r: any) => r.bundleId);
+    const bundleIds = rows.map((r) => r.bundleId);
 
     // Query ClickHouse for bundle details
     let bundleMap = new Map<string, EscalatedBundleRow>();
@@ -474,7 +475,7 @@ export class ReviewService {
       console.error("[reviews] ClickHouse enrichment failed (read-model only, queue unaffected):", message);
     }
 
-    return rows.map((row: any) => {
+    return rows.map((row) => {
       const bundle = bundleMap.get(row.bundleId);
       let policyRules: unknown[] = [];
       try {
@@ -488,13 +489,13 @@ export class ReviewService {
       return {
         id: row.id,
         bundleId: row.bundleId,
-        escalatedAt: row.escalatedAt?.toISOString?.() ?? row.escalatedAt,
-        slaDeadline: row.slaDeadline?.toISOString?.() ?? row.slaDeadline,
+        escalatedAt: row.escalatedAt?.toISOString() ?? null,
+        slaDeadline: row.slaDeadline?.toISOString() ?? null,
         status: row.status,
         claimedBy: row.claimedBy,
-        claimedAt: row.claimedAt?.toISOString?.() ?? row.claimedAt,
+        claimedAt: row.claimedAt?.toISOString() ?? null,
         resolvedBy: row.resolvedBy,
-        resolvedAt: row.resolvedAt?.toISOString?.() ?? row.resolvedAt,
+        resolvedAt: row.resolvedAt instanceof Date ? row.resolvedAt.toISOString() : (row.resolvedAt ?? null),
         resolution: row.resolution,
         resolutionNotes: row.resolutionNotes,
         escalationSource: row.escalationSource ?? null,

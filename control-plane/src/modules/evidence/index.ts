@@ -14,6 +14,7 @@ import { Elysia } from "elysia";
 import { EvidenceVerificationService } from "./service";
 import { VerifyBundlesBody, BundlesQueryParams } from "./model";
 import { apiResponse, paginatedResponse } from "../../shared/utilities";
+import type { AppStore } from "../../shared/types";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
@@ -24,7 +25,7 @@ export const evidenceModule = new Elysia({ prefix: "/api/v1/evidence" })
   // Derive EvidenceVerificationService from decorated db and clickhouse
   // ---------------------------------------------------------------------------
   .derive(({ store }) => {
-    const s = store as { db: any; clickhouse: any };
+    const s = store as unknown as Partial<AppStore>;
     return {
       evidenceService: new EvidenceVerificationService(s.clickhouse ?? chClient, s.db ?? pgDb),
     };

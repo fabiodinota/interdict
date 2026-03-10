@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { policies, policyVersions, policyScopeAssignments } from "../../db/schema/policies";
 import { broadcastUpdate } from "../distribution/tracker";
+import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -164,7 +165,7 @@ export async function compilePolicy(
  * On startup, resets any versions stuck in 'compiling' status (stale from crash).
  */
 export function startCompilationWorker(
-  db: any,
+  db: AppDb,
   wasmStorageDir: string,
   pollIntervalMs = 2000
 ): { stop: () => void } {

@@ -18,12 +18,19 @@ import {
   apiResponse,
   NotFoundError,
 } from "../../shared/utilities";
+import type { AppDb } from "../../shared/types";
 import {
   ActivateFrameworkBody,
   TogglePolicyBody,
 } from "./model";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
+
+/** Extract the Drizzle db from the Elysia store, falling back to the global singleton. */
+function resolveDb(store: unknown): AppDb {
+  const s = store as Record<string, unknown>;
+  return (s.db as AppDb) ?? pgDb;
+}
 
 /**
  * Create a Drizzle-backed regulatory service.
@@ -37,7 +44,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    * GET /frameworks - List all frameworks with activation status (Read-Only Auditor+)
    */
   .get("/frameworks", async (ctx: any) => {
-    const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
+    const db = resolveDb(ctx.store);
 
     // Bulk queries — exactly 3 DB round-trips regardless of framework count (HIGH-S1)
     const [allFrameworks, allPolicyCounts, allActivations] = await Promise.all([
@@ -57,14 +64,14 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
     ]);
 
     const policyCountMap = new Map<string, { policyCount: number; activePolicyCount: number }>(
-      allPolicyCounts.map((r: any) => [
+      allPolicyCounts.map((r) => [
         r.frameworkId,
         { policyCount: Number(r.policyCount), activePolicyCount: Number(r.activePolicyCount) },
       ])
     );
-    const activeSet = new Set(allActivations.map((r: any) => r.frameworkId));
+    const activeSet = new Set(allActivations.map((r) => r.frameworkId));
 
-    const result = allFrameworks.map((fw: any) => {
+    const result = allFrameworks.map((fw) => {
       const counts = policyCountMap.get(fw.id) ?? { policyCount: 0, activePolicyCount: 0 };
       return {
         id: fw.id,
@@ -89,7 +96,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .get(
     "/frameworks/:slug",
     async (ctx: any) => {
-      const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
+      const db = resolveDb(ctx.store);
       const params = ctx.params;
 
       const fwRows = await db
@@ -134,7 +141,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
 
       // Enrich with compilation status
       const enrichedPolicies = await Promise.all(
-        fpRows.map(async (fp: any) => {
+        fpRows.map(async (fp) => {
           let compilationStatus: string | null = null;
           if (fp.currentVersionId) {
             const versionRows = await db
@@ -185,7 +192,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .post(
     "/frameworks/:slug/activate",
     async (ctx: any) => {
-      const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
+      const db = resolveDb(ctx.store);
       const params = ctx.params;
       const body = ctx.body;
 
@@ -237,7 +244,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .post(
     "/frameworks/:slug/deactivate",
     async (ctx: any) => {
-      const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
+      const db = resolveDb(ctx.store);
       const params = ctx.params;
 
       const fwRows = await db
@@ -290,7 +297,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .put(
     "/frameworks/:slug/policies/:policyId/toggle",
     async (ctx: any) => {
-      const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
+      const db = resolveDb(ctx.store);
       const params = ctx.params;
       const body = ctx.body;
 
@@ -347,7 +354,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    * GET /active-policies - Get all currently active policy IDs (additive merge)
    */
   .get("/active-policies", async (ctx: any) => {
-    const db = ((ctx.store as Record<string, unknown>).db as any) ?? pgDb;
+    const db = resolveDb(ctx.store);
 
     // 1. Get all directly active custom policies (not in any framework)
     const allActivePolicies = await db
@@ -360,13 +367,13 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
       .from(frameworkPolicies);
 
     const frameworkPolicyIdSet = new Set(
-      allFrameworkPolicyIds.map((fp: any) => fp.policyId)
+      allFrameworkPolicyIds.map((fp) => fp.policyId)
     );
 
     // Custom policies = active policies NOT in any framework
     const customActivePolicyIds = allActivePolicies
-      .filter((p: any) => !frameworkPolicyIdSet.has(p.id))
-      .map((p: any) => p.id);
+      .filter((p) => !frameworkPolicyIdSet.has(p.id))
+      .map((p) => p.id);
 
     // 2. Get active framework policies
     const activeActivations = await db
@@ -375,7 +382,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
       .where(eq(frameworkActivations.isActive, true));
 
     const activeFrameworkIds = new Set(
-      activeActivations.map((a: any) => a.frameworkId)
+      activeActivations.map((a) => a.frameworkId)
     );
 
     const allFp = await db
@@ -388,10 +395,10 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
 
     const frameworkActivePolicyIds = allFp
       .filter(
-        (fp: any) =>
+        (fp) =>
           activeFrameworkIds.has(fp.frameworkId) && fp.isRequired
       )
-      .map((fp: any) => fp.policyId);
+      .map((fp) => fp.policyId);
 
     // Merge (deduplicate)
     const mergedIds = [

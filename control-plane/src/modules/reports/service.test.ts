@@ -9,6 +9,7 @@
 
 import { describe, it, expect } from "bun:test";
 import { ReportService, type ReportData, type ReportWarning } from "./service";
+import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // Mock ClickHouse client that always fails
@@ -32,11 +33,11 @@ const emptyClickhouse: any = {
 // Mock DB that always fails
 // ---------------------------------------------------------------------------
 
-const failingDb: any = new Proxy({}, {
+const failingDb = new Proxy({}, {
   get() {
     return () => { throw new Error("Postgres connection refused"); };
   },
-});
+}) as unknown as AppDb;
 
 // ---------------------------------------------------------------------------
 // Mock DB that returns empty arrays for any chained query
@@ -89,7 +90,7 @@ function createEmptyDb() {
 describe("ReportService", () => {
   describe("failure surfacing (Phase 18)", () => {
     it("surfaces ClickHouse failures as warnings, not silent zeros", async () => {
-      const service = new ReportService(failingClickhouse, createEmptyDb());
+      const service = new ReportService(failingClickhouse, createEmptyDb() as unknown as AppDb);
       const report = await service.getReportData("2026-01-01", "2026-01-31");
 
       // Should have warnings for the 5 CH sections

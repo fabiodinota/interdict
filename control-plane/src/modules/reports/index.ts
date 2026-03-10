@@ -10,6 +10,7 @@ import { ReportService } from "./service";
 import { generatePDF } from "./pdf-generator";
 import { generateCSV } from "./csv-generator";
 import { ValidationError } from "../../shared/utilities";
+import type { AppStore } from "../../shared/types";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
@@ -47,7 +48,7 @@ export const reportsModule = new Elysia({ prefix: "/api/v1/reports" })
       }
 
       // Gather report data
-      const store = ctx.store as { db: any; clickhouse: any };
+      const store = ctx.store as unknown as Partial<AppStore>;
       const reportService = new ReportService(store.clickhouse ?? chClient, store.db ?? pgDb);
       const reportData = await reportService.getReportData(from_date, to_date);
 

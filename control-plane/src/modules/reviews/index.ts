@@ -22,6 +22,7 @@ import {
   ConflictError,
   NotFoundError,
 } from "../../shared/utilities";
+import type { AppStore } from "../../shared/types";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
@@ -32,7 +33,7 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
   // Derive ReviewService from decorated db and clickhouse
   // ---------------------------------------------------------------------------
   .derive(({ store }) => {
-    const s = store as { db: any; clickhouse: any };
+    const s = store as unknown as Partial<AppStore>;
     return {
       reviewService: new ReviewService(s.clickhouse ?? chClient, s.db ?? pgDb),
     };
@@ -42,7 +43,7 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
   // Start background reconciliation jobs on module init
   // ---------------------------------------------------------------------------
   .onStart(({ store }) => {
-    const s = store as { db: any; clickhouse: any };
+    const s = store as unknown as Partial<AppStore>;
     const service = new ReviewService(s.clickhouse ?? chClient, s.db ?? pgDb);
     service.startBackgroundJobs();
   })

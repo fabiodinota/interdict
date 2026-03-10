@@ -13,6 +13,7 @@
 
 import { describe, test, expect, beforeEach, mock } from "bun:test";
 import { ReviewService } from "./service";
+import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -85,7 +86,7 @@ describe("ReviewService", () => {
   beforeEach(() => {
     db = createMockDb();
     ch = createMockClickhouse();
-    service = new ReviewService(ch as any, db);
+    service = new ReviewService(ch as any, db as unknown as AppDb);
   });
 
   // -----------------------------------------------------------------------

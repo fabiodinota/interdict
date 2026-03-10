@@ -17,6 +17,7 @@ import {
   policies,
   policyVersions,
 } from "../../db/schema/index";
+import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -100,9 +101,9 @@ export interface ReportData {
 
 export class ReportService {
   private clickhouse: ClickHouseClient;
-  private db: any;
+  private db: AppDb;
 
-  constructor(clickhouse: ClickHouseClient, db: any) {
+  constructor(clickhouse: ClickHouseClient, db: AppDb) {
     this.clickhouse = clickhouse;
     this.db = db;
   }
