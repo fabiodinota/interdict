@@ -67,9 +67,18 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 - ✓ Kernel sidecar deployment (KEP-753) — v1.1
 - ✓ CA certificate trust scripts (macOS, Windows, Linux) — v1.1
 
-### Active
+### Active (v1.2 Trustworthiness & Hardening)
 
-(No requirements defined yet — use `/gsd:new-milestone` to start next milestone)
+- [x] Evidence verification is internally consistent across all verification surfaces (Phase 16)
+- [x] Auth bootstrap no longer persists raw bearer credentials (Phase 17)
+- [x] JS/TS correctness is enforced in CI (Phase 17)
+- [x] Reporting and policy-scope behavior are honest and complete (Phase 18)
+- [x] Evidence attribution and durability match audit expectations (Phase 19)
+- [x] Review workflow architecture has one source of truth (Phase 20)
+- [x] Core kernel and control-plane change hotspots have been reduced (Phase 21)
+- [x] Dashboard trust-sensitive workflows are automated and verified (Phase 22)
+- [x] Deployment artifacts and docs no longer overclaim production readiness (Phase 23)
+- [ ] Final product language matches what the platform can actually prove (Phase 24)
 
 ### Out of Scope
 
@@ -80,7 +89,7 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 - **LLM-based inline policy enforcement** — explicitly prohibited; non-deterministic
 - **Blockchain for auditability** — Merkle tree with S3 WORM achieves same guarantees at lower complexity
 - **Shadow AI / network-level interception** — deferred; v1 works as opt-in proxy
-- **Air-gapped deployment mode** — requires offline policy distribution; defer to hardening phase
+- **Air-gapped deployment mode** — OPA download isolated for offline replacement (Phase 23); full air-gapped not yet demonstrated end-to-end
 - **OIDC authentication** — SAML covers both pilot targets; OIDC is fast-follow
 - **SCIM user provisioning** — 80-user pilot = manual management acceptable
 - **Custom dashboard widgets** — ship fixed layout first
@@ -89,6 +98,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 - **Real-time WebSocket streaming dashboard** — polling with 30s refresh suffices
 
 ## Context
+
+**v1.2 in progress (2026-03-10).** 8 of 9 hardening phases complete. Evidence verification, auth, reporting, scope, evidence delivery, review workflow, maintainability, dashboard testing, and deployment artifacts all hardened. Phase 24 (final release gate) remaining.
 
 **v1.1 shipped 2026-03-04.** Full platform operational: Rust kernel + evidence pipeline + control plane API + Next.js dashboard + Docker Compose + Helm chart. ~61,000 LOC across Rust, TypeScript, and Helm. 16 phases, 52 plans across 2 milestones. 21/21 v1.1 requirements satisfied with 8 tech debt items tracked (none blocking).
 
@@ -128,4 +139,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | KEP-753 native sidecar pattern | Kubernetes-native lifecycle management | ✓ Good — initContainer with restartPolicy |
 
 ---
-*Last updated: 2026-03-04 after v1.1 milestone completion*
+*Last updated: 2026-03-10 after v1.2 Phase 23 completion*

@@ -3,13 +3,13 @@
 # Usage: docker build -f docker/dashboard/Dockerfile .
 
 # Stage 1: Install dependencies
-FROM oven/bun:1 AS deps
+FROM oven/bun:1.1 AS deps
 WORKDIR /app
 COPY dashboard/package.json dashboard/bun.lock ./
 RUN bun install --frozen-lockfile
 
 # Stage 2: Build
-FROM oven/bun:1 AS builder
+FROM oven/bun:1.1 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY dashboard/ .
@@ -28,9 +28,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
 
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+# Create non-root user (UID 1000 to match Helm securityContext)
+RUN groupadd -g 1000 interdict && \
+    useradd -u 1000 -g interdict -m -s /bin/false interdict
+
+COPY --from=builder --chown=interdict:interdict /app/.next/standalone ./
+COPY --from=builder --chown=interdict:interdict /app/.next/static ./.next/static
+COPY --from=builder --chown=interdict:interdict /app/public ./public
+
+USER interdict
 
 EXPOSE 3001
 

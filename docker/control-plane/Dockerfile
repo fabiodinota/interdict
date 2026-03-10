@@ -4,16 +4,33 @@
 # Build context: repository root (.)
 # Usage: docker build -f docker/control-plane/Dockerfile .
 
-FROM oven/bun:1-slim
+FROM oven/bun:1.1-slim AS base
+
+# ---------------------------------------------------------------------------
+# Stage 1: Download OPA binary (isolated for air-gapped cache replacement)
+# ---------------------------------------------------------------------------
+FROM base AS opa-fetch
+ARG OPA_VERSION=v1.4.2
+# Air-gapped builds: replace this stage by providing opa_linux_amd64_static
+# in the build context and using COPY instead of ADD.
+ADD https://github.com/open-policy-agent/opa/releases/download/${OPA_VERSION}/opa_linux_amd64_static /tmp/opa
+RUN chmod +x /tmp/opa
+
+# ---------------------------------------------------------------------------
+# Stage 2: Production image
+# ---------------------------------------------------------------------------
+FROM base
 
 # Install wget for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Download pinned OPA binary for policy compilation
-ARG OPA_VERSION=v1.4.2
-ADD https://github.com/open-policy-agent/opa/releases/download/${OPA_VERSION}/opa_linux_amd64_static /usr/local/bin/opa
-RUN chmod +x /usr/local/bin/opa
+# Copy OPA from the download stage
+COPY --from=opa-fetch /tmp/opa /usr/local/bin/opa
+
+# Create non-root user (UID 1000 to match Helm securityContext)
+RUN groupadd -g 1000 interdict && \
+    useradd -u 1000 -g interdict -m -s /bin/false interdict
 
 WORKDIR /app
 
@@ -35,7 +52,9 @@ COPY docker/control-plane/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Wasm policy storage directory
-RUN mkdir -p /app/data/wasm
+RUN mkdir -p /app/data/wasm && chown -R interdict:interdict /app
+
+USER interdict
 
 EXPOSE 3000 50052
 

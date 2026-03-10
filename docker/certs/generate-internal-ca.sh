@@ -118,7 +118,9 @@ fi
 # ---------------------------------------------------------------------------
 # 6. Set permissions
 # ---------------------------------------------------------------------------
-chmod 644 "${CERT_DIR}"/*.pem "${CERT_DIR}"/*-key.pem
+# Certificates are world-readable; private keys are owner-only
+chmod 644 "${CERT_DIR}"/*.pem
+chmod 600 "${CERT_DIR}"/*-key.pem
 
 echo "[cert-init] All certificates generated successfully."
 ls -la "${CERT_DIR}/"

@@ -2,13 +2,13 @@
 
 ## Overview
 
-Interdict.io is an AI governance kernel for regulated enterprises. v1.0 shipped the data plane and control plane API. v1.1 made it deployable and usable with identity, dashboard, and deployment packaging.
+Interdict.io is an AI governance kernel for regulated enterprises. v1.0 shipped the data plane and control plane API. v1.1 made it deployable and usable with identity, dashboard, and deployment packaging. v1.2 is a trustworthiness and hardening milestone focused on correctness, security, and honest deployment artifacts.
 
 ## Milestones
 
-- ✅ **v1.0 MVP** -- Phases 1-6.1 (shipped 2026-03-01)
-- ✅ **v1.1 Pilot Ready** -- Phases 7-15 (shipped 2026-03-04)
-- 🟡 **v1.2 Trustworthiness & Hardening** -- Phases 16-24 (planned 2026-03-10)
+- **v1.0 MVP** -- Phases 1-6.1 (shipped 2026-03-01)
+- **v1.1 Pilot Ready** -- Phases 7-15 (shipped 2026-03-04)
+- **v1.2 Trustworthiness & Hardening** -- Phases 16-24 (in progress, 8/9 phases complete)
 
 ## Phases
 
@@ -44,17 +44,17 @@ Full details archived in `milestones/v1.1-ROADMAP.md`
 
 </details>
 
-<details>
-<summary>v1.2 Trustworthiness & Hardening (Phases 16-24) -- PLANNED 2026-03-10</summary>
+<details open>
+<summary>v1.2 Trustworthiness & Hardening (Phases 16-24) -- IN PROGRESS</summary>
 
-- [ ] Phase 16: Evidence Verification Truth
-- [ ] Phase 17: Auth Secret Hardening and JS Gates
-- [ ] Phase 18: Reporting Integrity and Scope Truth
-- [ ] Phase 19: Identity Attribution and Durable Evidence Delivery
-- [ ] Phase 20: Review Workflow Consolidation
-- [ ] Phase 21: Kernel and Control Plane Maintainability
-- [ ] Phase 22: Dashboard Reliability and Operator Trust
-- [ ] Phase 23: Deployment Truth and Artifact Hardening
+- [x] Phase 16: Evidence Verification Truth -- completed 2026-03-10 (9bf2b24)
+- [x] Phase 17: Auth Secret Hardening and JS Gates -- completed 2026-03-10 (30bdf0b)
+- [x] Phase 18: Reporting Integrity and Scope Truth -- completed 2026-03-10 (c9e2ba5)
+- [x] Phase 19: Identity Attribution and Durable Evidence Delivery -- completed 2026-03-10 (0d190c3)
+- [x] Phase 20: Review Workflow Consolidation -- completed 2026-03-10 (bdd762c)
+- [x] Phase 21: Kernel and Control Plane Maintainability -- completed 2026-03-10 (770a0d3)
+- [x] Phase 22: Dashboard Reliability and Operator Trust -- completed 2026-03-10 (8caad88)
+- [x] Phase 23: Deployment Truth and Artifact Hardening -- completed 2026-03-10
 - [ ] Phase 24: Platform Hardening and Release Gate
 
 Full details in `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADMAP.md`
@@ -67,8 +67,8 @@ Full details in `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADM
 |-------|-----------|----------------|--------|-----------|
 | 1-6.1 | v1.0 | 28/28 | Complete | 2026-03-01 |
 | 7-15 | v1.1 | 24/24 | Complete | 2026-03-04 |
-| 16-24 | v1.2 | 0/0 | Planned | - |
+| 16-24 | v1.2 | 8/9 phases | In Progress | - |
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-10 after adding the v1.2 trustworthiness and hardening roadmap*
+*Last updated: 2026-03-10 -- Phase 23 complete, Phase 24 remaining*
