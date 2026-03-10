@@ -14,8 +14,9 @@
 
 use crate::config::Config;
 use crate::error::{ProxyBody, ProxyError};
-use crate::evidence::EvidenceBuffer;
+use crate::evidence::{DeliveryHealth, EvidenceBuffer};
 use crate::evidence::bundle::RawEvidenceEvent;
+use crate::evidence::identity::ActorIdentity;
 use crate::policy::content_inspection::ContentInspector;
 use crate::policy::hot_reload::PolicySetManager;
 use crate::policy::session::{self, ExchangeRecord, SessionStore};
@@ -72,6 +73,7 @@ pub async fn handle_connect(
     full_text_storage: bool,
     session_store: Option<Arc<SessionStore>>,
     session_id: Option<String>,
+    actor_identity: ActorIdentity,
 ) -> Result<Response<ProxyBody>, ProxyError> {
     // 1. Extract host and port from CONNECT authority
     let authority = req.uri().authority().ok_or(ProxyError::MissingAuthority)?;
@@ -111,13 +113,14 @@ pub async fn handle_connect(
                     &ctx,
                     &result,
                     enforcement_start.elapsed(),
+                    &actor_identity,
                 );
                 evidence_buffer.try_send(evidence_event);
 
                 // Session context tracking (Phase 6): record exchange
                 if let (Some(store), Some(sid)) = (&session_store, &session_id) {
                     // Ensure session exists
-                    store.get_or_create(sid, "anonymous", &host);
+                    store.get_or_create(sid, &actor_identity.actor_id, &host);
 
                     let exchange = ExchangeRecord {
                         request_hash: sha256_hex(ctx.content.as_deref().unwrap_or("")),
@@ -172,10 +175,10 @@ pub async fn handle_connect(
             Err(e) => {
                 let evidence_event = RawEvidenceEvent {
                     timestamp: chrono::Utc::now(),
-                    actor_identity: "anonymous".to_string(),
-                    department: "unknown".to_string(),
+                    actor_identity: actor_identity.actor_id.clone(),
+                    department: actor_identity.department.clone(),
                     vendor: host.clone(),
-                    model: "unknown".to_string(),
+                    model: actor_identity.model.clone(),
                     prompt_hash: sha256_hex(""),
                     response_hash: String::new(),
                     prompt_text: None,
@@ -411,6 +414,11 @@ pub struct ProxyService {
     /// Session context store for multi-turn conversation tracking (Phase 6).
     /// When present, session context is tracked per request.
     session_store: Option<Arc<SessionStore>>,
+    /// Evidence delivery health for fail-closed enforcement (Phase 19).
+    /// When `high_assurance` is true and delivery is unhealthy, requests are blocked.
+    delivery_health: Option<Arc<DeliveryHealth>>,
+    /// When true, the proxy refuses requests if evidence delivery is unhealthy.
+    high_assurance: bool,
 }
 
 impl ProxyService {
@@ -426,6 +434,8 @@ impl ProxyService {
             full_text_storage: false,
             policy_set_manager: None,
             session_store: None,
+            delivery_health: None,
+            high_assurance: false,
         }
     }
 
@@ -448,6 +458,8 @@ impl ProxyService {
             full_text_storage,
             policy_set_manager: None,
             session_store: None,
+            delivery_health: None,
+            high_assurance: false,
         }
     }
 
@@ -477,6 +489,8 @@ impl ProxyService {
             full_text_storage,
             policy_set_manager,
             session_store,
+            delivery_health: None,
+            high_assurance: false,
         }
     }
 
@@ -487,6 +501,14 @@ impl ProxyService {
     /// at the chunk level; structured JSON body parsing is Phase 6.
     pub fn with_content_inspector(mut self, inspector: Arc<ContentInspector>) -> Self {
         self.content_inspector = Some(inspector);
+        self
+    }
+
+    /// Enable high-assurance mode: block all requests when evidence
+    /// delivery is persistently failing (Phase 19 fail-closed invariant).
+    pub fn with_high_assurance(mut self, health: Arc<DeliveryHealth>) -> Self {
+        self.delivery_health = Some(health);
+        self.high_assurance = true;
         self
     }
 }
@@ -510,19 +532,50 @@ impl Service<Request<Incoming>> for ProxyService {
         let full_text_storage = self.full_text_storage;
         let policy_set_manager = self.policy_set_manager.clone();
         let session_store = self.session_store.clone();
+        let delivery_health = self.delivery_health.clone();
+        let high_assurance = self.high_assurance;
 
         Box::pin(async move {
+            // Phase 19: High-assurance fail-closed check.
+            // If evidence delivery has been persistently failing, refuse new
+            // requests to prevent unaudited AI usage.
+            if high_assurance {
+                if let Some(ref health) = delivery_health {
+                    if health.is_unhealthy() {
+                        tracing::error!(
+                            consecutive_failures = health.consecutive_failures.load(
+                                std::sync::atomic::Ordering::Relaxed
+                            ),
+                            "high-assurance mode: blocking request due to evidence delivery failure"
+                        );
+                        return Ok(Response::builder()
+                            .status(StatusCode::SERVICE_UNAVAILABLE)
+                            .header("content-type", "application/json")
+                            .body(full_body(
+                                serde_json::to_vec(&serde_json::json!({
+                                    "error": "evidence_delivery_unavailable",
+                                    "message": "Request blocked: evidence audit trail is unavailable (high-assurance mode)"
+                                }))
+                                .expect("JSON serialization should never fail"),
+                            ))
+                            .expect("Response builder with valid status should never fail"));
+                    }
+                }
+            }
+
+            // Phase 19: Extract actor identity from request headers.
+            let actor_identity = ActorIdentity::from_headers(req.headers());
+
             // Session context tracking (Phase 6): resolve session ID from headers
             // and record the exchange after pipeline evaluation.
             let session_id = if session_store.is_some() {
                 let headers = req.headers();
-                // user_id is "anonymous" until auth is wired (Phase 7)
                 let vendor = req
                     .uri()
                     .authority()
                     .map(|a| a.host().to_string())
                     .unwrap_or_default();
-                Some(session::resolve_session_id(headers, "anonymous", &vendor))
+                Some(session::resolve_session_id(headers, &actor_identity.actor_id, &vendor))
             } else {
                 None
             };
@@ -562,6 +615,7 @@ impl Service<Request<Incoming>> for ProxyService {
                     full_text_storage,
                     session_store,
                     session_id,
+                    actor_identity,
                 )
                 .await
                 {
@@ -601,6 +655,7 @@ fn build_evidence_event(
     request_context: &RequestContext,
     result: &crate::policy::PipelineResult,
     enforcement_latency: Duration,
+    identity: &ActorIdentity,
 ) -> RawEvidenceEvent {
     let prompt_text = if full_text_storage {
         request_context.content.clone()
@@ -617,10 +672,10 @@ fn build_evidence_event(
 
     RawEvidenceEvent {
         timestamp: chrono::Utc::now(),
-        actor_identity: "anonymous".to_string(),
-        department: "unknown".to_string(),
+        actor_identity: identity.actor_id.clone(),
+        department: identity.department.clone(),
         vendor: host.to_string(),
-        model: "unknown".to_string(),
+        model: identity.model.clone(),
         prompt_hash: sha256_hex(request_context.content.as_deref().unwrap_or("")),
         response_hash: String::new(),
         prompt_text,
@@ -868,7 +923,7 @@ mod tests {
     }
 
     #[test]
-    fn evidence_event_captures_pipeline_fields() {
+    fn evidence_event_captures_pipeline_fields_with_anonymous_identity() {
         let request_context = RequestContext {
             request_id: uuid::Uuid::new_v4(),
             vendor: "api.openai.com".to_string(),
@@ -899,15 +954,20 @@ mod tests {
             redaction_result: None,
         };
 
+        // Anonymous identity: no headers provided.
+        let identity = ActorIdentity::anonymous();
         let event = build_evidence_event(
             "api.openai.com",
             true,
             &request_context,
             &result,
             Duration::from_micros(700),
+            &identity,
         );
 
         assert_eq!(event.vendor, "api.openai.com");
+        assert_eq!(event.actor_identity, "anonymous");
+        assert_eq!(event.department, "unknown");
         assert_eq!(event.model, "unknown");
         assert_eq!(event.policy_action, "block");
         assert_eq!(event.policy_rules, vec!["policy:test".to_string()]);
@@ -915,5 +975,50 @@ mod tests {
         assert_eq!(event.response_hash, "");
         assert_eq!(event.token_count, 0);
         assert_eq!(event.enforcement_latency_us, 700);
+    }
+
+    #[test]
+    fn evidence_event_captures_real_identity() {
+        let request_context = RequestContext {
+            request_id: uuid::Uuid::new_v4(),
+            vendor: "api.openai.com".to_string(),
+            method: "CONNECT".to_string(),
+            path: "api.openai.com:443".to_string(),
+            content_type: None,
+            content: Some("hello".to_string()),
+            direction: Direction::Outbound,
+        };
+
+        let result = crate::policy::PipelineResult {
+            merged_verdict: MergedVerdict::merge(vec![]),
+            trace: crate::policy::verdict::VerdictTrace {
+                request_id: request_context.request_id,
+                merged_verdict: MergedVerdict::merge(vec![]),
+                layer1_results: vec![],
+                layer2_classification: None,
+                layer3_decision: None,
+                timestamp: chrono::Utc::now(),
+            },
+            redaction_result: None,
+        };
+
+        let identity = ActorIdentity {
+            actor_id: "alice@corp.example".to_string(),
+            department: "legal".to_string(),
+            model: "gpt-4o".to_string(),
+        };
+        let event = build_evidence_event(
+            "api.openai.com",
+            false,
+            &request_context,
+            &result,
+            Duration::from_micros(500),
+            &identity,
+        );
+
+        assert_eq!(event.actor_identity, "alice@corp.example");
+        assert_eq!(event.department, "legal");
+        assert_eq!(event.model, "gpt-4o");
+        assert_eq!(event.prompt_text, None); // full_text_storage = false
     }
 }

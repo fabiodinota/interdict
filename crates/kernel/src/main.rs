@@ -358,7 +358,7 @@ async fn main() -> anyhow::Result<()> {
 
     // 9. Build the Tower service stack
     //    Request flow: RequestIdLayer -> AllowlistLayer -> ProxyService
-    let proxy_service = proxy::ProxyService::with_distribution(
+    let mut proxy_service = proxy::ProxyService::with_distribution(
         cert_cache.clone(),
         pool.clone(),
         config.clone(),
@@ -369,6 +369,18 @@ async fn main() -> anyhow::Result<()> {
         Some(session_store),
     )
     .with_content_inspector(content_inspector);
+
+    // Phase 19: Enable high-assurance evidence delivery enforcement.
+    // When disconnect_mode is "fail_closed", the kernel also refuses requests
+    // if evidence delivery is persistently failing (unaudited AI usage is not
+    // acceptable in high-assurance deployments).
+    if dist_config.disconnect_mode == "fail_closed" {
+        let health = evidence_buffer.health().clone();
+        proxy_service = proxy_service.with_high_assurance(health);
+        tracing::info!("high-assurance evidence delivery enforcement enabled (fail_closed mode)");
+    }
+
+    let proxy_service = proxy_service;
 
     // 10. Bind TCP listener
     let listener = tokio::net::TcpListener::bind(&config.proxy.listen_addr).await?;
