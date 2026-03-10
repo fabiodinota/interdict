@@ -10,6 +10,7 @@ export {
   compilationStatusEnum,
   policies,
   policyVersions,
+  policyScopeAssignments,
 } from "./policies";
 
 // Vendors

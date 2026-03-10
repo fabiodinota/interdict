@@ -17,8 +17,8 @@ import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import { join, resolve } from "node:path";
 import { readFileSync } from "node:fs";
-import { eq, and, max } from "drizzle-orm";
-import { policies, policyVersions } from "../../db/schema/policies";
+import { eq, and, max, inArray } from "drizzle-orm";
+import { policies, policyVersions, policyScopeAssignments } from "../../db/schema/policies";
 import {
   kernelTracker,
   type PolicyUpdateMessage,
@@ -48,15 +48,57 @@ const PolicyDistributionService =
 // Full Snapshot Builder
 // ---------------------------------------------------------------------------
 
+/** Parsed scope assignment for a single policy. */
+interface PolicyScopeEntry {
+  orgId: string;
+  deptId: string;
+  teamId: string;
+  vendorIds: string[];
+}
+
 /**
- * Build a full snapshot of all compiled policies from the database.
+ * Check whether a policy scope matches the requesting kernel's scope.
  *
- * Queries all active policies with compiled versions and reads their
- * Wasm bytes from the filesystem. Returns a PolicyUpdate message
- * with type=FULL_SNAPSHOT.
+ * Matching rules (hierarchical):
+ * - Org-wide scope (deptId="" && teamId=""): matches any kernel in the same org
+ * - Department scope (deptId set, teamId=""): matches kernel with same dept or empty dept (org-level kernels see all)
+ * - Team scope (both set): matches kernel with same dept+team, or broader kernels
+ */
+function scopeMatchesKernel(
+  scope: PolicyScopeEntry,
+  kernelOrgId: string,
+  kernelDeptId: string,
+  kernelTeamId: string,
+): boolean {
+  // Must be same org
+  if (scope.orgId !== kernelOrgId) return false;
+
+  // Org-wide policy → matches every kernel in the org
+  if (!scope.deptId) return true;
+
+  // Kernel subscribes at org level (no dept filter) → sees all policies
+  if (!kernelDeptId) return true;
+
+  // Department-scoped policy
+  if (scope.deptId !== kernelDeptId) return false;
+
+  // Department-wide policy (no team) → matches
+  if (!scope.teamId) return true;
+
+  // Kernel subscribes at dept level (no team filter) → sees all dept policies
+  if (!kernelTeamId) return true;
+
+  // Team-scoped policy
+  return scope.teamId === kernelTeamId;
+}
+
+/**
+ * Build a full snapshot of compiled policies from the database,
+ * filtered by the requesting kernel's organizational scope.
  *
- * v1 known limitation: scope is org-level only (dept_id="" and team_id=""
- * means org-wide). Per-department/team scope population deferred to Phase 7.
+ * Phase 18: scope fields are populated truthfully from
+ * `policy_scope_assignments`. Policies without scope assignments
+ * default to org-wide (backward compatible).
  */
 export async function buildFullSnapshot(
   db: any,
@@ -65,8 +107,7 @@ export async function buildFullSnapshot(
   teamId: string
 ): Promise<PolicyUpdateMessage> {
   if (!orgId) throw new Error("orgId required for policy snapshot");
-  // HIGH-004: scope enforcement — when policies.org_id column exists (Phase 7 schema migration),
-  // add: .where(and(eq(policies.isActive, true), eq(policies.orgId, orgId), ...))
+
   // Get global version counter: max compiled version
   const versionResult = await db
     .select({ maxVersion: max(policyVersions.version) })
@@ -102,9 +143,50 @@ export async function buildFullSnapshot(
       )
     );
 
+  // Bulk-load scope assignments for all active policies
+  const policyIds = activePolicies.map((p: any) => p.policyId as string);
+  const scopeRows: any[] = policyIds.length > 0
+    ? await db
+        .select()
+        .from(policyScopeAssignments)
+        .where(inArray(policyScopeAssignments.policyId, policyIds))
+    : [];
+
+  // Build policyId → scopes map
+  const scopeMap = new Map<string, PolicyScopeEntry[]>();
+  for (const row of scopeRows) {
+    let vendorIds: string[] = [];
+    if (row.vendorIds) {
+      try { vendorIds = JSON.parse(row.vendorIds); } catch { /* invalid JSON → empty */ }
+    }
+    const entry: PolicyScopeEntry = {
+      orgId: row.orgId ?? "default",
+      deptId: row.deptId ?? "",
+      teamId: row.teamId ?? "",
+      vendorIds,
+    };
+    const existing = scopeMap.get(row.policyId) ?? [];
+    existing.push(entry);
+    scopeMap.set(row.policyId, existing);
+  }
+
   const policyEntries: PolicyEntryMessage[] = [];
 
   for (const row of activePolicies) {
+    // Resolve scope — default to org-wide if no assignments exist
+    const scopes = scopeMap.get(row.policyId) ?? [{
+      orgId: orgId,  // default to requesting kernel's org
+      deptId: "",
+      teamId: "",
+      vendorIds: [],
+    }];
+
+    // Phase 18: filter by kernel scope — include policy if ANY scope matches
+    const matchingScope = scopes.find((s) =>
+      scopeMatchesKernel(s, orgId, deptId, teamId)
+    );
+    if (!matchingScope) continue; // policy not in this kernel's scope
+
     let wasmBytes = Buffer.alloc(0);
 
     if (row.wasmPath) {
@@ -117,9 +199,10 @@ export async function buildFullSnapshot(
             `[distribution] Wasm file not found for policy ${row.policyId}: ${row.wasmPath}`
           );
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
         console.error(
-          `[distribution] Failed to read wasm file for policy ${row.policyId}: ${err.message}`
+          `[distribution] Failed to read wasm file for policy ${row.policyId}: ${msg}`
         );
       }
     }
@@ -133,10 +216,10 @@ export async function buildFullSnapshot(
       rego_source: row.regoSource,
       entrypoint: row.entrypoint,
       scope: {
-        org_id: "",  // v1: org-level scope for all policies
-        dept_id: "", // Phase 7: per-department scope
-        team_id: "", // Phase 7: per-team scope
-        vendor_ids: [],
+        org_id: matchingScope.orgId,
+        dept_id: matchingScope.deptId,
+        team_id: matchingScope.teamId,
+        vendor_ids: matchingScope.vendorIds,
       },
       fail_mode: 0, // FAIL_CLOSED default
     });
@@ -197,9 +280,10 @@ function createSubscribeHandler(db: any) {
           console.log(
             `[distribution] Full snapshot v${snapshot.version} sent to kernel ${kernelId} (${snapshot.policies.length} policies)`
           );
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
           console.error(
-            `[distribution] Failed to send snapshot to kernel ${kernelId}: ${err.message}`
+            `[distribution] Failed to send snapshot to kernel ${kernelId}: ${msg}`
           );
           kernelTracker.unregister(kernelId);
         }

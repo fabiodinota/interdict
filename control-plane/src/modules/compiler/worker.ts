@@ -14,7 +14,7 @@ import { $ } from "bun";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
-import { policies, policyVersions } from "../../db/schema/policies";
+import { policies, policyVersions, policyScopeAssignments } from "../../db/schema/policies";
 import { broadcastUpdate } from "../distribution/tracker";
 
 // ---------------------------------------------------------------------------
@@ -126,11 +126,12 @@ export async function compilePolicy(
       wasmHash,
       wasmSizeBytes: wasmSize,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Handle OPA binary not found
+    const errMsg = err instanceof Error ? err.message : String(err);
     if (
-      err.message?.includes("not found") ||
-      err.message?.includes("ENOENT")
+      errMsg.includes("not found") ||
+      errMsg.includes("ENOENT")
     ) {
       return {
         success: false,
@@ -140,7 +141,7 @@ export async function compilePolicy(
     }
     return {
       success: false,
-      error: `Compilation error: ${err.message || String(err)}`,
+      error: `Compilation error: ${errMsg}`,
     };
   } finally {
     // Cleanup temp directory
@@ -241,6 +242,19 @@ export function startCompilationWorker(
               }
             }
 
+            // Phase 18: load scope assignments for this policy
+            const scopeRows = await db
+              .select()
+              .from(policyScopeAssignments)
+              .where(eq(policyScopeAssignments.policyId, version.policyId));
+
+            // Use first scope assignment or default to org-wide
+            const scopeRow = scopeRows[0];
+            let vendorIds: string[] = [];
+            if (scopeRow?.vendorIds) {
+              try { vendorIds = JSON.parse(scopeRow.vendorIds); } catch { /* default empty */ }
+            }
+
             broadcastUpdate({
               version: version.version,
               type: 1, // DELTA
@@ -254,10 +268,10 @@ export function startCompilationWorker(
                   rego_source: version.regoSource,
                   entrypoint: version.entrypoint,
                   scope: {
-                    org_id: "",       // v1: org-level default
-                    dept_id: "",      // Phase 7: per-department scope
-                    team_id: "",      // Phase 7: per-team scope
-                    vendor_ids: [],
+                    org_id: scopeRow?.orgId ?? "default",
+                    dept_id: scopeRow?.deptId ?? "",
+                    team_id: scopeRow?.teamId ?? "",
+                    vendor_ids: vendorIds,
                   },
                   fail_mode: 0, // FAIL_CLOSED default
                 },
@@ -268,10 +282,11 @@ export function startCompilationWorker(
             console.log(
               `[compiler] Broadcasting policy update for ${version.policyId} v${version.version} to connected kernels`
             );
-          } catch (broadcastErr: any) {
+          } catch (broadcastErr: unknown) {
             // Broadcast failure should not fail the compilation
+            const bMsg = broadcastErr instanceof Error ? broadcastErr.message : String(broadcastErr);
             console.error(
-              `[compiler] Failed to broadcast update for ${version.policyId}: ${broadcastErr.message}`
+              `[compiler] Failed to broadcast update for ${version.policyId}: ${bMsg}`
             );
           }
         } else {

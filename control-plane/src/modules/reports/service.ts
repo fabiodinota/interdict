@@ -3,10 +3,16 @@
  *
  * Gathers report data from ClickHouse (audit metrics) and PostgreSQL
  * (policies, vendors, frameworks) for compliance report generation.
+ *
+ * Phase 18 hardening:
+ * - Storage errors propagate as explicit failures (no silent zeros/empties).
+ * - Each section is fetched independently; partial failures produce a
+ *   `warnings` array so operators see exactly which data is missing.
+ * - N+1 queries replaced with JOINs / bulk queries.
  */
 
 import type { ClickHouseClient } from "@clickhouse/client";
-import { eq } from "drizzle-orm";
+import { eq, and, count, sql } from "drizzle-orm";
 import {
   policies,
   policyVersions,
@@ -16,9 +22,18 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
+/** A section that failed to load — included in the report so operators know. */
+export interface ReportWarning {
+  section: string;
+  message: string;
+}
+
 export interface ReportData {
   dateRange: { from: string; to: string };
   generatedAt: string;
+
+  /** Non-empty when one or more report sections failed to load. */
+  warnings: ReportWarning[];
 
   // Summary stats
   summary: {
@@ -26,25 +41,25 @@ export interface ReportData {
     totalViolations: number;
     uniqueActors: number;
     uniqueVendors: number;
-  };
+  } | null;
 
   // Violations by type
   violationsByType: Array<{
     action: string;
     count: number;
-  }>;
+  }> | null;
 
   // Violations by department
   violationsByDepartment: Array<{
     department: string;
     count: number;
-  }>;
+  }> | null;
 
   // Violations by vendor
   violationsByVendor: Array<{
     vendor: string;
     count: number;
-  }>;
+  }> | null;
 
   // Top 10 incidents (most severe)
   topIncidents: Array<{
@@ -54,14 +69,14 @@ export interface ReportData {
     model: string;
     action: string;
     tokenCount: number;
-  }>;
+  }> | null;
 
   // Active policies
   activePolicies: Array<{
     name: string;
     enabled: boolean;
     compilationStatus: string | null;
-  }>;
+  }> | null;
 
   // Vendor approval status
   vendorStatus: Array<{
@@ -69,14 +84,14 @@ export interface ReportData {
     displayName: string;
     status: string;
     modelCount: number;
-  }>;
+  }> | null;
 
   // Active regulatory frameworks
   activeFrameworks: Array<{
     name: string;
     jurisdiction: string | null;
     activePolicyCount: number;
-  }>;
+  }> | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +107,28 @@ export class ReportService {
     this.db = db;
   }
 
+  /**
+   * Gather report data with explicit error surfacing.
+   *
+   * Each section is fetched independently. If a section fails, its value
+   * is `null` and a warning is appended. The caller (PDF/CSV generator)
+   * renders the warning to the operator instead of hiding the failure.
+   */
   async getReportData(fromDate: string, toDate: string): Promise<ReportData> {
+    const warnings: ReportWarning[] = [];
+
+    // Helper: run a section, capture failures
+    async function section<T>(name: string, fn: () => Promise<T>): Promise<T | null> {
+      try {
+        return await fn();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[reports] Section "${name}" failed: ${msg}`);
+        warnings.push({ section: name, message: msg });
+        return null;
+      }
+    }
+
     const [
       summaryData,
       violationsByType,
@@ -103,19 +139,20 @@ export class ReportService {
       vendorStatusList,
       activeFrameworksList,
     ] = await Promise.all([
-      this.getSummaryStats(fromDate, toDate),
-      this.getViolationsByType(fromDate, toDate),
-      this.getViolationsByDepartment(fromDate, toDate),
-      this.getViolationsByVendor(fromDate, toDate),
-      this.getTopIncidents(fromDate, toDate),
-      this.getActivePolicies(),
-      this.getVendorStatus(),
-      this.getActiveFrameworks(),
+      section("summary", () => this.getSummaryStats(fromDate, toDate)),
+      section("violationsByType", () => this.getViolationsByType(fromDate, toDate)),
+      section("violationsByDepartment", () => this.getViolationsByDepartment(fromDate, toDate)),
+      section("violationsByVendor", () => this.getViolationsByVendor(fromDate, toDate)),
+      section("topIncidents", () => this.getTopIncidents(fromDate, toDate)),
+      section("activePolicies", () => this.getActivePolicies()),
+      section("vendorStatus", () => this.getVendorStatus()),
+      section("activeFrameworks", () => this.getActiveFrameworks()),
     ]);
 
     return {
       dateRange: { from: fromDate, to: toDate },
       generatedAt: new Date().toISOString(),
+      warnings,
       summary: summaryData,
       violationsByType,
       violationsByDepartment,
@@ -127,249 +164,215 @@ export class ReportService {
     };
   }
 
+  // -------------------------------------------------------------------------
+  // ClickHouse sections — errors propagate (no silent fallback)
+  // -------------------------------------------------------------------------
+
   private async getSummaryStats(from: string, to: string) {
-    try {
-      const result = await this.clickhouse.query({
-        query: `
-          SELECT
-            count() as total_requests,
-            countIf(policy_action IN ('block', 'redact')) as total_violations,
-            uniq(actor_identity) as unique_actors,
-            uniq(vendor) as unique_vendors
-          FROM evidence_bundles
-          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
-        `,
-        query_params: { from, to },
-        format: "JSONEachRow",
-      });
-      const rows: any[] = await result.json();
-      if (rows.length > 0) {
-        return {
-          totalRequests: Number(rows[0].total_requests) || 0,
-          totalViolations: Number(rows[0].total_violations) || 0,
-          uniqueActors: Number(rows[0].unique_actors) || 0,
-          uniqueVendors: Number(rows[0].unique_vendors) || 0,
-        };
-      }
-    } catch (err) {
-      console.error("[reports] Failed to query summary stats:", err);
+    const result = await this.clickhouse.query({
+      query: `
+        SELECT
+          count() as total_requests,
+          countIf(policy_action IN ('block', 'redact')) as total_violations,
+          uniq(actor_identity) as unique_actors,
+          uniq(vendor) as unique_vendors
+        FROM evidence_bundles
+        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+      `,
+      query_params: { from, to },
+      format: "JSONEachRow",
+    });
+    const rows: any[] = await result.json();
+    if (rows.length > 0) {
+      return {
+        totalRequests: Number(rows[0].total_requests) || 0,
+        totalViolations: Number(rows[0].total_violations) || 0,
+        uniqueActors: Number(rows[0].unique_actors) || 0,
+        uniqueVendors: Number(rows[0].unique_vendors) || 0,
+      };
     }
     return { totalRequests: 0, totalViolations: 0, uniqueActors: 0, uniqueVendors: 0 };
   }
 
   private async getViolationsByType(from: string, to: string) {
-    try {
-      const result = await this.clickhouse.query({
-        query: `
-          SELECT policy_action as action, count() as count
-          FROM evidence_bundles
-          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
-          GROUP BY policy_action
-          ORDER BY count DESC
-        `,
-        query_params: { from, to },
-        format: "JSONEachRow",
-      });
-      const rows: any[] = await result.json();
-      return rows.map((r) => ({ action: r.action, count: Number(r.count) }));
-    } catch (err) {
-      console.error("[reports] Failed to query violations by type:", err);
-      return [];
-    }
+    const result = await this.clickhouse.query({
+      query: `
+        SELECT policy_action as action, count() as count
+        FROM evidence_bundles
+        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+        GROUP BY policy_action
+        ORDER BY count DESC
+      `,
+      query_params: { from, to },
+      format: "JSONEachRow",
+    });
+    const rows: any[] = await result.json();
+    return rows.map((r) => ({ action: r.action, count: Number(r.count) }));
   }
 
   private async getViolationsByDepartment(from: string, to: string) {
-    try {
-      const result = await this.clickhouse.query({
-        query: `
-          SELECT department, count() as count
-          FROM evidence_bundles
-          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
-            AND policy_action IN ('block', 'redact')
-          GROUP BY department
-          ORDER BY count DESC
-          LIMIT 20
-        `,
-        query_params: { from, to },
-        format: "JSONEachRow",
-      });
-      const rows: any[] = await result.json();
-      return rows.map((r) => ({ department: r.department, count: Number(r.count) }));
-    } catch (err) {
-      console.error("[reports] Failed to query violations by department:", err);
-      return [];
-    }
+    const result = await this.clickhouse.query({
+      query: `
+        SELECT department, count() as count
+        FROM evidence_bundles
+        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+          AND policy_action IN ('block', 'redact')
+        GROUP BY department
+        ORDER BY count DESC
+        LIMIT 20
+      `,
+      query_params: { from, to },
+      format: "JSONEachRow",
+    });
+    const rows: any[] = await result.json();
+    return rows.map((r) => ({ department: r.department, count: Number(r.count) }));
   }
 
   private async getViolationsByVendor(from: string, to: string) {
-    try {
-      const result = await this.clickhouse.query({
-        query: `
-          SELECT vendor, count() as count
-          FROM evidence_bundles
-          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
-            AND policy_action IN ('block', 'redact')
-          GROUP BY vendor
-          ORDER BY count DESC
-          LIMIT 20
-        `,
-        query_params: { from, to },
-        format: "JSONEachRow",
-      });
-      const rows: any[] = await result.json();
-      return rows.map((r) => ({ vendor: r.vendor, count: Number(r.count) }));
-    } catch (err) {
-      console.error("[reports] Failed to query violations by vendor:", err);
-      return [];
-    }
+    const result = await this.clickhouse.query({
+      query: `
+        SELECT vendor, count() as count
+        FROM evidence_bundles
+        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+          AND policy_action IN ('block', 'redact')
+        GROUP BY vendor
+        ORDER BY count DESC
+        LIMIT 20
+      `,
+      query_params: { from, to },
+      format: "JSONEachRow",
+    });
+    const rows: any[] = await result.json();
+    return rows.map((r) => ({ vendor: r.vendor, count: Number(r.count) }));
   }
 
   private async getTopIncidents(from: string, to: string) {
-    try {
-      const result = await this.clickhouse.query({
-        query: `
-          SELECT
-            timestamp,
-            actor_identity as actor,
-            vendor,
-            model,
-            policy_action as action,
-            token_count as tokenCount
-          FROM evidence_bundles
-          WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
-            AND policy_action IN ('block', 'redact')
-          ORDER BY timestamp DESC
-          LIMIT 10
-        `,
-        query_params: { from, to },
-        format: "JSONEachRow",
-      });
-      const rows: any[] = await result.json();
-      return rows.map((r) => ({
-        timestamp: r.timestamp,
-        actor: r.actor,
-        vendor: r.vendor,
-        model: r.model,
-        action: r.action,
-        tokenCount: Number(r.tokenCount) || 0,
-      }));
-    } catch (err) {
-      console.error("[reports] Failed to query top incidents:", err);
-      return [];
-    }
+    const result = await this.clickhouse.query({
+      query: `
+        SELECT
+          timestamp,
+          actor_identity as actor,
+          vendor,
+          model,
+          policy_action as action,
+          token_count as tokenCount
+        FROM evidence_bundles
+        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+          AND policy_action IN ('block', 'redact')
+        ORDER BY timestamp DESC
+        LIMIT 10
+      `,
+      query_params: { from, to },
+      format: "JSONEachRow",
+    });
+    const rows: any[] = await result.json();
+    return rows.map((r) => ({
+      timestamp: r.timestamp,
+      actor: r.actor,
+      vendor: r.vendor,
+      model: r.model,
+      action: r.action,
+      tokenCount: Number(r.tokenCount) || 0,
+    }));
   }
 
+  // -------------------------------------------------------------------------
+  // PostgreSQL sections — errors propagate, N+1 fixed with JOINs
+  // -------------------------------------------------------------------------
+
+  /**
+   * Get active policies with compilation status.
+   * Phase 18: single JOIN query replaces N+1 per-policy version lookup.
+   */
   private async getActivePolicies() {
-    try {
-      const allPolicies = await this.db
-        .select({
-          name: policies.name,
-          isActive: policies.isActive,
-          currentVersionId: policies.currentVersionId,
-        })
-        .from(policies)
-        .orderBy(policies.name);
+    const rows = await this.db
+      .select({
+        name: policies.name,
+        isActive: policies.isActive,
+        compilationStatus: policyVersions.compilationStatus,
+      })
+      .from(policies)
+      .leftJoin(
+        policyVersions,
+        eq(policyVersions.id, policies.currentVersionId)
+      )
+      .orderBy(policies.name);
 
-      const result = await Promise.all(
-        allPolicies.map(async (p: any) => {
-          let compilationStatus: string | null = null;
-          if (p.currentVersionId) {
-            const vRows = await this.db
-              .select({ compilationStatus: policyVersions.compilationStatus })
-              .from(policyVersions)
-              .where(eq(policyVersions.id, p.currentVersionId))
-              .limit(1);
-            if (vRows.length > 0) {
-              compilationStatus = vRows[0].compilationStatus;
-            }
-          }
-          return {
-            name: p.name,
-            enabled: p.isActive,
-            compilationStatus,
-          };
-        })
-      );
-      return result;
-    } catch (err) {
-      console.error("[reports] Failed to query active policies:", err);
-      return [];
-    }
+    return rows.map((p: any) => ({
+      name: p.name,
+      enabled: p.isActive,
+      compilationStatus: p.compilationStatus ?? null,
+    }));
   }
 
+  /**
+   * Get vendor status with model counts.
+   * Phase 18: single GROUP BY query replaces N+1 per-vendor model lookup.
+   */
   private async getVendorStatus() {
-    try {
-      // Import vendor tables dynamically to avoid circular deps
-      const { vendors, vendorModels } = await import("../../db/schema/index");
-      const allVendors = await this.db
-        .select()
-        .from(vendors)
-        .orderBy(vendors.name);
+    const { vendors, vendorModels } = await import("../../db/schema/index");
 
-      const result = await Promise.all(
-        allVendors.map(async (v: any) => {
-          const models = await this.db
-            .select()
-            .from(vendorModels)
-            .where(eq(vendorModels.vendorId, v.id));
-          return {
-            name: v.name,
-            displayName: v.displayName || v.name,
-            status: v.status,
-            modelCount: models.length,
-          };
-        })
-      );
-      return result;
-    } catch (err) {
-      console.error("[reports] Failed to query vendor status:", err);
-      return [];
-    }
+    const rows = await this.db
+      .select({
+        name: vendors.name,
+        displayName: vendors.displayName,
+        status: vendors.status,
+        modelCount: count(vendorModels.id),
+      })
+      .from(vendors)
+      .leftJoin(vendorModels, eq(vendorModels.vendorId, vendors.id))
+      .groupBy(vendors.id, vendors.name, vendors.displayName, vendors.status)
+      .orderBy(vendors.name);
+
+    return rows.map((v: any) => ({
+      name: v.name,
+      displayName: v.displayName || v.name,
+      status: v.status,
+      modelCount: Number(v.modelCount),
+    }));
   }
 
+  /**
+   * Get active regulatory frameworks with policy counts.
+   * Phase 18: bulk queries (3 round-trips) replace N+1 per-framework lookup.
+   */
   private async getActiveFrameworks() {
-    try {
-      const {
-        frameworks,
-        frameworkActivations,
-        frameworkPolicies,
-      } = await import("../../db/schema/index");
-      const { and } = await import("drizzle-orm");
+    const {
+      frameworks,
+      frameworkActivations,
+      frameworkPolicies,
+    } = await import("../../db/schema/index");
 
-      const allFrameworks = await this.db.select().from(frameworks);
-      const activeActivations = await this.db
-        .select()
+    // 3 bulk queries — no N+1
+    const [allFrameworks, activeActivations, policyCounts] = await Promise.all([
+      this.db.select().from(frameworks),
+      this.db
+        .select({ frameworkId: frameworkActivations.frameworkId })
         .from(frameworkActivations)
-        .where(eq(frameworkActivations.isActive, true));
+        .where(eq(frameworkActivations.isActive, true)),
+      this.db
+        .select({
+          frameworkId: frameworkPolicies.frameworkId,
+          activePolicyCount: count(),
+        })
+        .from(frameworkPolicies)
+        .where(eq(frameworkPolicies.isRequired, true))
+        .groupBy(frameworkPolicies.frameworkId),
+    ]);
 
-      const activeFrameworkIds = new Set(
-        activeActivations.map((a: any) => a.frameworkId)
-      );
+    const activeFrameworkIds = new Set(
+      activeActivations.map((a: any) => a.frameworkId)
+    );
+    const countMap = new Map<string, number>(
+      policyCounts.map((r: any) => [r.frameworkId, Number(r.activePolicyCount)])
+    );
 
-      const result = [];
-      for (const fw of allFrameworks) {
-        if (!activeFrameworkIds.has(fw.id)) continue;
-
-        const fpRows = await this.db
-          .select()
-          .from(frameworkPolicies)
-          .where(
-            and(
-              eq(frameworkPolicies.frameworkId, fw.id),
-              eq(frameworkPolicies.isRequired, true)
-            )
-          );
-
-        result.push({
-          name: fw.name,
-          jurisdiction: fw.jurisdiction,
-          activePolicyCount: fpRows.length,
-        });
-      }
-      return result;
-    } catch (err) {
-      console.error("[reports] Failed to query active frameworks:", err);
-      return [];
-    }
+    return allFrameworks
+      .filter((fw: any) => activeFrameworkIds.has(fw.id))
+      .map((fw: any) => ({
+        name: fw.name,
+        jurisdiction: fw.jurisdiction,
+        activePolicyCount: countMap.get(fw.id) ?? 0,
+      }));
   }
 }

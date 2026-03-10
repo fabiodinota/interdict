@@ -73,6 +73,12 @@ export async function generatePDF(reportData: ReportData): Promise<Buffer> {
     pageNum = 1;
     addFooter(doc, reportData, pageNum);
 
+    // --- Warnings (Phase 18: surface failures to operator) ---
+    if (reportData.warnings.length > 0) {
+      doc.addPage();
+      renderWarnings(doc, reportData);
+    }
+
     // --- Executive Summary ---
     doc.addPage();
     renderExecutiveSummary(doc, reportData);
@@ -221,8 +227,41 @@ function renderCoverPage(doc: PDFKit.PDFDocument, data: ReportData) {
     .text(`Generated: ${formatDate(data.generatedAt)}`, { align: "center" });
 }
 
+function renderWarnings(doc: PDFKit.PDFDocument, data: ReportData) {
+  sectionTitle(doc, "Data Availability Warnings");
+
+  doc
+    .fontSize(10)
+    .fillColor(COLORS.red)
+    .text(
+      "The following report sections could not be loaded. " +
+      "Data shown as unavailable may indicate a backend connectivity issue.",
+      PAGE_MARGIN,
+      doc.y,
+      { width: CONTENT_WIDTH }
+    )
+    .moveDown(1);
+
+  for (const w of data.warnings) {
+    doc
+      .fontSize(9)
+      .fillColor(COLORS.text)
+      .text(`Section: ${w.section}`, PAGE_MARGIN + 10, doc.y, { width: CONTENT_WIDTH - 20 })
+      .fontSize(8)
+      .fillColor(COLORS.muted)
+      .text(`Error: ${w.message}`, PAGE_MARGIN + 10, doc.y, { width: CONTENT_WIDTH - 20 })
+      .moveDown(0.5);
+  }
+}
+
 function renderExecutiveSummary(doc: PDFKit.PDFDocument, data: ReportData) {
   sectionTitle(doc, "Executive Summary");
+
+  if (!data.summary) {
+    doc.fontSize(10).fillColor(COLORS.red).text("Summary data unavailable — see warnings.");
+    doc.moveDown(2);
+    return;
+  }
 
   const kpis = [
     { label: "Total Requests", value: data.summary.totalRequests.toLocaleString() },
@@ -270,10 +309,14 @@ function renderExecutiveSummary(doc: PDFKit.PDFDocument, data: ReportData) {
       ? ((data.summary.totalViolations / data.summary.totalRequests) * 100).toFixed(1)
       : "0";
 
+  const activePolicyCount = data.activePolicies?.filter((p) => p.enabled).length ?? 0;
+  const vendorCount = data.vendorStatus?.length ?? 0;
+  const frameworkCount = data.activeFrameworks?.length ?? 0;
+
   const findings = [
     `Violation rate: ${violationRate}% of all AI requests triggered policy enforcement.`,
-    `${data.activePolicies.filter((p) => p.enabled).length} policies actively enforcing across ${data.vendorStatus.length} registered vendors.`,
-    `${data.activeFrameworks.length} regulatory framework(s) active during the reporting period.`,
+    `${activePolicyCount} policies actively enforcing across ${vendorCount} registered vendors.`,
+    `${frameworkCount} regulatory framework(s) active during the reporting period.`,
   ];
 
   for (const finding of findings) {
@@ -288,7 +331,7 @@ function renderExecutiveSummary(doc: PDFKit.PDFDocument, data: ReportData) {
 function renderViolationsByType(doc: PDFKit.PDFDocument, data: ReportData) {
   sectionTitle(doc, "Violations by Type");
 
-  if (data.violationsByType.length === 0) {
+  if (!data.violationsByType || data.violationsByType.length === 0) {
     doc.fontSize(10).fillColor(COLORS.muted).text("No violation data available for this period.");
     doc.moveDown(2);
     return;
@@ -326,7 +369,7 @@ function renderViolationsByDepartment(doc: PDFKit.PDFDocument, data: ReportData)
   checkPageSpace(doc, 100);
   sectionTitle(doc, "Violations by Department");
 
-  if (data.violationsByDepartment.length === 0) {
+  if (!data.violationsByDepartment || data.violationsByDepartment.length === 0) {
     doc.fontSize(10).fillColor(COLORS.muted).text("No department violation data available.");
     doc.moveDown(2);
     return;
@@ -363,7 +406,7 @@ function renderViolationsByVendor(doc: PDFKit.PDFDocument, data: ReportData) {
   checkPageSpace(doc, 100);
   sectionTitle(doc, "Violations by Vendor");
 
-  if (data.violationsByVendor.length === 0) {
+  if (!data.violationsByVendor || data.violationsByVendor.length === 0) {
     doc.fontSize(10).fillColor(COLORS.muted).text("No vendor violation data available.");
     doc.moveDown(2);
     return;
@@ -397,7 +440,7 @@ function renderViolationsByVendor(doc: PDFKit.PDFDocument, data: ReportData) {
 function renderTopIncidents(doc: PDFKit.PDFDocument, data: ReportData) {
   sectionTitle(doc, "Top 10 Incidents");
 
-  if (data.topIncidents.length === 0) {
+  if (!data.topIncidents || data.topIncidents.length === 0) {
     doc.fontSize(10).fillColor(COLORS.muted).text("No incidents during this period.");
     doc.moveDown(2);
     return;
@@ -434,7 +477,7 @@ function renderTopIncidents(doc: PDFKit.PDFDocument, data: ReportData) {
 function renderActivePolicies(doc: PDFKit.PDFDocument, data: ReportData) {
   sectionTitle(doc, "Active Policies");
 
-  if (data.activePolicies.length === 0) {
+  if (!data.activePolicies || data.activePolicies.length === 0) {
     doc.fontSize(10).fillColor(COLORS.muted).text("No policies configured.");
     doc.moveDown(2);
     return;
@@ -473,7 +516,7 @@ function renderVendorStatus(doc: PDFKit.PDFDocument, data: ReportData) {
   checkPageSpace(doc, 100);
   sectionTitle(doc, "Vendor Approval Status");
 
-  if (data.vendorStatus.length === 0) {
+  if (!data.vendorStatus || data.vendorStatus.length === 0) {
     doc.fontSize(10).fillColor(COLORS.muted).text("No vendors registered.");
     doc.moveDown(2);
     return;
@@ -509,7 +552,7 @@ function renderVendorStatus(doc: PDFKit.PDFDocument, data: ReportData) {
 function renderRegulatoryCompliance(doc: PDFKit.PDFDocument, data: ReportData) {
   sectionTitle(doc, "Regulatory Compliance");
 
-  if (data.activeFrameworks.length === 0) {
+  if (!data.activeFrameworks || data.activeFrameworks.length === 0) {
     doc
       .fontSize(10)
       .fillColor(COLORS.muted)

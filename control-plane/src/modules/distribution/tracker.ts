@@ -187,9 +187,10 @@ export function broadcastUpdate(update: PolicyUpdateMessage): void {
         // (will be flushed), but log for observability.
         successCount++;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error(
-        `[distribution] Failed to write to kernel ${conn.kernelId}: ${err.message || String(err)}`
+        `[distribution] Failed to write to kernel ${conn.kernelId}: ${msg}`
       );
       failedKernels.push(conn.kernelId);
     }

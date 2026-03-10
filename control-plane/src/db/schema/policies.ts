@@ -16,6 +16,7 @@ import {
   pgEnum,
   boolean,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 
 /** Compilation status lifecycle: pending -> compiling -> compiled | failed */
@@ -71,4 +72,39 @@ export const policyVersions = pgTable(
   (table) => [
     uniqueIndex("policy_version_unique").on(table.policyId, table.version),
   ]
+);
+
+// ---------------------------------------------------------------------------
+// Policy Scope Assignments (Phase 18)
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps policies to organizational scopes for hierarchy-aware distribution.
+ *
+ * Scope semantics (matching proto PolicyScope):
+ * - org_id only → policy applies to entire organization
+ * - org_id + dept_id → policy applies to a specific department
+ * - org_id + dept_id + team_id → policy applies to a specific team
+ * - vendor_ids (JSON array) → restrict policy to specific vendors
+ *
+ * A policy with NO scope assignment is treated as org-wide (backward compat).
+ * A policy may have MULTIPLE assignments (e.g., applied to two departments).
+ */
+export const policyScopeAssignments = pgTable(
+  "policy_scope_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    policyId: uuid("policy_id")
+      .notNull()
+      .references(() => policies.id, { onDelete: "cascade" }),
+    orgId: varchar("org_id", { length: 64 }).notNull().default("default"),
+    deptId: varchar("dept_id", { length: 64 }),    // null = org-wide
+    teamId: varchar("team_id", { length: 64 }),    // null = dept-wide or org-wide
+    vendorIds: text("vendor_ids"),                  // JSON string array, null = all vendors
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("psa_policy_idx").on(table.policyId),
+    index("psa_scope_idx").on(table.orgId, table.deptId, table.teamId),
+  ],
 );
