@@ -13,10 +13,11 @@ use crate::signing::RotatingSigningProvider;
 use crate::storage::clickhouse::{ClickHouseWriter, EvidenceRow};
 
 use super::proto::{
-    EvidenceBatch, EvidenceBundle, SubmitResponse, evidence_collector_server::EvidenceCollector,
+    EvidenceBundle, SubmitEvidenceRequest, SubmitEvidenceResponse,
+    evidence_collector_service_server::EvidenceCollectorService,
 };
 
-pub struct EvidenceCollectorService {
+pub struct EvidenceCollectorGrpcService {
     chain_manager: Arc<Mutex<ChainManager>>,
     signing_provider: Arc<RotatingSigningProvider>,
     clickhouse_writer: Arc<ClickHouseWriter>,
@@ -24,7 +25,7 @@ pub struct EvidenceCollectorService {
     merkle_overflow_tx: Option<mpsc::Sender<()>>,
 }
 
-impl EvidenceCollectorService {
+impl EvidenceCollectorGrpcService {
     pub fn new(
         chain_manager: Arc<Mutex<ChainManager>>,
         signing_provider: Arc<RotatingSigningProvider>,
@@ -101,11 +102,11 @@ impl EvidenceCollectorService {
 }
 
 #[tonic::async_trait]
-impl EvidenceCollector for EvidenceCollectorService {
+impl EvidenceCollectorService for EvidenceCollectorGrpcService {
     async fn submit_evidence(
         &self,
-        request: Request<Streaming<EvidenceBatch>>,
-    ) -> Result<Response<SubmitResponse>, Status> {
+        request: Request<Streaming<SubmitEvidenceRequest>>,
+    ) -> Result<Response<SubmitEvidenceResponse>, Status> {
         let mut stream = request.into_inner();
         let mut accepted_count = 0u64;
         let mut rejected_count = 0u64;
@@ -166,7 +167,7 @@ impl EvidenceCollector for EvidenceCollectorService {
             }
         }
 
-        Ok(Response::new(SubmitResponse {
+        Ok(Response::new(SubmitEvidenceResponse {
             accepted_count,
             rejected_count,
             error_message: if rejected_count == 0 {

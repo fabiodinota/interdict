@@ -6,12 +6,44 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import type { AppDb } from "../../shared/types";
+
+interface MockPolicyRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  currentVersionId: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface MockPolicyVersionRecord {
+  id: string;
+  policyId: string;
+  version: number;
+  regoSource: string;
+  entrypoint: string;
+  compilationStatus: "pending";
+  compilationError: null;
+  wasmPath: null;
+  wasmHash: null;
+  wasmSizeBytes: null;
+  createdAt: Date;
+  changeDescription: string | null;
+}
+
+interface CompileQueueEntry {
+  policyVersionId: string;
+  regoSource: string;
+  entrypoint: string;
+}
 
 // Mock database layer for testing
 function createMockDb() {
-  const policies = new Map<string, any>();
-  const versions = new Map<string, any[]>();
-  const compileQueue: any[] = [];
+  const policies = new Map<string, MockPolicyRecord>();
+  const versions = new Map<string, MockPolicyVersionRecord[]>();
+  const compileQueue: CompileQueueEntry[] = [];
 
   return {
     policies,
@@ -90,7 +122,9 @@ function createMockDb() {
       const policy = policies.get(id);
       if (!policy || !policy.isActive) return null;
       const policyVersions = versions.get(id) || [];
-      const currentVersion = policyVersions.find((v: any) => v.id === policy.currentVersionId);
+      const currentVersion = policyVersions.find(
+        (version) => version.id === policy.currentVersionId,
+      );
       return { ...policy, currentVersion };
     },
 
@@ -103,7 +137,6 @@ function createMockDb() {
 
 describe("PolicyService", () => {
   test("creating a policy returns id, version 1, and compilation_status 'pending'", async () => {
-    const { createPolicyService } = await import("./service");
     // We pass a null db -- the service will need to handle this for testing
     // This test validates the service's business logic contract
 
@@ -212,7 +245,11 @@ describe("PolicyService", () => {
     });
 
     // Soft delete
-    const p = mockDb.policies.get(policy.id)!;
+    const p = mockDb.policies.get(policy.id);
+    expect(p).toBeDefined();
+    if (!p) {
+      throw new Error("expected policy to exist before soft delete");
+    }
     p.isActive = false;
     p.updatedAt = new Date();
 
@@ -231,7 +268,7 @@ describe("PolicyService - createPolicyService integration", () => {
     const { createPolicyService } = await import("./service");
 
     // Pass null db -- just checking the interface
-    const service = createPolicyService(null as any);
+    const service = createPolicyService(null as unknown as AppDb);
 
     expect(typeof service.create).toBe("function");
     expect(typeof service.getById).toBe("function");

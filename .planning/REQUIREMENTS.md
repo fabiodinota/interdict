@@ -31,8 +31,8 @@ This file tracks the currently active hardening requirements for the next milest
 
 ### Warning Burn-Down and Project Truth
 
-- [ ] **HR-MAINT-01**: Remaining production-code warnings are reduced or intentionally documented, and framework migration warnings are resolved.
-- [ ] **HR-DOC-01**: Planning/state docs and tracked local config accurately reflect the repo's verified state.
+- [x] **HR-MAINT-01**: Remaining production-code warnings are reduced or intentionally documented, and framework migration warnings are resolved.
+- [x] **HR-DOC-01**: Planning/state docs and tracked local config accurately reflect the repo's verified state.
 
 ## Traceability
 
@@ -45,8 +45,8 @@ This file tracks the currently active hardening requirements for the next milest
 | HR-EVID-01 | Phase 31 | Complete |
 | HR-OPS-01 | Phase 32 | Complete |
 | HR-OPS-02 | Phase 32 | Complete |
-| HR-MAINT-01 | Phase 33 | Planned |
-| HR-DOC-01 | Phase 33 | Planned |
+| HR-MAINT-01 | Phase 33 | Complete |
+| HR-DOC-01 | Phase 33 | Complete |
 
 **Coverage:**
 - Active v1.4 requirements: 9 total
@@ -54,4 +54,4 @@ This file tracks the currently active hardening requirements for the next milest
 - Unmapped: 0
 
 ---
-*Last updated: 2026-03-11 -- Phase 32 requirements verified in working tree*
+*Last updated: 2026-03-11 -- v1.4 requirements fully completed and verified*

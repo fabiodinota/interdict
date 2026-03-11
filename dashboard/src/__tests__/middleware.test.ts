@@ -1,22 +1,22 @@
 /**
- * Tests for dashboard/src/middleware.ts
+ * Tests for dashboard/src/proxy.ts
  *
  * The middleware enforces session-gating on all non-API routes.
  * It redirects unauthenticated users to /login and prevents
  * authenticated users from accessing /login.
  */
 import { describe, it, expect } from "vitest";
-import { middleware } from "@/middleware";
+import { proxy } from "@/proxy";
 import { buildNextRequest } from "./helpers/next-mocks";
 
-describe("Next.js middleware", () => {
+describe("Next.js proxy", () => {
   // -----------------------------------------------------------------------
   // API route passthrough
   // -----------------------------------------------------------------------
   describe("API routes", () => {
     it("allows API routes through without session", () => {
       const req = buildNextRequest("http://localhost:3001/api/proxy/policies");
-      const res = middleware(req as never);
+      const res = proxy(req as never);
 
       // NextResponse.next() does not set a Location header
       expect(res.headers.get("location")).toBeNull();
@@ -24,7 +24,7 @@ describe("Next.js middleware", () => {
 
     it("allows /api/auth routes through without session", () => {
       const req = buildNextRequest("http://localhost:3001/api/auth/login");
-      const res = middleware(req as never);
+      const res = proxy(req as never);
 
       expect(res.headers.get("location")).toBeNull();
     });
@@ -36,7 +36,7 @@ describe("Next.js middleware", () => {
   describe("unauthenticated", () => {
     it("redirects to /login when no session cookie", () => {
       const req = buildNextRequest("http://localhost:3001/evidence");
-      const res = middleware(req as never);
+      const res = proxy(req as never);
 
       expect(res.status).toBe(307);
       const location = res.headers.get("location") ?? "";
@@ -45,14 +45,14 @@ describe("Next.js middleware", () => {
 
     it("allows /login page without session", () => {
       const req = buildNextRequest("http://localhost:3001/login");
-      const res = middleware(req as never);
+      const res = proxy(req as never);
 
       expect(res.headers.get("location")).toBeNull();
     });
 
     it("redirects dashboard root to /login without session", () => {
       const req = buildNextRequest("http://localhost:3001/");
-      const res = middleware(req as never);
+      const res = proxy(req as never);
 
       expect(res.status).toBe(307);
       const location = res.headers.get("location") ?? "";
@@ -68,7 +68,7 @@ describe("Next.js middleware", () => {
       const req = buildNextRequest("http://localhost:3001/login", {
         cookies: { interdict_session: "valid-token" },
       });
-      const res = middleware(req as never);
+      const res = proxy(req as never);
 
       expect(res.status).toBe(307);
       const location = res.headers.get("location") ?? "";
@@ -79,7 +79,7 @@ describe("Next.js middleware", () => {
       const req = buildNextRequest("http://localhost:3001/evidence", {
         cookies: { interdict_session: "valid-token" },
       });
-      const res = middleware(req as never);
+      const res = proxy(req as never);
 
       expect(res.headers.get("location")).toBeNull();
     });
@@ -88,7 +88,7 @@ describe("Next.js middleware", () => {
       const req = buildNextRequest("http://localhost:3001/policies/new", {
         cookies: { interdict_session: "valid-token" },
       });
-      const res = middleware(req as never);
+      const res = proxy(req as never);
 
       expect(res.headers.get("location")).toBeNull();
     });

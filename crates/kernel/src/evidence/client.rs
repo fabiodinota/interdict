@@ -4,12 +4,13 @@ use anyhow::{Context, Result};
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity};
 
 use super::proto::{
-    EvidenceBatch, SubmitResponse, evidence_collector_client::EvidenceCollectorClient,
+    SubmitEvidenceRequest, SubmitEvidenceResponse,
+    evidence_collector_service_client::EvidenceCollectorServiceClient,
 };
 
 pub struct EvidenceGrpcClient {
     collector_addr: String,
-    client: tokio::sync::Mutex<Option<EvidenceCollectorClient<Channel>>>,
+    client: tokio::sync::Mutex<Option<EvidenceCollectorServiceClient<Channel>>>,
     /// Raw cert bytes stored for rebuilding ClientTlsConfig per connection
     /// (ClientTlsConfig is not Clone).
     tls_ca_cert: Option<Vec<u8>>,
@@ -60,8 +61,8 @@ impl EvidenceGrpcClient {
         kernel_id: &str,
         batch_sequence: u64,
         compressed_payload: Vec<u8>,
-    ) -> Result<SubmitResponse> {
-        let batch = EvidenceBatch {
+    ) -> Result<SubmitEvidenceResponse> {
+        let batch = SubmitEvidenceRequest {
             compressed_payload,
             kernel_id: kernel_id.to_string(),
             batch_sequence,
@@ -85,7 +86,7 @@ impl EvidenceGrpcClient {
         }
     }
 
-    async fn submit_once(&self, batch: EvidenceBatch) -> Result<SubmitResponse> {
+    async fn submit_once(&self, batch: SubmitEvidenceRequest) -> Result<SubmitEvidenceResponse> {
         let mut guard = self.client.lock().await;
         if guard.is_none() {
             let addr = self.collector_addr.clone();
@@ -120,7 +121,7 @@ impl EvidenceGrpcClient {
         )
     }
 
-    async fn connect_inner(&self, addr: &str) -> Result<EvidenceCollectorClient<Channel>> {
+    async fn connect_inner(&self, addr: &str) -> Result<EvidenceCollectorServiceClient<Channel>> {
         let mut endpoint = Endpoint::from_shared(addr.to_string())
             .context("invalid evidence collector address")?
             .connect_timeout(Duration::from_secs(3))
@@ -137,6 +138,6 @@ impl EvidenceGrpcClient {
             .await
             .with_context(|| format!("failed to connect to evidence collector at {addr}"))?;
 
-        Ok(EvidenceCollectorClient::new(channel))
+        Ok(EvidenceCollectorServiceClient::new(channel))
     }
 }

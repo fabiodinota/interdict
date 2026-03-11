@@ -14,7 +14,7 @@ use tokio_util::sync::CancellationToken;
 use tonic::transport::{Certificate, ClientTlsConfig, Endpoint, Identity};
 
 use crate::policy::distribution::proto;
-use crate::policy::distribution::proto::policy_distribution_client::PolicyDistributionClient;
+use crate::policy::distribution::proto::policy_distribution_service_client::PolicyDistributionServiceClient;
 use crate::policy::distribution::snapshot;
 use crate::policy::hierarchy::HierarchyConfig;
 use crate::policy::hot_reload::PolicySetManager;
@@ -194,7 +194,9 @@ impl DistributionClient {
     }
 
     /// Connect to the control plane and subscribe to the policy update stream.
-    async fn connect_and_subscribe(&self) -> anyhow::Result<tonic::Streaming<proto::PolicyUpdate>> {
+    async fn connect_and_subscribe(
+        &self,
+    ) -> anyhow::Result<tonic::Streaming<proto::SubscribeResponse>> {
         let mut endpoint = Endpoint::from_shared(self.addr.clone())?
             .connect_timeout(Duration::from_secs(5))
             .timeout(self.disconnect_timeout);
@@ -204,7 +206,7 @@ impl DistributionClient {
         }
 
         let channel = endpoint.connect().await?;
-        let mut client = PolicyDistributionClient::new(channel);
+        let mut client = PolicyDistributionServiceClient::new(channel);
 
         let request = proto::SubscribeRequest {
             kernel_id: self.kernel_id.clone(),
@@ -219,7 +221,7 @@ impl DistributionClient {
     }
 
     /// Process the policy update stream until it drops or errors out.
-    async fn process_stream(&self, mut stream: tonic::Streaming<proto::PolicyUpdate>) {
+    async fn process_stream(&self, mut stream: tonic::Streaming<proto::SubscribeResponse>) {
         use tokio_stream::StreamExt;
 
         while let Some(result) = stream.next().await {
@@ -245,21 +247,20 @@ impl DistributionClient {
     }
 
     /// Handle a single policy update from the stream.
-    async fn handle_update(&self, update: proto::PolicyUpdate) {
+    async fn handle_update(&self, update: proto::SubscribeResponse) {
         let update_version = update.version;
-        let update_type = proto::policy_update::UpdateType::try_from(update.r#type)
-            .unwrap_or(proto::policy_update::UpdateType::FullSnapshot);
+        let update_type = update.r#type;
 
         tracing::info!(
             version = update_version,
-            update_type = ?update_type,
+            update_type = update_type,
             policy_count = update.policies.len(),
             removed_count = update.removed_policy_ids.len(),
             "received policy update"
         );
 
         let result = match update_type {
-            proto::policy_update::UpdateType::FullSnapshot => {
+            1 => {
                 snapshot::apply_snapshot(
                     update.version,
                     &update.policies,
@@ -268,7 +269,7 @@ impl DistributionClient {
                 )
                 .await
             }
-            proto::policy_update::UpdateType::Delta => {
+            2 => {
                 let current = self.policy_set_manager.load();
                 let delta_result = snapshot::apply_delta(
                     &current,
@@ -289,6 +290,15 @@ impl DistributionClient {
                 }
 
                 delta_result
+            }
+            _ => {
+                snapshot::apply_snapshot(
+                    update.version,
+                    &update.policies,
+                    &self.wasm_engine,
+                    &self.hierarchy_config,
+                )
+                .await
             }
         };
 
@@ -328,9 +338,9 @@ impl DistributionClient {
                 endpoint = endpoint.tls_config(tls_config)?;
             }
             let channel = endpoint.connect().await?;
-            let mut client = PolicyDistributionClient::new(channel);
+            let mut client = PolicyDistributionServiceClient::new(channel);
 
-            let request = proto::AckRequest {
+            let request = proto::AcknowledgeRequest {
                 kernel_id: self.kernel_id.clone(),
                 version,
                 accepted,

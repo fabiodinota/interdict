@@ -12,17 +12,19 @@ describe("buildSeedKeyOutput", () => {
 
   test("never includes raw api key material", () => {
     const output = buildSeedKeyOutput(records).join("\n");
+    const plaintext = records[0]?.plaintext ?? "";
 
-    expect(output).not.toContain(records[0].plaintext!);
+    expect(output).not.toContain(plaintext);
     expect(output).not.toContain("super_secret_material");
   });
 
   test("legacy showKeys toggle does not change safe output", () => {
     const safeOutput = buildSeedKeyOutput(records).join("\n");
     const legacyToggleOutput = buildSeedKeyOutput(records, { showKeys: true }).join("\n");
+    const plaintext = records[0]?.plaintext ?? "";
 
     expect(legacyToggleOutput).toBe(safeOutput);
-    expect(legacyToggleOutput).not.toContain(records[0].plaintext!);
+    expect(legacyToggleOutput).not.toContain(plaintext);
   });
 
   test("keeps operator-visible principal metadata", () => {

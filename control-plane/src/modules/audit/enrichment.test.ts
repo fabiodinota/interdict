@@ -6,8 +6,15 @@
  */
 
 import { describe, expect, mock, test } from "bun:test";
+import type { AppDb } from "../../shared/types";
 import { enrichAuditRecords } from "./enrichment";
 import type { ClickHouseAuditRow } from "./model";
+
+interface MockEnrichmentDbOptions {
+  users?: Array<{ email: string; displayName: string }>;
+  vendors?: Array<{ name: string; displayName: string }>;
+  policies?: Array<{ id: string; name: string }>;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,13 +51,7 @@ function makeRow(overrides: Partial<ClickHouseAuditRow> = {}): ClickHouseAuditRo
  * Create a mock Drizzle-like db that can answer batch queries.
  * The mock intercepts select().from().where() chains.
  */
-function createMockDb(
-  options: {
-    users?: Array<{ email: string; displayName: string }>;
-    vendors?: Array<{ name: string; displayName: string }>;
-    policies?: Array<{ id: string; name: string }>;
-  } = {},
-) {
+function createMockDb(options: MockEnrichmentDbOptions = {}) {
   const { users = [], vendors = [], policies = [] } = options;
 
   // Build a simple mock that handles the chaining pattern:
@@ -79,7 +80,7 @@ function createMockDb(
     }),
   };
 
-  return mockDb as any;
+  return mockDb as unknown as AppDb;
 }
 
 // ---------------------------------------------------------------------------

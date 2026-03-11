@@ -8,14 +8,46 @@
  */
 
 import { describe, expect, it } from "bun:test";
+import type { ClickHouseClient } from "@clickhouse/client";
 import type { AppDb } from "../../shared/types";
 import { ReportService } from "./service";
+
+type MockClickHouseClient = {
+  query: (opts: {
+    query: string;
+    format?: string;
+    query_params?: Record<string, unknown>;
+  }) => Promise<{ json: () => Promise<unknown[]> }>;
+};
+
+type EmptyQueryChain = Promise<unknown[]> & {
+  from: () => EmptyQueryChain;
+  where: () => EmptyQueryChain;
+  orderBy: () => EmptyQueryChain;
+  groupBy: () => EmptyQueryChain;
+  leftJoin: () => EmptyQueryChain;
+  innerJoin: () => EmptyQueryChain;
+  limit: () => EmptyQueryChain;
+};
+
+function createEmptyQueryChain(): EmptyQueryChain {
+  const chain = Promise.resolve([] as unknown[]) as EmptyQueryChain;
+  chain.from = () => chain;
+  chain.where = () => chain;
+  chain.orderBy = () => chain;
+  chain.groupBy = () => chain;
+  chain.leftJoin = () => chain;
+  chain.innerJoin = () => chain;
+  chain.limit = () => chain;
+
+  return chain;
+}
 
 // ---------------------------------------------------------------------------
 // Mock ClickHouse client that always fails
 // ---------------------------------------------------------------------------
 
-const failingClickhouse: any = {
+const failingClickhouse: MockClickHouseClient = {
   query: () => {
     throw new Error("ClickHouse connection refused");
   },
@@ -25,7 +57,7 @@ const failingClickhouse: any = {
 // Mock ClickHouse client that returns empty results
 // ---------------------------------------------------------------------------
 
-const emptyClickhouse: any = {
+const emptyClickhouse: MockClickHouseClient = {
   query: async () => ({
     json: async () => [],
   }),
@@ -51,43 +83,10 @@ const failingDb = new Proxy(
 // ---------------------------------------------------------------------------
 
 function createEmptyDb() {
-  const chainable: any = new Proxy(
-    {},
-    {
-      get(_target, prop) {
-        if (prop === "then") return undefined; // not a thenable
-        return (..._args: any[]) => chainable;
-      },
-    },
-  );
-  // Override the terminal .from() to return a promise of empty array
-  const handler: any = {
-    get(_target: any, prop: string) {
+  const handler: ProxyHandler<object> = {
+    get(_target, prop) {
       if (prop === "then") return undefined;
-      return (..._args: any[]) => {
-        // select(), from(), where(), etc. all return a thenable empty array
-        const inner: any = new Proxy([], {
-          get(target, p) {
-            if (p === "then") return (target as any).then.bind(target);
-            if (p === "map") return (target as any).map.bind(target);
-            if (p === "length") return 0;
-            if (typeof p === "string") {
-              return (..._a: any[]) => inner;
-            }
-            return (target as any)[p];
-          },
-        });
-        // Make it also act as an awaitable empty array
-        return Object.assign(Promise.resolve([]), {
-          from: () => Promise.resolve([]),
-          where: () => Promise.resolve([]),
-          orderBy: () => Promise.resolve([]),
-          groupBy: () => Promise.resolve([]),
-          leftJoin: () => Promise.resolve([]),
-          innerJoin: () => Promise.resolve([]),
-          limit: () => Promise.resolve([]),
-        });
-      };
+      return (..._args: unknown[]) => createEmptyQueryChain();
     },
   };
   return new Proxy({}, handler);
@@ -100,7 +99,10 @@ function createEmptyDb() {
 describe("ReportService", () => {
   describe("failure surfacing (Phase 18)", () => {
     it("surfaces ClickHouse failures as warnings, not silent zeros", async () => {
-      const service = new ReportService(failingClickhouse, createEmptyDb() as unknown as AppDb);
+      const service = new ReportService(
+        failingClickhouse as ClickHouseClient,
+        createEmptyDb() as unknown as AppDb,
+      );
       const report = await service.getReportData("2026-01-01", "2026-01-31");
 
       // Should have warnings for the 5 CH sections
@@ -129,7 +131,7 @@ describe("ReportService", () => {
     });
 
     it("surfaces Postgres failures as warnings, not silent empties", async () => {
-      const service = new ReportService(emptyClickhouse, failingDb);
+      const service = new ReportService(emptyClickhouse as ClickHouseClient, failingDb);
       const report = await service.getReportData("2026-01-01", "2026-01-31");
 
       // Should have warnings for the 3 PG sections
@@ -148,7 +150,7 @@ describe("ReportService", () => {
 
     it("preserves successful sections when others fail", async () => {
       // CH works, PG fails
-      const service = new ReportService(emptyClickhouse, failingDb);
+      const service = new ReportService(emptyClickhouse as ClickHouseClient, failingDb);
       const report = await service.getReportData("2026-01-01", "2026-01-31");
 
       // CH sections succeed (with empty data from empty clickhouse)
@@ -160,7 +162,7 @@ describe("ReportService", () => {
     });
 
     it("includes dateRange and generatedAt even on total failure", async () => {
-      const service = new ReportService(failingClickhouse, failingDb);
+      const service = new ReportService(failingClickhouse as ClickHouseClient, failingDb);
       const report = await service.getReportData("2026-01-01", "2026-01-31");
 
       expect(report.dateRange.from).toBe("2026-01-01");

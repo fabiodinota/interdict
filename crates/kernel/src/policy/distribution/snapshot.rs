@@ -1,6 +1,6 @@
 //! Snapshot and delta processing for policy distribution updates.
 //!
-//! Converts protobuf `PolicyUpdate` messages into `PolicySet` instances
+//! Converts protobuf `SubscribeResponse` messages into `PolicySet` instances
 //! that can be atomically swapped via `PolicySetManager`.
 //!
 //! - `apply_snapshot`: Builds a complete PolicySet from a full list of PolicyEntry protos
@@ -18,8 +18,8 @@ use crate::policy::wasm_engine::WasmEngine;
 
 /// Convert a proto FailMode enum to the config FailMode.
 fn proto_fail_mode_to_config(mode: i32) -> FailMode {
-    match proto::policy_entry::FailMode::try_from(mode) {
-        Ok(proto::policy_entry::FailMode::FailOpen) => FailMode::FailOpen,
+    match mode {
+        2 => FailMode::FailOpen,
         _ => FailMode::FailClosed, // Default to fail-closed (security-first)
     }
 }
@@ -130,7 +130,7 @@ pub async fn apply_snapshot(
 /// indicating that a full snapshot re-sync is needed.
 pub async fn apply_delta(
     current: &PolicySet,
-    update: &proto::PolicyUpdate,
+    update: &proto::SubscribeResponse,
     wasm_engine: &Arc<WasmEngine>,
     hierarchy_config: &HierarchyConfig,
 ) -> anyhow::Result<PolicySet> {
@@ -190,7 +190,7 @@ pub async fn apply_delta(
                 rego_source: rego_source.clone(),
                 entrypoint: String::new(),
                 scope: None,
-                fail_mode: 0,
+                fail_mode: 1,
             });
         }
     }
@@ -304,7 +304,7 @@ default verdict := {{"action": "allow"}}
 
         let entries = vec![
             make_policy_entry("closed", "Fail Closed", &sample_rego("closed"), 0),
-            make_policy_entry("open", "Fail Open", &sample_rego("open"), 1),
+            make_policy_entry("open", "Fail Open", &sample_rego("open"), 2),
         ];
 
         let policy_set = apply_snapshot(1, &entries, &wasm, &hconfig)
@@ -358,9 +358,9 @@ default verdict := {{"action": "allow"}}
         assert_eq!(initial.policies.len(), 1);
 
         // Delta adds a second policy
-        let update = proto::PolicyUpdate {
+        let update = proto::SubscribeResponse {
             version: 2,
-            r#type: proto::policy_update::UpdateType::Delta as i32,
+            r#type: 2,
             policies: vec![make_policy_entry(
                 "pol2",
                 "Policy 2",
@@ -399,9 +399,9 @@ default verdict := {{"action": "allow"}}
         assert_eq!(initial.policies.len(), 2);
 
         // Delta removes pol1
-        let update = proto::PolicyUpdate {
+        let update = proto::SubscribeResponse {
             version: 2,
-            r#type: proto::policy_update::UpdateType::Delta as i32,
+            r#type: 2,
             policies: vec![],
             removed_policy_ids: vec!["pol1".to_string()],
         };
@@ -424,9 +424,9 @@ default verdict := {{"action": "allow"}}
         let initial = apply_snapshot(1, &[], &wasm, &hconfig).await.unwrap();
 
         // Version gap: current=1, received=5 (> 1+1)
-        let update = proto::PolicyUpdate {
+        let update = proto::SubscribeResponse {
             version: 5,
-            r#type: proto::policy_update::UpdateType::Delta as i32,
+            r#type: 2,
             policies: vec![],
             removed_policy_ids: vec![],
         };
@@ -461,14 +461,14 @@ default verdict := {{"action": "allow"}}
         .unwrap();
 
         // Delta updates pol1 with new name/content
-        let update = proto::PolicyUpdate {
+        let update = proto::SubscribeResponse {
             version: 2,
-            r#type: proto::policy_update::UpdateType::Delta as i32,
+            r#type: 2,
             policies: vec![make_policy_entry(
                 "pol1",
                 "New Policy 1",
                 &sample_rego("pol1"),
-                1,
+                2,
             )],
             removed_policy_ids: vec![],
         };
@@ -486,13 +486,13 @@ default verdict := {{"action": "allow"}}
     #[test]
     fn test_proto_fail_mode_mapping() {
         assert_eq!(proto_fail_mode_to_config(0), FailMode::FailClosed);
-        assert_eq!(proto_fail_mode_to_config(1), FailMode::FailOpen);
+        assert_eq!(proto_fail_mode_to_config(2), FailMode::FailOpen);
         assert_eq!(proto_fail_mode_to_config(99), FailMode::FailClosed); // Unknown defaults to closed
     }
 
     #[test]
     fn test_entry_to_scoped_policy_with_scope() {
-        let entry = make_policy_entry("test", "Test Policy", "some_rego", 0);
+        let entry = make_policy_entry("test", "Test Policy", "some_rego", 2);
         let sp = entry_to_scoped_policy(&entry);
 
         assert_eq!(sp.config.id, "test");
@@ -512,7 +512,7 @@ default verdict := {{"action": "allow"}}
             rego_source: String::new(),
             entrypoint: String::new(),
             scope: None,
-            fail_mode: 0,
+            fail_mode: 1,
         };
         let sp = entry_to_scoped_policy(&entry);
 

@@ -4,14 +4,14 @@ package interdict.policy.v1;
 
 // Policy distribution service using xDS-style server-streaming.
 // Control plane pushes policy updates to kernel fleet in real-time.
-service PolicyDistribution {
-  // Subscribe to policy updates. Returns a server-stream of PolicyUpdate messages.
+service PolicyDistributionService {
+  // Subscribe to policy updates. Returns a server-stream of SubscribeResponse messages.
   // Initial connect sends full snapshot; subsequent updates are deltas.
-  rpc Subscribe(SubscribeRequest) returns (stream PolicyUpdate);
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
 
   // Acknowledge receipt and loading of a policy version.
   // Kernel sends ACK on successful load, NACK with error on failure.
-  rpc Acknowledge(AckRequest) returns (AckResponse);
+  rpc Acknowledge(AcknowledgeRequest) returns (AcknowledgeResponse);
 }
 
 // Request to subscribe to policy updates for this kernel instance.
@@ -29,7 +29,7 @@ message SubscribeRequest {
 }
 
 // A policy update pushed from the control plane to a kernel.
-message PolicyUpdate {
+message SubscribeResponse {
   // Monotonic version counter (higher = newer).
   uint64 version = 1;
   // Type of update.
@@ -40,10 +40,11 @@ message PolicyUpdate {
   repeated string removed_policy_ids = 4;
 
   enum UpdateType {
+    UPDATE_TYPE_UNSPECIFIED = 0;
     // Full replacement of all policies.
-    FULL_SNAPSHOT = 0;
+    UPDATE_TYPE_FULL_SNAPSHOT = 1;
     // Incremental changes since last version.
-    DELTA = 1;
+    UPDATE_TYPE_DELTA = 2;
   }
 }
 
@@ -69,10 +70,11 @@ message PolicyEntry {
   FailMode fail_mode = 9;
 
   enum FailMode {
+    FAIL_MODE_UNSPECIFIED = 0;
     // Error -> Block. Conservative, security-first default.
-    FAIL_CLOSED = 0;
+    FAIL_MODE_FAIL_CLOSED = 1;
     // Error -> Allow. Use only for non-critical policies.
-    FAIL_OPEN = 1;
+    FAIL_MODE_FAIL_OPEN = 2;
   }
 }
 
@@ -89,7 +91,7 @@ message PolicyScope {
 }
 
 // Acknowledgement of a policy version by a kernel.
-message AckRequest {
+message AcknowledgeRequest {
   // Kernel instance that processed the update.
   string kernel_id = 1;
   // Version being acknowledged.
@@ -101,7 +103,7 @@ message AckRequest {
 }
 
 // Response to an acknowledgement.
-message AckResponse {
+message AcknowledgeResponse {
   // True if the ack was recorded by the control plane.
   bool acknowledged = 1;
 }

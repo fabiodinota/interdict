@@ -23,7 +23,7 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS builder
 
 # aws-lc-rs (via rustls) needs cmake; install before cook stage
-RUN apt-get update && apt-get install -y --no-install-recommends cmake \
+RUN apt-get update && apt-get install -y --no-install-recommends cmake=3.25.* \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=planner /app/recipe.json recipe.json
@@ -40,10 +40,10 @@ RUN cargo build --release --bin kernel
 FROM debian:bookworm-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    gettext-base \
-    netcat-openbsd \
-    openssl \
+    ca-certificates=20230311* \
+    gettext-base=0.21* \
+    netcat-openbsd=1.219* \
+    openssl=3.0.* \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user

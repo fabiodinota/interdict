@@ -48,7 +48,7 @@ interface PolicyDistributionProtoDescriptor {
   interdict: {
     policy: {
       v1: {
-        PolicyDistribution: {
+        PolicyDistributionService: {
           service: grpc.ServiceDefinition<grpc.UntypedServiceImplementation>;
         };
       };
@@ -59,7 +59,8 @@ interface PolicyDistributionProtoDescriptor {
 const protoDescriptor = grpc.loadPackageDefinition(
   packageDefinition,
 ) as unknown as PolicyDistributionProtoDescriptor;
-const PolicyDistributionService = protoDescriptor.interdict.policy.v1.PolicyDistribution.service;
+const PolicyDistributionService =
+  protoDescriptor.interdict.policy.v1.PolicyDistributionService.service;
 
 // ---------------------------------------------------------------------------
 // Full Snapshot Builder
@@ -239,13 +240,13 @@ export async function buildFullSnapshot(
         team_id: matchingScope.teamId,
         vendor_ids: matchingScope.vendorIds,
       },
-      fail_mode: 0, // FAIL_CLOSED default
+      fail_mode: 1, // FAIL_MODE_FAIL_CLOSED default
     });
   }
 
   return {
     version: globalVersion,
-    type: 0, // FULL_SNAPSHOT
+    type: 1, // UPDATE_TYPE_FULL_SNAPSHOT
     policies: policyEntries,
     removed_policy_ids: [],
   };

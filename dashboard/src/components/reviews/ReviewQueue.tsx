@@ -200,6 +200,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
 
   const items = data?.data ?? [];
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table manages row-model state internally; this component uses the table instance locally and does not memoize or pass it across boundaries.
   const table = useReactTable({
     data: items,
     columns,

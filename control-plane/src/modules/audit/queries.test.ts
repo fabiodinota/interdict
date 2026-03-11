@@ -9,6 +9,7 @@
  */
 
 import { describe, expect, mock, test } from "bun:test";
+import type { ClickHouseClient } from "@clickhouse/client";
 import { encodeCursor } from "../../shared/utilities";
 import type { ClickHouseAuditRow } from "./model";
 import {
@@ -21,6 +22,14 @@ import {
 // ---------------------------------------------------------------------------
 // Mock ClickHouse client
 // ---------------------------------------------------------------------------
+
+type MockClickHouseClient = {
+  query: (opts: {
+    query: string;
+    format?: string;
+    query_params?: Record<string, unknown>;
+  }) => Promise<{ json: () => Promise<unknown[]> }>;
+};
 
 function makeRow(overrides: Partial<ClickHouseAuditRow> = {}): ClickHouseAuditRow {
   return {
@@ -49,13 +58,13 @@ function makeRow(overrides: Partial<ClickHouseAuditRow> = {}): ClickHouseAuditRo
   };
 }
 
-function createMockClient(rows: ClickHouseAuditRow[] = []) {
+function createMockClient(rows: unknown[] = []) {
   const queryCalls: Array<{ query: string; query_params: Record<string, unknown> }> = [];
 
-  const client = {
+  const client: MockClickHouseClient = {
     query: mock(
-      async (opts: { query: string; format: string; query_params: Record<string, unknown> }) => {
-        queryCalls.push({ query: opts.query, query_params: opts.query_params });
+      async (opts: { query: string; format?: string; query_params?: Record<string, unknown> }) => {
+        queryCalls.push({ query: opts.query, query_params: opts.query_params ?? {} });
         return {
           json: async () => rows,
         };
@@ -63,7 +72,7 @@ function createMockClient(rows: ClickHouseAuditRow[] = []) {
     ),
   };
 
-  return { client: client as any, queryCalls };
+  return { client: client as unknown as ClickHouseClient, queryCalls };
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +198,7 @@ describe("queryHourlyViolations", () => {
         unique_vendors: 1,
       },
     ];
-    const { client, queryCalls } = createMockClient(mockRows as any);
+    const { client, queryCalls } = createMockClient(mockRows);
 
     const result = await queryHourlyViolations(
       client,
@@ -217,7 +226,7 @@ describe("queryVendorUsage", () => {
         avg_latency_us: 450,
       },
     ];
-    const { client, queryCalls } = createMockClient(mockRows as any);
+    const { client, queryCalls } = createMockClient(mockRows);
 
     const result = await queryVendorUsage(client, "2026-02-28T00:00:00Z", "2026-02-28T23:59:59Z");
 
@@ -247,7 +256,7 @@ describe("queryDepartmentSummary", () => {
         unique_actors: 10,
       },
     ];
-    const { client, queryCalls } = createMockClient(mockRows as any);
+    const { client, queryCalls } = createMockClient(mockRows);
 
     const result = await queryDepartmentSummary(
       client,

@@ -308,12 +308,14 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
       if (cursor) {
         const { timestamp, id: cursorId } = decodeCursor(cursor);
         const cursorDate = new Date(timestamp);
-        conditions.push(
-          or(
-            lt(apiKeys.createdAt, cursorDate),
-            and(eq(apiKeys.createdAt, cursorDate), lt(apiKeys.id, cursorId)),
-          )!,
+        const cursorCondition = or(
+          lt(apiKeys.createdAt, cursorDate),
+          and(eq(apiKeys.createdAt, cursorDate), lt(apiKeys.id, cursorId)),
         );
+
+        if (cursorCondition) {
+          conditions.push(cursorCondition);
+        }
       }
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

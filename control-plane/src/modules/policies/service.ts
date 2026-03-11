@@ -391,12 +391,14 @@ export function createPolicyService(db: AppDb): PolicyService {
       if (cursor) {
         const { timestamp, id: cursorId } = decodeCursor(cursor);
         const cursorDate = new Date(timestamp);
-        conditions.push(
-          or(
-            lt(policies.updatedAt, cursorDate),
-            and(eq(policies.updatedAt, cursorDate), lt(policies.id, cursorId)),
-          )!,
+        const cursorCondition = or(
+          lt(policies.updatedAt, cursorDate),
+          and(eq(policies.updatedAt, cursorDate), lt(policies.id, cursorId)),
         );
+
+        if (cursorCondition) {
+          conditions.push(cursorCondition);
+        }
       }
 
       const rows = await db

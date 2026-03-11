@@ -1,0 +1,12 @@
+dependencies:
+- name: postgresql
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 16.0.6
+- name: clickhouse
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 6.0.7
+- name: minio
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 14.0.0
+digest: sha256:9a5a38aa1e3009562c8ea831a020cd0edb12c8e902d26f9ee33aa4ea7dd80eb3
+generated: "2026-03-11T22:32:55.7419842+01:00"

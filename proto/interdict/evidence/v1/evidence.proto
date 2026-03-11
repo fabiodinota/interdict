@@ -4,17 +4,17 @@ package interdict.evidence.v1;
 
 import "google/protobuf/timestamp.proto";
 
-service EvidenceCollector {
-  rpc SubmitEvidence(stream EvidenceBatch) returns (SubmitResponse);
+service EvidenceCollectorService {
+  rpc SubmitEvidence(stream SubmitEvidenceRequest) returns (SubmitEvidenceResponse);
 }
 
-message EvidenceBatch {
+message SubmitEvidenceRequest {
   bytes compressed_payload = 1;
   string kernel_id = 2;
   uint64 batch_sequence = 3;
 }
 
-message SubmitResponse {
+message SubmitEvidenceResponse {
   uint64 accepted_count = 1;
   uint64 rejected_count = 2;
   string error_message = 3;

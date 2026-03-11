@@ -63,6 +63,7 @@ is_plain_yaml_file() {
 
 render_helm_chart() {
   require_tool helm
+  require_tool tar
 
   local tmp_chart
   tmp_chart="$(mktemp -d)"
@@ -71,6 +72,11 @@ render_helm_chart() {
   cp -R helm/interdict/. "$tmp_chart"
 
   helm dependency build "$tmp_chart" >/dev/null
+  local archive
+  for archive in "$tmp_chart"/charts/*.tgz; do
+    [ -e "$archive" ] || continue
+    tar -xzf "$archive" -C "$tmp_chart/charts"
+  done
   helm lint "$tmp_chart"
   helm template interdict "$tmp_chart" >/dev/null
 }

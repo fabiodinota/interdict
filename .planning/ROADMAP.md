@@ -9,8 +9,8 @@ Interdict.io is an AI governance kernel for regulated enterprises. v1.0 shipped 
 - **v1.0 MVP** -- Phases 1-6.1 (shipped 2026-03-01)
 - **v1.1 Pilot Ready** -- Phases 7-15 (shipped 2026-03-04)
 - **v1.2 Trustworthiness & Hardening** -- Phases 16-24 (completed 2026-03-10)
-- **v1.3 Scan Remediation** -- Phases 25-29 (completed in working tree 2026-03-11)
-- **v1.4 Hardening & Release Readiness** -- Phases 30-33 (in progress)
+- **v1.3 Scan Remediation** -- Phases 25-29 (completed 2026-03-11)
+- **v1.4 Hardening & Release Readiness** -- Phases 30-33 (completed 2026-03-11)
 
 ## Phases
 
@@ -64,13 +64,13 @@ Full details in `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADM
 </details>
 
 <details open>
-<summary>v1.3 Scan Remediation (Phases 25-29) -- COMPLETED IN WORKING TREE 2026-03-11</summary>
+<summary>v1.3 Scan Remediation (Phases 25-29) -- COMPLETED 2026-03-11</summary>
 
-- [x] Phase 25: Rust Robustness & Async Safety -- completed 2026-03-11 (working tree)
-- [x] Phase 26: TypeScript Type Eradication -- completed 2026-03-11 (working tree)
-- [x] Phase 27: Auth & Access Control Hardening -- completed 2026-03-11 (working tree)
-- [x] Phase 28: Observability & Error Honesty -- completed 2026-03-11 (working tree)
-- [x] Phase 29: Deployment Completeness & Config Parity -- completed 2026-03-11 (working tree)
+- [x] Phase 25: Rust Robustness & Async Safety -- completed 2026-03-11
+- [x] Phase 26: TypeScript Type Eradication -- completed 2026-03-11
+- [x] Phase 27: Auth & Access Control Hardening -- completed 2026-03-11
+- [x] Phase 28: Observability & Error Honesty -- completed 2026-03-11
+- [x] Phase 29: Deployment Completeness & Config Parity -- completed 2026-03-11
 
 Full details in `.planning/phases/v1.3-scan-remediation/EXECUTION-ROADMAP.md`
 Scan report: `.planning/phases/v1.3-scan-remediation/SCAN-REPORT.md`
@@ -78,12 +78,12 @@ Scan report: `.planning/phases/v1.3-scan-remediation/SCAN-REPORT.md`
 </details>
 
 <details open>
-<summary>v1.4 Hardening & Release Readiness (Phases 30-33) -- IN PROGRESS</summary>
+<summary>v1.4 Hardening & Release Readiness (Phases 30-33) -- COMPLETED 2026-03-11</summary>
 
-- [x] Phase 30: Secret, Session, and Seed Hardening -- completed in working tree 2026-03-11 (3/3 plans)
-- [x] Phase 31: Distribution TLS & Evidence Query Scale Hardening -- completed in working tree 2026-03-11 (2/2 plans)
-- [x] Phase 32: Repo Quality Gates & Infra Lint Coverage -- completed in working tree 2026-03-11 (3/3 plans)
-- [ ] Phase 33: Warning Burn-Down, Next 16 Cleanup & Project Truth -- unplanned
+- [x] Phase 30: Secret, Session, and Seed Hardening -- completed and verified 2026-03-11 (3/3 plans)
+- [x] Phase 31: Distribution TLS & Evidence Query Scale Hardening -- completed and verified 2026-03-11 (2/2 plans)
+- [x] Phase 32: Repo Quality Gates & Infra Lint Coverage -- completed and verified 2026-03-11 (3/3 plans)
+- [x] Phase 33: Warning Burn-Down, Next 16 Cleanup & Project Truth -- completed and verified 2026-03-11 (5/5 plans)
 
 Execution roadmap: `.planning/phases/v1.4-hardening-readiness/EXECUTION-ROADMAP.md`
 
@@ -97,7 +97,7 @@ Execution roadmap: `.planning/phases/v1.4-hardening-readiness/EXECUTION-ROADMAP.
 | 7-15 | v1.1 | 24/24 | Complete | 2026-03-04 |
 | 16-24 | v1.2 | 9/9 phases | Complete | 2026-03-10 |
 | 25-29 | v1.3 | 5/5 phases | Complete | 2026-03-11 |
-| 30-33 | v1.4 | 3/4 phases | In Progress | 2026-03-11 |
+| 30-33 | v1.4 | 4/4 phases | Complete | 2026-03-11 |
 
 ## Planned Next Phases
 
@@ -137,8 +137,15 @@ Plans:
 
 **Goal:** Reduce remaining warning debt, complete framework cleanup, and align planning docs with actual verified repo state.
 **Requirements:** [HR-MAINT-01, HR-DOC-01]
-**Plans:** 0 plans
+**Plans:** 5 plans
+
+Plans:
+- [x] `33-01-PLAN.md` -- Burn down the current control-plane production and hotspot test warnings.
+- [x] `33-02-PLAN.md` -- Finish Next 16 proxy/root cleanup and reduce the two dashboard table warnings.
+- [x] `33-03-PLAN.md` -- Resolve remaining Dockerfile warning debt and align active planning docs/local config with repo truth.
+- [x] `33-04-PLAN.md` -- Normalize the remaining control-plane repo-wide format drift so `bun run check` passes.
+- [x] `33-05-PLAN.md` -- Rename the evidence and policy distribution protos to close the Buf naming gap cleanly.
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-11 -- Phase 32 repo quality gates and infra lint coverage completed in working tree*
+*Last updated: 2026-03-11 -- v1.4 hardening and release-readiness milestone completed and verified*

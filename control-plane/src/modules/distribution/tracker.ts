@@ -50,7 +50,7 @@ export interface AckResponseMessage {
  */
 export interface PolicyUpdateMessage {
   version: number;
-  type: number; // 0 = FULL_SNAPSHOT, 1 = DELTA
+  type: number; // 1 = UPDATE_TYPE_FULL_SNAPSHOT, 2 = UPDATE_TYPE_DELTA
   policies: PolicyEntryMessage[];
   removed_policy_ids: string[];
 }
@@ -69,7 +69,7 @@ export interface PolicyEntryMessage {
     team_id: string;
     vendor_ids: string[];
   };
-  fail_mode: number; // 0 = FAIL_CLOSED, 1 = FAIL_OPEN
+  fail_mode: number; // 1 = FAIL_MODE_FAIL_CLOSED, 2 = FAIL_MODE_FAIL_OPEN
 }
 
 // ---------------------------------------------------------------------------

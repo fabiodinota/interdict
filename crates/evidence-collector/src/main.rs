@@ -4,8 +4,8 @@ use anyhow::{Context, Result};
 use chrono::{Timelike, Utc};
 use evidence_collector::chain::hasher::ChainManager;
 use evidence_collector::config::{CollectorConfig, SigningMode};
-use evidence_collector::grpc::proto::evidence_collector_server::EvidenceCollectorServer;
-use evidence_collector::grpc::service::EvidenceCollectorService;
+use evidence_collector::grpc::proto::evidence_collector_service_server::EvidenceCollectorServiceServer;
+use evidence_collector::grpc::service::EvidenceCollectorGrpcService;
 use evidence_collector::merkle::builder::{self, HourlyMerkleBuilder};
 use evidence_collector::signing::{
     KmsSigningProvider, LocalSigningProvider, RotatingSigningProvider, SigningProvider,
@@ -132,7 +132,7 @@ async fn main() -> Result<()> {
     });
 
     // Build the gRPC service.
-    let service = EvidenceCollectorService::new(
+    let service = EvidenceCollectorGrpcService::new(
         chain_manager,
         signing_provider,
         clickhouse_writer.clone(),
@@ -184,7 +184,7 @@ async fn main() -> Result<()> {
     };
 
     builder
-        .add_service(EvidenceCollectorServer::new(service))
+        .add_service(EvidenceCollectorServiceServer::new(service))
         .serve_with_shutdown(grpc_addr, async move {
             if let Err(error) = tokio::signal::ctrl_c().await {
                 tracing::error!(error = %error, "failed to install ctrl+c handler");

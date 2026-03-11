@@ -6,11 +6,32 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import type { AppDb } from "../../shared/types";
+
+interface MockVendorRecord {
+  id: string;
+  name: string;
+  displayName: string;
+  status: string;
+  baseUrl: string | null;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface MockVendorModelRecord {
+  id: string;
+  vendorId: string;
+  modelName: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // Mock database layer for vendor testing
 function createMockVendorDb() {
-  const vendors = new Map<string, any>();
-  const models = new Map<string, any[]>();
+  const vendors = new Map<string, MockVendorRecord>();
+  const models = new Map<string, MockVendorModelRecord[]>();
 
   return {
     vendors,
@@ -108,7 +129,7 @@ function createMockVendorDb() {
 
     updateModel(vendorId: string, modelId: string, data: { status: string }) {
       const vendorModels = models.get(vendorId) || [];
-      const model = vendorModels.find((m: any) => m.id === modelId);
+      const model = vendorModels.find((vendorModel) => vendorModel.id === modelId);
       if (!model) return null;
       model.status = data.status;
       model.updatedAt = new Date();
@@ -166,11 +187,15 @@ describe("VendorService", () => {
 
     mockDb.updateModel(vendor.id, m1.id, { status: "blocked" });
 
-    const v = mockDb.getVendor(vendor.id)!;
+    const v = mockDb.getVendor(vendor.id);
+    expect(v).toBeDefined();
+    if (!v) {
+      throw new Error("expected vendor to exist");
+    }
     expect(v.status).toBe("approved"); // Vendor status unchanged
     const models = mockDb.listModels(vendor.id);
-    const gpt4 = models.find((m: any) => m.modelName === "gpt-4");
-    const gpt35 = models.find((m: any) => m.modelName === "gpt-3.5");
+    const gpt4 = models.find((model) => model.modelName === "gpt-4");
+    const gpt35 = models.find((model) => model.modelName === "gpt-3.5");
     expect(gpt4?.status).toBe("blocked");
     expect(gpt35?.status).toBe("approved");
   });
@@ -183,7 +208,11 @@ describe("VendorService", () => {
     });
     mockDb.addModel(vendor.id, { modelName: "gpt-4" });
 
-    const v = mockDb.getVendor(vendor.id)!;
+    const v = mockDb.getVendor(vendor.id);
+    expect(v).toBeDefined();
+    if (!v) {
+      throw new Error("expected vendor to exist");
+    }
     expect(v.models.length).toBe(1);
     expect(v.models[0].modelName).toBe("gpt-4");
     expect(v.models[0].status).toBe("approved");
@@ -201,7 +230,7 @@ describe("VendorService", () => {
     mockDb.updateVendor(vendor.id, { status: "blocked" });
 
     const models = mockDb.listModels(vendor.id);
-    expect(models.every((m: any) => m.status === "blocked")).toBe(true);
+    expect(models.every((model) => model.status === "blocked")).toBe(true);
   });
 
   test("deleting a vendor cascades to delete its models", () => {
@@ -243,7 +272,7 @@ describe("VendorService - createVendorService integration", () => {
   test("createVendorService returns an object with required methods", async () => {
     const { createVendorService } = await import("./service");
 
-    const service = createVendorService(null as any);
+    const service = createVendorService(null as unknown as AppDb);
 
     expect(typeof service.create).toBe("function");
     expect(typeof service.getById).toBe("function");

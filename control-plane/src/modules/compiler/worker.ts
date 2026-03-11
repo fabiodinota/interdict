@@ -258,7 +258,7 @@ export function startCompilationWorker(
 
             broadcastUpdate({
               version: version.version,
-              type: 1, // DELTA
+              type: 2, // UPDATE_TYPE_DELTA
               policies: [
                 {
                   policy_id: version.policyId,
@@ -274,7 +274,7 @@ export function startCompilationWorker(
                     team_id: scopeRow?.teamId ?? "",
                     vendor_ids: vendorIds,
                   },
-                  fail_mode: 0, // FAIL_CLOSED default
+                  fail_mode: 1, // FAIL_MODE_FAIL_CLOSED default
                 },
               ],
               removed_policy_ids: [],

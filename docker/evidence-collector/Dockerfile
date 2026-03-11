@@ -36,8 +36,8 @@ RUN cargo build --release --bin interdict-collector
 FROM debian:bookworm-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    netcat-openbsd \
+    ca-certificates=20230311* \
+    netcat-openbsd=1.219* \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user

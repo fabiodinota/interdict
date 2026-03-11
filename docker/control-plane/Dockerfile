@@ -22,7 +22,7 @@ RUN chmod +x /tmp/opa
 FROM base
 
 # Install wget for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends wget \
+RUN apt-get update && apt-get install -y --no-install-recommends wget=1.21.* \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy OPA from the download stage

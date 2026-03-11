@@ -53,8 +53,11 @@ default verdict = {"action": "allow"}
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors?.length).toBeGreaterThan(0);
+    if (!result.errors) {
+      throw new Error("expected structured validation errors");
+    }
     // Each error should have at least a message
-    for (const err of result.errors!) {
+    for (const err of result.errors) {
       expect(err).toHaveProperty("message");
       expect(typeof err.message).toBe("string");
     }

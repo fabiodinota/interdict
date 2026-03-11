@@ -233,12 +233,14 @@ export function createVendorService(db: AppDb): VendorService {
       if (cursor) {
         const { timestamp, id: cursorId } = decodeCursor(cursor);
         const cursorDate = new Date(timestamp);
-        conditions.push(
-          or(
-            lt(vendors.updatedAt, cursorDate),
-            and(eq(vendors.updatedAt, cursorDate), lt(vendors.id, cursorId)),
-          )!,
+        const cursorCondition = or(
+          lt(vendors.updatedAt, cursorDate),
+          and(eq(vendors.updatedAt, cursorDate), lt(vendors.id, cursorId)),
         );
+
+        if (cursorCondition) {
+          conditions.push(cursorCondition);
+        }
       }
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

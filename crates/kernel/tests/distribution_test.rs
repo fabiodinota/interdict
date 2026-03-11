@@ -88,7 +88,7 @@ fn make_scoped_policy_entry(
             team_id: team.to_string(),
             vendor_ids: vendors,
         }),
-        fail_mode: 0,
+        fail_mode: 1,
     }
 }
 
@@ -417,9 +417,9 @@ async fn test_delta_add_policy() {
     assert_eq!(initial.policies.len(), 1);
 
     // Delta adds a second policy
-    let update = proto::PolicyUpdate {
+    let update = proto::SubscribeResponse {
         version: 2,
-        r#type: proto::policy_update::UpdateType::Delta as i32,
+        r#type: 2,
         policies: vec![make_policy_entry(
             "pol2",
             "Policy 2",
@@ -460,9 +460,9 @@ async fn test_delta_remove_policy() {
     assert_eq!(initial.policies.len(), 2);
 
     // Delta removes pol1
-    let update = proto::PolicyUpdate {
+    let update = proto::SubscribeResponse {
         version: 2,
-        r#type: proto::policy_update::UpdateType::Delta as i32,
+        r#type: 2,
         policies: vec![],
         removed_policy_ids: vec!["pol1".to_string()],
     };
@@ -489,9 +489,9 @@ async fn test_delta_version_gap_detection() {
     assert_eq!(initial.version, 5);
 
     // Apply delta with version=8 (gap: expected 6, got 8)
-    let update = proto::PolicyUpdate {
+    let update = proto::SubscribeResponse {
         version: 8,
-        r#type: proto::policy_update::UpdateType::Delta as i32,
+        r#type: 2,
         policies: vec![],
         removed_policy_ids: vec![],
     };
@@ -529,7 +529,7 @@ async fn test_snapshot_rebuild_regorus() {
             team_id: String::new(),
             vendor_ids: vec![],
         }),
-        fail_mode: 0,
+        fail_mode: 1,
     }];
 
     let policy_set = apply_snapshot(3, &entries, &wasm, &hconfig)

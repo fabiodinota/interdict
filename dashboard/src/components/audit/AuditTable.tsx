@@ -212,6 +212,7 @@ export function AuditTable({
   const hasMore = data?.pagination?.hasMore ?? false;
   const nextCursor = data?.pagination?.nextCursor ?? null;
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table manages row-model state internally; this component does not memoize or forward the returned table instance.
   const table = useReactTable({
     data: records,
     columns,
