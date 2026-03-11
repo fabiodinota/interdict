@@ -52,6 +52,8 @@ pub struct DistributionClient {
     tls_client_cert: Option<Vec<u8>>,
     /// Raw client key bytes for mTLS.
     tls_client_key: Option<Vec<u8>>,
+    /// Expected TLS server identity when mTLS is enabled.
+    tls_server_name: Option<String>,
 }
 
 impl DistributionClient {
@@ -79,6 +81,7 @@ impl DistributionClient {
             tls_ca_cert: None,
             tls_client_cert: None,
             tls_client_key: None,
+            tls_server_name: None,
         }
     }
 
@@ -91,10 +94,12 @@ impl DistributionClient {
         ca_cert: Vec<u8>,
         client_cert: Vec<u8>,
         client_key: Vec<u8>,
+        tls_server_name: String,
     ) -> Self {
         self.tls_ca_cert = Some(ca_cert);
         self.tls_client_cert = Some(client_cert);
         self.tls_client_key = Some(client_key);
+        self.tls_server_name = Some(tls_server_name);
         self
     }
 
@@ -103,13 +108,18 @@ impl DistributionClient {
         let ca = self.tls_ca_cert.as_ref()?;
         let cert = self.tls_client_cert.as_ref()?;
         let key = self.tls_client_key.as_ref()?;
+        let server_name = self.tls_server_name.as_deref()?;
 
         Some(
             ClientTlsConfig::new()
                 .ca_certificate(Certificate::from_pem(ca))
                 .identity(Identity::from_pem(cert, key))
-                .domain_name("control-plane"),
+                .domain_name(server_name),
         )
+    }
+
+    fn tls_server_name(&self) -> Option<&str> {
+        self.tls_server_name.as_deref()
     }
 
     /// Spawn the reconnect loop as a background tokio task.
@@ -429,6 +439,40 @@ mod tests {
         assert!(!cancel.is_cancelled());
         client.stop();
         assert!(cancel.is_cancelled());
+    }
+
+    #[test]
+    fn test_distribution_client_uses_configured_tls_server_name() {
+        let wasm = test_wasm_engine();
+        let manager = Arc::new(PolicySetManager::new(make_empty_policy_set(0)));
+        let cancel = CancellationToken::new();
+
+        let client = DistributionClient::new(
+            "https://10.0.0.25:50052".to_string(),
+            "kernel-test".to_string(),
+            HierarchyConfig {
+                org_id: "test-org".to_string(),
+                dept_id: None,
+                team_id: None,
+            },
+            manager,
+            wasm,
+            Duration::from_secs(30),
+            "fail_closed".to_string(),
+            cancel,
+        )
+        .with_mtls(
+            b"ca".to_vec(),
+            b"cert".to_vec(),
+            b"key".to_vec(),
+            "dist.control-plane.internal".to_string(),
+        );
+
+        assert_eq!(
+            client.tls_server_name(),
+            Some("dist.control-plane.internal")
+        );
+        assert!(client.build_tls_config().is_some());
     }
 
     #[test]

@@ -349,6 +349,9 @@ async fn main() -> anyhow::Result<()> {
                 certs.ca_cert.clone(),
                 certs.client_cert.clone(),
                 certs.client_key.clone(),
+                dist_config.tls_server_name.clone().context(
+                    "distribution TLS server name must be configured when mTLS is enabled",
+                )?,
             );
         }
 

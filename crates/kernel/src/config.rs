@@ -90,6 +90,10 @@ pub struct DistributionConfig {
     /// Path to kernel client private key for mTLS (from env KERNEL_MTLS_CLIENT_KEY).
     #[serde(default)]
     pub mtls_client_key_path: Option<String>,
+
+    /// Expected TLS server identity for policy distribution mTLS.
+    #[serde(default)]
+    pub tls_server_name: Option<String>,
 }
 
 impl Default for DistributionConfig {
@@ -108,6 +112,7 @@ impl Default for DistributionConfig {
             mtls_ca_cert_path: std::env::var("KERNEL_MTLS_CA_CERT").ok(),
             mtls_client_cert_path: std::env::var("KERNEL_MTLS_CLIENT_CERT").ok(),
             mtls_client_key_path: std::env::var("KERNEL_MTLS_CLIENT_KEY").ok(),
+            tls_server_name: std::env::var("KERNEL_DISTRIBUTION_TLS_SERVER_NAME").ok(),
         }
     }
 }
@@ -378,6 +383,29 @@ fn validate(config: &Config) -> anyhow::Result<()> {
         );
     }
 
+    let distribution = &config.policy.distribution;
+    let distribution_uses_mtls = distribution
+        .distribution_addr
+        .as_deref()
+        .map(|addr| addr.starts_with("https://"))
+        .unwrap_or(false)
+        && distribution.mtls_ca_cert_path.is_some()
+        && distribution.mtls_client_cert_path.is_some()
+        && distribution.mtls_client_key_path.is_some();
+
+    if distribution_uses_mtls
+        && distribution
+            .tls_server_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_none()
+    {
+        anyhow::bail!(
+            "policy.distribution.tls_server_name must be set when distribution mTLS is enabled"
+        );
+    }
+
     Ok(())
 }
 
@@ -559,6 +587,7 @@ disconnect_mode = "keep_last"
 session_max_entries = 5000
 session_ttl_secs = 3600
 session_cleanup_interval_secs = 120
+tls_server_name = "control-plane.internal"
 "#;
         let config: Config = toml::from_str(toml_str).unwrap();
         assert_eq!(
@@ -586,6 +615,63 @@ session_cleanup_interval_secs = 120
             config.policy.distribution.session_cleanup_interval_secs,
             120
         );
+        assert_eq!(
+            config.policy.distribution.tls_server_name.as_deref(),
+            Some("control-plane.internal")
+        );
+    }
+
+    #[test]
+    fn test_distribution_mtls_requires_tls_server_name() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let ca_cert_path = temp_dir.path().join("ca.crt");
+        let ca_key_path = temp_dir.path().join("ca.key");
+        let mtls_ca_path = temp_dir.path().join("internal-ca.pem");
+        let mtls_cert_path = temp_dir.path().join("kernel.pem");
+        let mtls_key_path = temp_dir.path().join("kernel-key.pem");
+
+        for path in [
+            &ca_cert_path,
+            &ca_key_path,
+            &mtls_ca_path,
+            &mtls_cert_path,
+            &mtls_key_path,
+        ] {
+            std::fs::write(path, "test").unwrap();
+        }
+
+        let toml_str = format!(
+            r#"
+[proxy]
+listen_addr = "0.0.0.0:8443"
+
+[tls]
+ca_cert_path = "{}"
+ca_key_path = "{}"
+
+[pool]
+
+[allowlist]
+vendors = ["api.openai.com"]
+
+[logging]
+
+[policy.distribution]
+distribution_addr = "https://control-plane:50052"
+mtls_ca_cert_path = "{}"
+mtls_client_cert_path = "{}"
+mtls_client_key_path = "{}"
+"#,
+            ca_cert_path.display(),
+            ca_key_path.display(),
+            mtls_ca_path.display(),
+            mtls_cert_path.display(),
+            mtls_key_path.display()
+        );
+
+        let config: Config = toml::from_str(&toml_str).unwrap();
+        let error = validate(&config).unwrap_err().to_string();
+        assert!(error.contains("policy.distribution.tls_server_name must be set"));
     }
 
     #[test]
