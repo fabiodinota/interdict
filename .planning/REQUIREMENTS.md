@@ -21,8 +21,8 @@ This file tracks the currently active hardening requirements for the next milest
 
 ### Distribution TLS and Evidence Query Scale
 
-- [ ] **HR-DIST-01**: Kernel distribution TLS server identity is deployment-configurable and not hard-coded to a single hostname.
-- [ ] **HR-EVID-01**: ClickHouse reads against `evidence_bundles` use partition-friendly date filters in operator-facing and verification-sensitive flows.
+- [x] **HR-DIST-01**: Kernel distribution TLS server identity is deployment-configurable and not hard-coded to a single hostname.
+- [x] **HR-EVID-01**: ClickHouse reads against `evidence_bundles` use partition-friendly date filters in operator-facing and verification-sensitive flows.
 
 ### Repo Quality Gates and Infra Coverage
 
@@ -41,8 +41,8 @@ This file tracks the currently active hardening requirements for the next milest
 | HR-SEC-01 | Phase 30 | Complete |
 | HR-AUTH-01 | Phase 30 | Complete |
 | HR-AUTH-02 | Phase 30 | Complete |
-| HR-DIST-01 | Phase 31 | Planned |
-| HR-EVID-01 | Phase 31 | Planned |
+| HR-DIST-01 | Phase 31 | Complete |
+| HR-EVID-01 | Phase 31 | Complete |
 | HR-OPS-01 | Phase 32 | Planned |
 | HR-OPS-02 | Phase 32 | Planned |
 | HR-MAINT-01 | Phase 33 | Planned |
@@ -54,4 +54,4 @@ This file tracks the currently active hardening requirements for the next milest
 - Unmapped: 0
 
 ---
-*Last updated: 2026-03-11 -- Phase 30 requirements verified in working tree*
+*Last updated: 2026-03-11 -- Phase 31 requirements verified in working tree*
