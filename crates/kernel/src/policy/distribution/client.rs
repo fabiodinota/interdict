@@ -118,10 +118,6 @@ impl DistributionClient {
         )
     }
 
-    fn tls_server_name(&self) -> Option<&str> {
-        self.tls_server_name.as_deref()
-    }
-
     /// Spawn the reconnect loop as a background tokio task.
     ///
     /// Returns the JoinHandle for the spawned task. The loop runs until
@@ -469,7 +465,7 @@ mod tests {
         );
 
         assert_eq!(
-            client.tls_server_name(),
+            client.tls_server_name.as_deref(),
             Some("dist.control-plane.internal")
         );
         assert!(client.build_tls_config().is_some());
