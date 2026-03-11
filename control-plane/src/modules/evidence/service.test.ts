@@ -13,6 +13,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import type { ClickHouseClient } from "@clickhouse/client";
+import type { AppDb } from "../../shared/types";
+import { EvidenceVerificationService } from "./service";
 
 // ---------------------------------------------------------------------------
 // Helpers (duplicated from service.ts for isolated unit testing)
@@ -49,6 +52,43 @@ function concatBytes(...arrays: Uint8Array[]): Uint8Array {
 }
 
 const GENESIS_PREVIOUS_HEX = "0".repeat(64);
+
+function createMockClickhouse() {
+  const queries: Array<{ query: string; query_params?: Record<string, unknown> }> = [];
+  const responses: unknown[] = [];
+
+  return {
+    query: async ({
+      query,
+      query_params,
+    }: {
+      query: string;
+      query_params?: Record<string, unknown>;
+    }) => {
+      queries.push({ query, query_params });
+      const next = responses.shift() ?? [];
+      return {
+        json: async () => next,
+      };
+    },
+    _pushResponse: (rows: unknown) => {
+      responses.push(rows);
+    },
+    _queries: queries,
+  };
+}
+
+function createMockDb(selectResult: unknown[] = []) {
+  return {
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          limit: async () => selectResult,
+        }),
+      }),
+    }),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Chain hash algorithm tests
@@ -331,5 +371,151 @@ describe("Full chain verification pipeline", () => {
       );
       expect(valid).toBe(true);
     }
+  });
+});
+
+describe("Phase 31 evidence query hardening", () => {
+  test("fetchBundles bounds the heavy read to derived event_date partitions", async () => {
+    const clickhouse = createMockClickhouse();
+    clickhouse._pushResponse([{ bundle_id: "bundle-1", event_date: "2026-03-11" }]);
+    clickhouse._pushResponse([
+      {
+        bundle_id: "bundle-1",
+        kernel_id: "kernel-1",
+        chain_hash: "a".repeat(64),
+        previous_hash: GENESIS_PREVIOUS_HEX,
+        sequence_number: 1,
+        signature: "b".repeat(128),
+        signing_key_id: "key-1",
+        timestamp: "2026-03-11T00:03:00.000Z",
+        event_date: "2026-03-11",
+        actor_identity: "alice",
+        vendor: "openai",
+        model: "gpt-5",
+        policy_action: "allow",
+        department: "eng",
+        content_bytes: "aa",
+      },
+    ]);
+
+    const service = new EvidenceVerificationService(
+      clickhouse as unknown as ClickHouseClient,
+      createMockDb() as unknown as AppDb,
+    );
+    const fetchBundles = Reflect.get(service, "fetchBundles") as (
+      bundleIds: string[],
+    ) => Promise<Map<string, { bundle_id: string }>>;
+    const bundles = await fetchBundles.call(service, ["bundle-1"]);
+
+    expect(clickhouse._queries[0]?.query).toContain("SELECT bundle_id, event_date");
+    expect(clickhouse._queries[1]?.query).toContain("event_date IN {event_dates:Array(String)}");
+    expect(clickhouse._queries[1]?.query).toContain("bundle_id IN {ids:Array(String)}");
+    expect(clickhouse._queries[1]?.query_params?.event_dates).toEqual(["2026-03-11"]);
+    expect(bundles.get("bundle-1")?.bundle_id).toBe("bundle-1");
+  });
+
+  test("fetchPredecessor keeps adjacent-day predecessors reachable", async () => {
+    const clickhouse = createMockClickhouse();
+    clickhouse._pushResponse([
+      {
+        bundle_id: "bundle-1",
+        kernel_id: "kernel-1",
+        chain_hash: "a".repeat(64),
+        previous_hash: GENESIS_PREVIOUS_HEX,
+        sequence_number: 1,
+        signature: "b".repeat(128),
+        signing_key_id: "key-1",
+        timestamp: "2026-03-10T23:59:58.000Z",
+        event_date: "2026-03-10",
+        actor_identity: "alice",
+        vendor: "openai",
+        model: "gpt-5",
+        policy_action: "allow",
+        department: "eng",
+        content_bytes: "aa",
+      },
+    ]);
+
+    const service = new EvidenceVerificationService(
+      clickhouse as unknown as ClickHouseClient,
+      createMockDb() as unknown as AppDb,
+    );
+    const fetchPredecessor = Reflect.get(service, "fetchPredecessor") as (
+      kernelId: string,
+      sequenceNumber: number,
+      currentTimestamp: string,
+    ) => Promise<{ bundle_id: string } | null>;
+    const predecessor = await fetchPredecessor.call(
+      service,
+      "kernel-1",
+      2,
+      "2026-03-11T00:03:00.000Z",
+    );
+
+    expect(clickhouse._queries[0]?.query).toContain("event_date >= {from_date:String}");
+    expect(clickhouse._queries[0]?.query).toContain("event_date <= {to_date:String}");
+    expect(clickhouse._queries[0]?.query_params?.from_date).toBe("2026-03-10");
+    expect(clickhouse._queries[0]?.query_params?.to_date).toBe("2026-03-11");
+    expect(predecessor?.bundle_id).toBe("bundle-1");
+  });
+
+  test("verifyBundles still returns the expected verification outcome after bounded fetches", async () => {
+    const keyPair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+    const rawPublicKey = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey));
+
+    const contentBytes = hexToBytes(
+      "0a0a62756e646c652d30303112096b65726e656c2d30311a060880c0d7bb0c",
+    );
+    const signature = new Uint8Array(
+      await crypto.subtle.sign(
+        "Ed25519",
+        keyPair.privateKey,
+        contentBytes as unknown as BufferSource,
+      ),
+    );
+    const chainHash = bytesToHex(
+      await sha256(concatBytes(hexToBytes(GENESIS_PREVIOUS_HEX), contentBytes)),
+    );
+
+    const clickhouse = createMockClickhouse();
+    clickhouse._pushResponse([{ bundle_id: "bundle-1", event_date: "2026-03-11" }]);
+    clickhouse._pushResponse([
+      {
+        bundle_id: "bundle-1",
+        kernel_id: "kernel-1",
+        chain_hash: chainHash,
+        previous_hash: GENESIS_PREVIOUS_HEX,
+        sequence_number: 1,
+        signature: bytesToHex(signature),
+        signing_key_id: "key-1",
+        timestamp: "2026-03-11T00:03:00.000Z",
+        event_date: "2026-03-11",
+        actor_identity: "alice",
+        vendor: "openai",
+        model: "gpt-5",
+        policy_action: "allow",
+        department: "eng",
+        content_bytes: bytesToHex(contentBytes),
+      },
+    ]);
+
+    const db = createMockDb([
+      {
+        keyId: "key-1",
+        publicKeyHex: bytesToHex(rawPublicKey),
+      },
+    ]);
+    const service = new EvidenceVerificationService(
+      clickhouse as unknown as ClickHouseClient,
+      db as unknown as AppDb,
+    );
+
+    const results = await service.verifyBundles(["bundle-1"]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.overall).toBe("partial");
+    expect(results[0]?.steps[0]?.passed).toBe(true);
+    expect(results[0]?.steps[1]?.passed).toBe(true);
+    expect(results[0]?.steps[2]?.passed).toBeNull();
   });
 });

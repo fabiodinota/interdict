@@ -29,6 +29,10 @@ const SLA_DURATION_MS = 4 * 60 * 60 * 1000;
 // Background reconciliation interval: 5 minutes (catch-up, not primary path).
 const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
+function toDatePartition(value: Date | string): string {
+  return value instanceof Date ? value.toISOString().substring(0, 10) : value.substring(0, 10);
+}
+
 // ---------------------------------------------------------------------------
 // ReviewService
 // ---------------------------------------------------------------------------
@@ -317,8 +321,7 @@ export class ReviewService {
    * Returns the number of newly created review items.
    */
   async reconcileEscalations(): Promise<number> {
-    // Strip trailing 'Z' — ClickHouse DateTime64(3) params reject timezone suffixes
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString().replace("Z", "");
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
     // Get recent escalated bundles from ClickHouse
     const resultSet = await this.clickhouse.query({
@@ -326,12 +329,16 @@ export class ReviewService {
         SELECT bundle_id, timestamp
         FROM evidence_bundles
         WHERE policy_action = 'escalate'
+          AND event_date >= {from_date:String}
           AND timestamp >= {since:DateTime64(3)}
         ORDER BY timestamp DESC
         LIMIT 500
       `,
       format: "JSONEachRow",
-      query_params: { since: oneHourAgo },
+      query_params: {
+        from_date: toDatePartition(oneHourAgo),
+        since: oneHourAgo.toISOString().replace("Z", ""),
+      },
     });
 
     const escalatedBundles: Array<{
@@ -402,6 +409,9 @@ export class ReviewService {
     if (rows.length === 0) return [];
 
     const bundleIds = rows.map((r) => r.bundleId);
+    const eventDates = Array.from(
+      new Set(rows.map((row) => toDatePartition(row.escalatedAt ?? row.createdAt ?? new Date()))),
+    );
 
     // Query ClickHouse for bundle details
     const bundleMap = new Map<string, EscalatedBundleRow>();
@@ -420,10 +430,11 @@ export class ReviewService {
             response_hash,
             token_count
           FROM evidence_bundles
-          WHERE bundle_id IN {ids:Array(String)}
+          WHERE event_date IN {event_dates:Array(String)}
+            AND bundle_id IN {ids:Array(String)}
         `,
         format: "JSONEachRow",
-        query_params: { ids: bundleIds },
+        query_params: { event_dates: eventDates, ids: bundleIds },
       });
 
       const bundles: EscalatedBundleRow[] = await resultSet.json();

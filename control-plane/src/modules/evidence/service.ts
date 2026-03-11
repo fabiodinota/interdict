@@ -104,6 +104,10 @@ function toChDateTime(date: Date): string {
   return date.toISOString().replace("T", " ").replace("Z", "");
 }
 
+function toDatePartition(value: Date | string): string {
+  return value instanceof Date ? value.toISOString().substring(0, 10) : value.substring(0, 10);
+}
+
 // 32 zero bytes (hex-encoded) — the genesis sentinel for previous_hash
 const GENESIS_PREVIOUS_HEX = "0".repeat(64);
 
@@ -288,10 +292,22 @@ export class EvidenceVerificationService {
   private async fetchBundles(bundleIds: string[]): Promise<Map<string, EvidenceBundleRow>> {
     if (bundleIds.length === 0) return new Map();
 
-    const resultSet = await this.clickhouse.query({
-      query: `SELECT ${EVIDENCE_COLUMNS} FROM evidence_bundles WHERE bundle_id IN {ids:Array(String)}`,
+    const metadataResult = await this.clickhouse.query({
+      query: `SELECT bundle_id, event_date FROM evidence_bundles WHERE bundle_id IN {ids:Array(String)}`,
       format: "JSONEachRow",
       query_params: { ids: bundleIds },
+    });
+
+    const metadataRows: Array<Pick<EvidenceBundleRow, "bundle_id" | "event_date">> =
+      await metadataResult.json();
+    if (metadataRows.length === 0) return new Map();
+
+    const eventDates = Array.from(new Set(metadataRows.map((row) => row.event_date)));
+
+    const resultSet = await this.clickhouse.query({
+      query: `SELECT ${EVIDENCE_COLUMNS} FROM evidence_bundles WHERE event_date IN {event_dates:Array(String)} AND bundle_id IN {ids:Array(String)}`,
+      format: "JSONEachRow",
+      query_params: { event_dates: eventDates, ids: bundleIds },
     });
 
     const rows: EvidenceBundleRow[] = await resultSet.json();
@@ -308,13 +324,20 @@ export class EvidenceVerificationService {
   private async fetchPredecessor(
     kernelId: string,
     sequenceNumber: number,
+    currentTimestamp: string,
   ): Promise<EvidenceBundleRow | null> {
     if (sequenceNumber <= 1) return null;
 
+    const currentDate = new Date(currentTimestamp);
+    const fromDate = new Date(currentDate);
+    fromDate.setUTCDate(fromDate.getUTCDate() - 1);
+
     const resultSet = await this.clickhouse.query({
-      query: `SELECT ${EVIDENCE_COLUMNS} FROM evidence_bundles WHERE kernel_id = {kernel_id:String} AND sequence_number = {seq:UInt64} LIMIT 1`,
+      query: `SELECT ${EVIDENCE_COLUMNS} FROM evidence_bundles WHERE event_date >= {from_date:String} AND event_date <= {to_date:String} AND kernel_id = {kernel_id:String} AND sequence_number = {seq:UInt64} LIMIT 1`,
       format: "JSONEachRow",
       query_params: {
+        from_date: toDatePartition(fromDate),
+        to_date: toDatePartition(currentDate),
         kernel_id: kernelId,
         seq: sequenceNumber - 1,
       },
@@ -381,7 +404,7 @@ export class EvidenceVerificationService {
     }
 
     // Non-genesis: fetch predecessor
-    const predecessor = await this.fetchPredecessor(bundle.kernel_id, seqNum);
+    const predecessor = await this.fetchPredecessor(bundle.kernel_id, seqNum, bundle.timestamp);
 
     if (!predecessor) {
       return {

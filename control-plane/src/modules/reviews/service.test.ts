@@ -12,6 +12,7 @@
  */
 
 import { beforeEach, describe, expect, test } from "bun:test";
+import type { ClickHouseClient } from "@clickhouse/client";
 import type { AppDb } from "../../shared/types";
 import { ReviewService } from "./service";
 
@@ -20,38 +21,71 @@ import { ReviewService } from "./service";
 // ---------------------------------------------------------------------------
 
 /** Build a mock Postgres `db` that tracks operations. */
+type MockRow = Record<string, unknown>;
+type InsertedReviewRow = MockRow & {
+  bundleId: string;
+  escalationSource: string;
+  slaDeadline: Date;
+};
+type ReviewBundleLookupRow = {
+  id: string;
+  bundleId: string;
+  escalatedAt: Date;
+  slaDeadline: Date;
+  status: string;
+  claimedBy: string | null;
+  claimedAt: Date | null;
+  resolvedBy: string | null;
+  resolvedAt: Date | null;
+  resolution: string | null;
+  resolutionNotes: string | null;
+  escalationSource: string;
+};
+type MockChain = Promise<MockRow[]> & {
+  from: () => MockChain;
+  where: () => MockChain;
+  orderBy: () => MockChain;
+  limit: () => Promise<MockRow[]>;
+  set: (data: MockRow) => MockChain;
+  values: (rows: MockRow | MockRow[]) => MockChain;
+  returning: (_cols?: unknown) => Promise<MockRow[]>;
+  onConflictDoNothing: () => MockChain;
+};
+
 function createMockDb() {
-  const insertedRows: any[] = [];
-  const updatedRows: any[] = [];
-  let selectResult: any[] = [];
-  let returningResult: any[] = [];
+  const insertedRows: MockRow[] = [];
+  const updatedRows: MockRow[] = [];
+  let selectResult: MockRow[] = [];
+  let returningResult: MockRow[] = [];
   let conflictBehavior: "insert" | "skip" = "insert";
 
-  const chainable = () => {
-    const chain: any = {
-      from: () => chain,
-      where: () => chain,
-      orderBy: () => chain,
-      limit: () => Promise.resolve(selectResult),
-      set: (data: any) => {
-        updatedRows.push(data);
-        return chain;
-      },
-      values: (rows: any) => {
-        if (Array.isArray(rows)) insertedRows.push(...rows);
-        else insertedRows.push(rows);
-        return chain;
-      },
-      returning: (_cols?: any) => {
-        if (conflictBehavior === "skip" && returningResult.length === 0) {
-          return Promise.resolve([]);
-        }
-        return Promise.resolve(returningResult);
-      },
-      onConflictDoNothing: () => {
-        conflictBehavior = "skip";
-        return chain;
-      },
+  const chainable = (): MockChain => {
+    const chain = Promise.resolve(selectResult) as MockChain;
+    chain.from = () => chain;
+    chain.where = () => chain;
+    chain.orderBy = () => chain;
+    chain.limit = () => Promise.resolve(selectResult);
+    chain.set = (data) => {
+      updatedRows.push(data);
+      return chain;
+    };
+    chain.values = (rows) => {
+      if (Array.isArray(rows)) {
+        insertedRows.push(...rows);
+      } else {
+        insertedRows.push(rows);
+      }
+      return chain;
+    };
+    chain.returning = () => {
+      if (conflictBehavior === "skip" && returningResult.length === 0) {
+        return Promise.resolve([]);
+      }
+      return Promise.resolve(returningResult);
+    };
+    chain.onConflictDoNothing = () => {
+      conflictBehavior = "skip";
+      return chain;
     };
     return chain;
   };
@@ -60,10 +94,10 @@ function createMockDb() {
     select: () => chainable(),
     insert: () => chainable(),
     update: () => chainable(),
-    _setSelectResult: (rows: any[]) => {
+    _setSelectResult: (rows: MockRow[]) => {
       selectResult = rows;
     },
-    _setReturningResult: (rows: any[]) => {
+    _setReturningResult: (rows: MockRow[]) => {
       returningResult = rows;
     },
     _setConflictBehavior: (b: "insert" | "skip") => {
@@ -76,10 +110,27 @@ function createMockDb() {
 
 /** Build a mock ClickHouse client. */
 function createMockClickhouse() {
+  const queries: Array<{ query: string; query_params?: Record<string, unknown> }> = [];
+  const responses: unknown[] = [];
+
   return {
-    query: async () => ({
-      json: async () => [],
-    }),
+    query: async ({
+      query,
+      query_params,
+    }: {
+      query: string;
+      query_params?: Record<string, unknown>;
+    }) => {
+      queries.push({ query, query_params });
+      const next = responses.shift() ?? [];
+      return {
+        json: async () => next,
+      };
+    },
+    _pushResponse: (rows: unknown) => {
+      responses.push(rows);
+    },
+    _queries: queries,
   };
 }
 
@@ -95,7 +146,7 @@ describe("ReviewService", () => {
   beforeEach(() => {
     db = createMockDb();
     ch = createMockClickhouse();
-    service = new ReviewService(ch as any, db as unknown as AppDb);
+    service = new ReviewService(ch as unknown as ClickHouseClient, db as unknown as AppDb);
   });
 
   // -----------------------------------------------------------------------
@@ -115,7 +166,7 @@ describe("ReviewService", () => {
       expect(result.id).toBe("review-uuid-1");
 
       // Verify the inserted row has the right SLA deadline.
-      const inserted = db._insertedRows[0];
+      const inserted = db._insertedRows[0] as InsertedReviewRow;
       expect(inserted.bundleId).toBe("bundle-001");
       expect(inserted.escalationSource).toBe("kernel_l3");
       expect(inserted.slaDeadline.getTime()).toBe(expectedSla.getTime());
@@ -143,7 +194,7 @@ describe("ReviewService", () => {
       );
 
       expect(result.created).toBe(true);
-      const inserted = db._insertedRows[0];
+      const inserted = db._insertedRows[0] as InsertedReviewRow;
       expect(inserted.escalationSource).toBe("session_pattern");
     });
   });
@@ -269,6 +320,93 @@ describe("ReviewService", () => {
       const result = await service.claimReview("review-1", "user-1");
       expect(result).not.toBeNull();
       expect(result?.status).toBe("claimed");
+    });
+  });
+
+  describe("Phase 31 query hardening", () => {
+    test("reconcileEscalations includes a partition-friendly from_date bound", async () => {
+      ch._pushResponse([{ bundle_id: "bundle-001", timestamp: "2026-03-11T10:00:00.000Z" }]);
+      db._setSelectResult([]);
+      db._setReturningResult([{ id: "review-uuid-1" }]);
+
+      const created = await service.reconcileEscalations();
+
+      expect(created).toBe(1);
+      expect(ch._queries[0]?.query).toContain("event_date >= {from_date:String}");
+      expect(typeof ch._queries[0]?.query_params?.from_date).toBe("string");
+      expect(typeof ch._queries[0]?.query_params?.since).toBe("string");
+    });
+
+    test("enrichWithBundleDetails constrains bundle lookups to derived event dates", async () => {
+      ch._pushResponse([
+        {
+          bundle_id: "bundle-001",
+          timestamp: "2026-03-10T23:59:58.000Z",
+          actor_identity: "alice",
+          vendor: "openai",
+          model: "gpt-5",
+          policy_action: "escalate",
+          policy_rules_json: "[]",
+          prompt_hash: "prompt-1",
+          response_hash: "response-1",
+          token_count: 9,
+        },
+        {
+          bundle_id: "bundle-002",
+          timestamp: "2026-03-11T00:00:05.000Z",
+          actor_identity: "bob",
+          vendor: "anthropic",
+          model: "claude",
+          policy_action: "escalate",
+          policy_rules_json: "[]",
+          prompt_hash: "prompt-2",
+          response_hash: "response-2",
+          token_count: 11,
+        },
+      ]);
+
+      const rows: ReviewBundleLookupRow[] = [
+        {
+          id: "review-1",
+          bundleId: "bundle-001",
+          escalatedAt: new Date("2026-03-10T23:59:58.000Z"),
+          slaDeadline: new Date("2026-03-11T03:59:58.000Z"),
+          status: "pending",
+          claimedBy: null,
+          claimedAt: null,
+          resolvedBy: null,
+          resolvedAt: null,
+          resolution: null,
+          resolutionNotes: null,
+          escalationSource: "kernel_l3",
+        },
+        {
+          id: "review-2",
+          bundleId: "bundle-002",
+          escalatedAt: new Date("2026-03-11T00:00:05.000Z"),
+          slaDeadline: new Date("2026-03-11T04:00:05.000Z"),
+          status: "pending",
+          claimedBy: null,
+          claimedAt: null,
+          resolvedBy: null,
+          resolvedAt: null,
+          resolution: null,
+          resolutionNotes: null,
+          escalationSource: "kernel_l3",
+        },
+      ];
+
+      const enrichWithBundleDetails = Reflect.get(service, "enrichWithBundleDetails") as (
+        rows: ReviewBundleLookupRow[],
+      ) => Promise<Array<{ actorIdentity: string }>>;
+      const enriched = await enrichWithBundleDetails.call(service, rows);
+
+      expect(ch._queries[0]?.query).toContain("event_date IN {event_dates:Array(String)}");
+      expect(ch._queries[0]?.query).toContain("bundle_id IN {ids:Array(String)}");
+      expect(ch._queries[0]?.query_params?.event_dates).toEqual(["2026-03-10", "2026-03-11"]);
+      expect(enriched).toHaveLength(2);
+      expect(enriched[0]?.actorIdentity).toBe("alice");
+      expect(enriched[1]?.actorIdentity).toBe("bob");
     });
   });
 });
