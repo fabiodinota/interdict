@@ -73,6 +73,8 @@ spec:
               value: {{ .Values.evidenceCollector.fullTextStorage | quote }}
             - name: COLLECTOR_RETENTION_DAYS
               value: {{ .Values.evidenceCollector.retentionDays | quote }}
+            - name: COLLECTOR_REQUIRE_OBJECT_LOCK
+              value: {{ .Values.evidenceCollector.requireObjectLock | quote }}
             - name: AWS_ENDPOINT_URL
               {{- if .Values.evidenceCollector.aws.endpointUrl }}
               value: {{ .Values.evidenceCollector.aws.endpointUrl | quote }}

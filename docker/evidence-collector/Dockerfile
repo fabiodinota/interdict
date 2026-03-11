@@ -37,6 +37,7 @@ FROM debian:bookworm-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user
@@ -56,5 +57,8 @@ RUN chmod +x /entrypoint.sh
 EXPOSE 50051
 
 USER interdict
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=20s \
+    CMD ["nc", "-z", "127.0.0.1", "50051"]
 
 ENTRYPOINT ["/entrypoint.sh"]

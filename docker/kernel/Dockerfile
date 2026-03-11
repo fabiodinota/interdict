@@ -42,6 +42,7 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     gettext-base \
+    netcat-openbsd \
     openssl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -63,5 +64,8 @@ RUN chmod +x /entrypoint.sh
 EXPOSE 8443
 
 USER interdict
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=20s \
+    CMD ["nc", "-z", "127.0.0.1", "8443"]
 
 ENTRYPOINT ["/entrypoint.sh"]

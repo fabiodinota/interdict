@@ -58,4 +58,7 @@ USER interdict
 
 EXPOSE 3000 50052
 
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=30s \
+    CMD ["wget", "--spider", "-q", "http://localhost:3000/health"]
+
 ENTRYPOINT ["/entrypoint.sh"]
