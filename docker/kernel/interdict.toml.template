@@ -32,4 +32,5 @@ policies_dir = "${KERNEL_POLICIES_DIR}"
 
 [policy.distribution]
 distribution_addr = "${KERNEL_DISTRIBUTION_ADDR}"
+tls_server_name = "${KERNEL_DISTRIBUTION_TLS_SERVER_NAME}"
 org_id = "${KERNEL_ORG_ID}"

@@ -10,6 +10,7 @@ data:
   KERNEL_CA_CERT_PATH: {{ .Values.kernel.caCertPath | quote }}
   KERNEL_CA_KEY_PATH: {{ .Values.kernel.caKeyPath | quote }}
   KERNEL_DISTRIBUTION_ADDR: "https://{{ include "interdict.fullname" . }}-control-plane:{{ .Values.controlPlane.grpcPort }}"
+  KERNEL_DISTRIBUTION_TLS_SERVER_NAME: {{ default (printf "%s-control-plane" (include "interdict.fullname" .)) .Values.kernel.distributionTlsServerName | quote }}
   KERNEL_EVIDENCE_COLLECTOR_ADDR: "https://{{ include "interdict.fullname" . }}-evidence-collector:{{ .Values.evidenceCollector.grpcPort }}"
   KERNEL_ORG_ID: {{ .Values.kernel.orgId | quote }}
   KERNEL_LOG_LEVEL: {{ .Values.kernel.logLevel | quote }}

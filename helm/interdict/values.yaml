@@ -43,6 +43,8 @@ kernel:
   caKeyPath: "/data/certs/ca.key"
   # -- Control plane gRPC address
   distributionAddr: "https://{{ include \"interdict.fullname\" . }}-control-plane:50052"
+  # -- Expected TLS server name for the control-plane distribution certificate (empty = use rendered service DNS)
+  distributionTlsServerName: ""
   # -- Evidence collector gRPC address
   evidenceCollectorAddr: "https://{{ include \"interdict.fullname\" . }}-evidence-collector:50051"
   # -- Upstream connection timeout (ms)
