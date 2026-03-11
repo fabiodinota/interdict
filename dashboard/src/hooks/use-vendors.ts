@@ -179,13 +179,7 @@ export function useDeleteModel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      vendorId,
-      modelId,
-    }: {
-      vendorId: string;
-      modelId: string;
-    }) =>
+    mutationFn: ({ vendorId, modelId }: { vendorId: string; modelId: string }) =>
       api<ApiResponse<null>>(`/vendors/${vendorId}/models/${modelId}`, {
         method: "DELETE",
       }),

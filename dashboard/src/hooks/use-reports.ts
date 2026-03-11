@@ -42,8 +42,7 @@ export function useGenerateReport() {
       const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
       const ext = request.format === "pdf" ? "pdf" : "csv";
       const filename =
-        filenameMatch?.[1] ||
-        `interdict-report-${new Date().toISOString().split("T")[0]}.${ext}`;
+        filenameMatch?.[1] || `interdict-report-${new Date().toISOString().split("T")[0]}.${ext}`;
 
       // Trigger browser download
       const url = URL.createObjectURL(blob);

@@ -16,15 +16,12 @@ export function FrameworkList({ onSelectFramework }: FrameworkListProps) {
   const frameworks: FrameworkSummary[] = data?.data ?? [];
 
   // Group by jurisdiction
-  const grouped = frameworks.reduce<Record<string, FrameworkSummary[]>>(
-    (acc, fw) => {
-      const key = fw.jurisdiction ?? "Other";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(fw);
-      return acc;
-    },
-    {}
-  );
+  const grouped = frameworks.reduce<Record<string, FrameworkSummary[]>>((acc, fw) => {
+    const key = fw.jurisdiction ?? "Other";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(fw);
+    return acc;
+  }, {});
 
   const jurisdictions = Object.keys(grouped).sort();
 
@@ -62,11 +59,7 @@ export function FrameworkList({ onSelectFramework }: FrameworkListProps) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {frameworks.map((fw) => (
-          <FrameworkCard
-            key={fw.id}
-            framework={fw}
-            onSelect={onSelectFramework}
-          />
+          <FrameworkCard key={fw.id} framework={fw} onSelect={onSelectFramework} />
         ))}
       </div>
     );
@@ -77,16 +70,10 @@ export function FrameworkList({ onSelectFramework }: FrameworkListProps) {
     <div className="space-y-6">
       {jurisdictions.map((jurisdiction) => (
         <div key={jurisdiction}>
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">
-            {jurisdiction}
-          </h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">{jurisdiction}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {grouped[jurisdiction].map((fw) => (
-              <FrameworkCard
-                key={fw.id}
-                framework={fw}
-                onSelect={onSelectFramework}
-              />
+              <FrameworkCard key={fw.id} framework={fw} onSelect={onSelectFramework} />
             ))}
           </div>
         </div>

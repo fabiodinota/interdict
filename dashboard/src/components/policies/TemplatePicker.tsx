@@ -44,17 +44,13 @@ export function TemplatePicker({
             <Card
               key={template.id}
               className={`cursor-pointer transition-all hover:border-primary/50 hover:shadow-md ${
-                isSelected
-                  ? "border-primary ring-2 ring-primary/20"
-                  : ""
+                isSelected ? "border-primary ring-2 ring-primary/20" : ""
               }`}
               onClick={() => onSelect(template)}
             >
               <CardContent className="pt-0">
                 <h4 className="font-medium text-sm">{template.name}</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {template.description}
-                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">{template.description}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {template.parameters.length} configurable parameter
                   {template.parameters.length !== 1 ? "s" : ""}

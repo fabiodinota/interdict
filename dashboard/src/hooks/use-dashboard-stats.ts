@@ -44,7 +44,7 @@ export function useHourlyViolations(from: string, to: string) {
     queryKey: ["audit", "stats", "violations", from, to],
     queryFn: () =>
       api<ApiResponse<HourlyViolationRecord[]>>(
-        `/audit/stats/violations?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+        `/audit/stats/violations?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
       ),
     refetchInterval: 30_000,
     placeholderData: keepPreviousData,
@@ -61,7 +61,7 @@ export function useVendorUsage(from: string, to: string) {
     queryKey: ["audit", "stats", "vendor-usage", from, to],
     queryFn: () =>
       api<ApiResponse<VendorUsageRecord[]>>(
-        `/audit/stats/vendor-usage?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+        `/audit/stats/vendor-usage?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
       ),
     refetchInterval: 30_000,
     placeholderData: keepPreviousData,
@@ -77,9 +77,7 @@ export function useActivePoliciesCount() {
   return useQuery({
     queryKey: ["policies", "active-count"],
     queryFn: async () => {
-      const res = await api<ApiResponse<{ items: PolicyItem[] }>>(
-        "/policies"
-      );
+      const res = await api<ApiResponse<{ items: PolicyItem[] }>>("/policies");
       return res.data.items.filter((policy) => policy.is_active).length;
     },
     refetchInterval: 30_000,
@@ -91,9 +89,7 @@ export function useApprovedVendorsCount() {
   return useQuery({
     queryKey: ["vendors", "approved-count"],
     queryFn: async () => {
-      const res = await api<ApiResponse<{ items: VendorItem[] }>>(
-        "/vendors?status=approved"
-      );
+      const res = await api<ApiResponse<{ items: VendorItem[] }>>("/vendors?status=approved");
       return res.data.items.length;
     },
     refetchInterval: 30_000,
@@ -107,8 +103,7 @@ export function useApprovedVendorsCount() {
  * - Violations today: sum of block + redact violation_count
  */
 export function useViolationKpis(violations: HourlyViolationRecord[] | undefined) {
-  const totalRequests =
-    violations?.reduce((sum, v) => sum + v.violation_count, 0) ?? 0;
+  const totalRequests = violations?.reduce((sum, v) => sum + v.violation_count, 0) ?? 0;
 
   const violationsToday =
     violations

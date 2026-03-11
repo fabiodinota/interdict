@@ -50,13 +50,10 @@ export default function ReviewsPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Human Review Queue
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight">Human Review Queue</h1>
         <p className="text-muted-foreground mt-1">
-          Layer 3 escalated interactions requiring human judgment. Items enter
-          this queue when policy enforcement flags an interaction for compliance
-          officer review.
+          Layer 3 escalated interactions requiring human judgment. Items enter this queue when
+          policy enforcement flags an interaction for compliance officer review.
         </p>
       </div>
 

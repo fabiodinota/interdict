@@ -17,10 +17,7 @@ interface CategoryPickerProps {
   onSelect: (category: PolicyCategory) => void;
 }
 
-export function CategoryPicker({
-  selectedCategory,
-  onSelect,
-}: CategoryPickerProps) {
+export function CategoryPicker({ selectedCategory, onSelect }: CategoryPickerProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -40,9 +37,7 @@ export function CategoryPicker({
             <Card
               key={category.id}
               className={`cursor-pointer transition-all hover:border-primary/50 hover:shadow-md ${
-                isSelected
-                  ? "border-primary ring-2 ring-primary/20"
-                  : ""
+                isSelected ? "border-primary ring-2 ring-primary/20" : ""
               }`}
               onClick={() => onSelect(category.id)}
             >
@@ -52,9 +47,7 @@ export function CategoryPicker({
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-medium text-sm">{category.name}</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {category.description}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{category.description}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {templateCount} template{templateCount !== 1 ? "s" : ""}
                   </p>

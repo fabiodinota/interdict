@@ -6,14 +6,14 @@ export const dynamic = "force-dynamic";
 
 async function proxyRequest(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   const token = await getSessionToken();
 
   if (!token) {
     return NextResponse.json(
       { success: false, error: { message: "Not authenticated" } },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -37,7 +37,7 @@ async function proxyRequest(
       if (!res.ok) {
         return NextResponse.json(
           { success: false, error: { message: `Upstream error ${res.status}` } },
-          { status: res.status }
+          { status: res.status },
         );
       }
 
@@ -52,7 +52,7 @@ async function proxyRequest(
     } catch {
       return NextResponse.json(
         { success: false, error: { message: "Stream connection failed" } },
-        { status: 502 }
+        { status: 502 },
       );
     }
   }
@@ -76,8 +76,7 @@ async function proxyRequest(
     const res = await fetch(url, fetchOptions);
     const upstreamContentType = res.headers.get("content-type") ?? "";
     const isJsonResponse =
-      upstreamContentType === "" ||
-      upstreamContentType.startsWith("application/json");
+      upstreamContentType === "" || upstreamContentType.startsWith("application/json");
 
     if (isJsonResponse) {
       const data = await res.json();
@@ -88,7 +87,7 @@ async function proxyRequest(
     if (!res.body) {
       return NextResponse.json(
         { success: false, error: { message: "Empty upstream response body" } },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -111,7 +110,7 @@ async function proxyRequest(
     // JSON parse failures are now scoped only to actual JSON responses
     return NextResponse.json(
       { success: false, error: { message: "Proxy request failed" } },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }

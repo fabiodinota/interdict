@@ -8,8 +8,7 @@ export async function getSessionToken(): Promise<string | null> {
 }
 
 export function getControlPlaneUrl(): string {
-  const controlPlaneUrl =
-    process.env.CONTROL_PLANE_URL ?? process.env.NEXT_PUBLIC_API_URL;
+  const controlPlaneUrl = process.env.CONTROL_PLANE_URL ?? process.env.NEXT_PUBLIC_API_URL;
 
   if (!controlPlaneUrl) {
     throw new Error("CONTROL_PLANE_URL or NEXT_PUBLIC_API_URL must be configured");

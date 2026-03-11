@@ -20,9 +20,7 @@ export function PolicyList() {
 
   // Client-side filter by name
   const filteredPolicies = searchQuery
-    ? policies.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? policies.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : policies;
 
   return (
@@ -92,22 +90,16 @@ export function PolicyList() {
       )}
 
       {/* No search results */}
-      {!isLoading &&
-        policies.length > 0 &&
-        filteredPolicies.length === 0 &&
-        searchQuery && (
-          <div className="text-center py-8 text-sm text-muted-foreground">
-            No policies matching &quot;{searchQuery}&quot;
-          </div>
-        )}
+      {!isLoading && policies.length > 0 && filteredPolicies.length === 0 && searchQuery && (
+        <div className="text-center py-8 text-sm text-muted-foreground">
+          No policies matching &quot;{searchQuery}&quot;
+        </div>
+      )}
 
       {/* Pagination */}
       {!isLoading && nextCursor && (
         <div className="flex justify-center pt-2">
-          <Button
-            variant="outline"
-            onClick={() => setCursors([...cursors, nextCursor])}
-          >
+          <Button variant="outline" onClick={() => setCursors([...cursors, nextCursor])}>
             Load More
           </Button>
         </div>

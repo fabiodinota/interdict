@@ -66,11 +66,7 @@ function generateConditionRego(conditions: RuleCondition[]): string {
     }
 
     // For OR connectors between conditions, we wrap in separate rules
-    if (
-      !isLast &&
-      conditions[i + 1] &&
-      cond.connector === "OR"
-    ) {
+    if (!isLast && conditions[i + 1] && cond.connector === "OR") {
       line += "  # OR (next condition evaluated separately)";
     }
 
@@ -104,15 +100,11 @@ export function RuleEditor({
   }
 
   function updateCondition(id: string, updates: Partial<RuleCondition>) {
-    onChange(
-      conditions.map((c) => (c.id === id ? { ...c, ...updates } : c))
-    );
+    onChange(conditions.map((c) => (c.id === id ? { ...c, ...updates } : c)));
   }
 
   const conditionRego = generateConditionRego(conditions);
-  const previewRego = conditions.length > 0
-    ? generatedRego + conditionRego
-    : generatedRego;
+  const previewRego = conditions.length > 0 ? generatedRego + conditionRego : generatedRego;
 
   return (
     <div className="space-y-6">
@@ -155,9 +147,7 @@ export function RuleEditor({
             {/* Field */}
             <Select
               value={condition.field}
-              onValueChange={(v) =>
-                updateCondition(condition.id, { field: v })
-              }
+              onValueChange={(v) => updateCondition(condition.id, { field: v })}
             >
               <SelectTrigger className="w-52">
                 <SelectValue />
@@ -196,9 +186,7 @@ export function RuleEditor({
             <Input
               className="w-40"
               value={condition.value}
-              onChange={(e) =>
-                updateCondition(condition.id, { value: e.target.value })
-              }
+              onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
               placeholder="Value"
             />
 
@@ -236,9 +224,7 @@ export function RuleEditor({
         <Button variant="outline" onClick={onSkip}>
           Skip
         </Button>
-        <Button onClick={onNext}>
-          Next
-        </Button>
+        <Button onClick={onNext}>Next</Button>
       </div>
     </div>
   );

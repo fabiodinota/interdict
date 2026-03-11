@@ -8,13 +8,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { format, parseISO } from "date-fns";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  ShieldCheck,
-  Loader2,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, ShieldCheck, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,18 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useVerifyBundles } from "@/hooks/use-evidence";
 import { BundleDetailPanel } from "./BundleDetailPanel";
-import type {
-  EvidenceBundle,
-  VerificationResult,
-} from "@/types/api";
+import type { EvidenceBundle, VerificationResult } from "@/types/api";
 import type { EvidenceBundlesResponse } from "@/hooks/use-evidence";
 
 // ---------------------------------------------------------------------------
@@ -70,9 +56,9 @@ export function BatchVerifyTable({
   const nextCursor = data?.pagination?.nextCursor ?? null;
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [verificationResults, setVerificationResults] = useState<
-    Map<string, VerificationResult>
-  >(new Map());
+  const [verificationResults, setVerificationResults] = useState<Map<string, VerificationResult>>(
+    new Map(),
+  );
   const [detailBundle, setDetailBundle] = useState<EvidenceBundle | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -127,8 +113,7 @@ export function BatchVerifyTable({
       },
       fail: {
         label: "Fail",
-        className:
-          "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400",
+        className: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400",
       },
       partial: {
         label: "Partial",
@@ -228,7 +213,7 @@ export function BatchVerifyTable({
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps -- toggleAll and overallBadge are stable within the same render cycle
-    [selectedIds, bundles, verificationResults]
+    [selectedIds, bundles, verificationResults],
   );
 
   const table = useReactTable({
@@ -314,10 +299,7 @@ export function BatchVerifyTable({
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -375,9 +357,7 @@ export function BatchVerifyTable({
         onOpenChange={setDetailOpen}
         bundle={detailBundle}
         verificationResult={
-          detailBundle
-            ? verificationResults.get(detailBundle.bundle_id) ?? null
-            : null
+          detailBundle ? (verificationResults.get(detailBundle.bundle_id) ?? null) : null
         }
       />
     </div>

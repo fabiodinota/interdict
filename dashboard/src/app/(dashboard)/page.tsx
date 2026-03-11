@@ -55,9 +55,7 @@ export default function HomePage() {
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Real-time overview of AI governance activity
-        </p>
+        <p className="text-muted-foreground mt-1">Real-time overview of AI governance activity</p>
       </div>
 
       {/* KPI Cards */}
@@ -79,14 +77,8 @@ export default function HomePage() {
 
       {/* Charts Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <ViolationChart
-          data={violations.data}
-          isLoading={violations.isLoading}
-        />
-        <VendorUsageChart
-          data={vendorUsage.data}
-          isLoading={vendorUsage.isLoading}
-        />
+        <ViolationChart data={violations.data} isLoading={violations.isLoading} />
+        <VendorUsageChart data={vendorUsage.data} isLoading={vendorUsage.isLoading} />
       </div>
 
       {/* Live Activity Feed (SSE-powered, independent of time range) */}

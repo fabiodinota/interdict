@@ -19,9 +19,8 @@ export function AnomalyList({ alerts }: AnomalyListProps) {
         <ShieldAlert className="mb-4 size-10 text-muted-foreground/50" />
         <h3 className="text-lg font-semibold">No anomalies detected</h3>
         <p className="mt-1 max-w-md text-sm text-muted-foreground">
-          The system is monitoring for volume spikes, off-hours usage, vendor
-          switching, and topic drift. Alerts will appear here when deviations
-          from established baselines are detected.
+          The system is monitoring for volume spikes, off-hours usage, vendor switching, and topic
+          drift. Alerts will appear here when deviations from established baselines are detected.
         </p>
       </div>
     );
@@ -30,10 +29,7 @@ export function AnomalyList({ alerts }: AnomalyListProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {alerts.map((alert, idx) => (
-        <AnomalyCard
-          key={`${alert.type}-${alert.actorIdentity}-${idx}`}
-          alert={alert}
-        />
+        <AnomalyCard key={`${alert.type}-${alert.actorIdentity}-${idx}`} alert={alert} />
       ))}
     </div>
   );

@@ -21,13 +21,7 @@ interface PolicyVersionHistoryProps {
 }
 
 // Simple line-by-line diff: green for additions, red for removals
-function SimpleDiff({
-  current,
-  selected,
-}: {
-  current: string;
-  selected: string;
-}) {
+function SimpleDiff({ current, selected }: { current: string; selected: string }) {
   const currentLines = current.split("\n");
   const selectedLines = selected.split("\n");
   const maxLen = Math.max(currentLines.length, selectedLines.length);
@@ -72,10 +66,7 @@ function SimpleDiff({
   );
 }
 
-export function PolicyVersionHistory({
-  policyId,
-  currentRegoSource,
-}: PolicyVersionHistoryProps) {
+export function PolicyVersionHistory({ policyId, currentRegoSource }: PolicyVersionHistoryProps) {
   const { data, isLoading } = usePolicyVersions(policyId);
   const restoreVersion = useRestoreVersion();
   const [expandedVersion, setExpandedVersion] = useState<string | null>(null);
@@ -98,11 +89,7 @@ export function PolicyVersionHistory({
   }
 
   if (versions.length === 0) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground">
-        No version history available.
-      </div>
-    );
+    return <div className="p-4 text-sm text-muted-foreground">No version history available.</div>;
   }
 
   const latestVersion = Math.max(...versions.map((v) => v.version));
@@ -116,16 +103,11 @@ export function PolicyVersionHistory({
         const isCurrent = version.version === latestVersion;
 
         return (
-          <div
-            key={version.id}
-            className="rounded-md border bg-card"
-          >
+          <div key={version.id} className="rounded-md border bg-card">
             <button
               type="button"
               className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50"
-              onClick={() =>
-                setExpandedVersion(isExpanded ? null : version.id)
-              }
+              onClick={() => setExpandedVersion(isExpanded ? null : version.id)}
             >
               {isExpanded ? (
                 <ChevronDown className="size-3.5 shrink-0" />
@@ -154,9 +136,7 @@ export function PolicyVersionHistory({
                   <Button
                     variant="outline"
                     size="xs"
-                    onClick={() =>
-                      setShowDiff(isDiffShown ? null : version.id)
-                    }
+                    onClick={() => setShowDiff(isDiffShown ? null : version.id)}
                   >
                     {isDiffShown ? "Hide Diff" : "View Diff"}
                   </Button>
@@ -178,10 +158,7 @@ export function PolicyVersionHistory({
                 </div>
 
                 {isDiffShown && (
-                  <SimpleDiff
-                    current={currentRegoSource}
-                    selected={version.rego_source}
-                  />
+                  <SimpleDiff current={currentRegoSource} selected={version.rego_source} />
                 )}
 
                 {!isDiffShown && (
@@ -196,23 +173,17 @@ export function PolicyVersionHistory({
       })}
 
       {/* Restore confirmation dialog */}
-      <Dialog
-        open={!!confirmRestore}
-        onOpenChange={(open) => !open && setConfirmRestore(null)}
-      >
+      <Dialog open={!!confirmRestore} onOpenChange={(open) => !open && setConfirmRestore(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Restore Version</DialogTitle>
             <DialogDescription>
-              Are you sure you want to restore version {confirmRestore?.version}?
-              This will create a new version with the restored content.
+              Are you sure you want to restore version {confirmRestore?.version}? This will create a
+              new version with the restored content.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConfirmRestore(null)}
-            >
+            <Button variant="outline" onClick={() => setConfirmRestore(null)}>
               Cancel
             </Button>
             <Button

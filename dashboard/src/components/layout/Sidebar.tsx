@@ -19,11 +19,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const NAV_ITEMS = [
   { label: "Home", icon: LayoutDashboard, href: "/" },
@@ -119,9 +115,7 @@ export function Sidebar() {
         {!collapsed && (
           <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-muted/50 border border-border/50">
             <div className="h-2 w-2 rounded-full bg-green-500 ring-2 ring-green-500/20" />
-            <span className="text-xs font-medium text-muted-foreground">
-              Control Plane Online
-            </span>
+            <span className="text-xs font-medium text-muted-foreground">Control Plane Online</span>
           </div>
         )}
 

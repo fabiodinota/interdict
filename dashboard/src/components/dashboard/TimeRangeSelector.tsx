@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
@@ -48,21 +48,14 @@ export function TimeRangeSelector({
   lastUpdated,
 }: TimeRangeSelectorProps) {
   const [secondsAgo, setSecondsAgo] = useState<number | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const updateSecondsAgo = useCallback(() => {
-    if (lastUpdated) {
-      setSecondsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
-    }
-  }, [lastUpdated]);
 
   useEffect(() => {
-    updateSecondsAgo();
-    intervalRef.current = setInterval(updateSecondsAgo, 1000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [updateSecondsAgo]);
+    if (!lastUpdated) return;
+    const tick = () => setSecondsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lastUpdated]);
 
   return (
     <div className="flex items-center justify-between gap-4">
@@ -80,9 +73,7 @@ export function TimeRangeSelector({
       </div>
       <div className="flex items-center gap-3">
         {secondsAgo !== null && (
-          <span className="text-xs text-muted-foreground">
-            Last updated: {secondsAgo}s ago
-          </span>
+          <span className="text-xs text-muted-foreground">Last updated: {secondsAgo}s ago</span>
         )}
         <Button variant="outline" size="icon-sm" onClick={onRefresh}>
           <RefreshCw className="size-3.5" />

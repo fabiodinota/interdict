@@ -37,12 +37,9 @@ function AuditPageContent() {
     setCursors([]); // Reset pagination on filter change
   }, []);
 
-  const handleNextPage = useCallback(
-    (cursor: string) => {
-      setCursors((prev) => [...prev, cursor]);
-    },
-    []
-  );
+  const handleNextPage = useCallback((cursor: string) => {
+    setCursors((prev) => [...prev, cursor]);
+  }, []);
 
   const handlePreviousPage = useCallback(() => {
     setCursors((prev) => prev.slice(0, -1));

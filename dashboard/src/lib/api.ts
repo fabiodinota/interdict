@@ -13,10 +13,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
+export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api/proxy${path}`, {
     ...options,
     headers: {
@@ -26,13 +23,11 @@ export async function api<T>(
   });
 
   if (!res.ok) {
-    const error = await res
-      .json()
-      .catch(() => ({ error: { message: res.statusText } }));
+    const error = await res.json().catch(() => ({ error: { message: res.statusText } }));
     throw new ApiError(
       error.error?.message || `API error ${res.status}`,
       res.status,
-      error.error?.code
+      error.error?.code,
     );
   }
 

@@ -38,7 +38,7 @@ describe("POST /api/auth/logout", () => {
     expect(url).toBe("http://control-plane:3000/api/v1/auth/logout");
     expect((init as RequestInit).method).toBe("POST");
     expect((init as RequestInit).headers).toEqual(
-      expect.objectContaining({ Authorization: "Bearer active-token" })
+      expect.objectContaining({ Authorization: "Bearer active-token" }),
     );
 
     // Cookie should be cleared

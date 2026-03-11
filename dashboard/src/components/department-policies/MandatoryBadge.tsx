@@ -2,12 +2,7 @@
 
 import { Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MandatoryBadgeProps {
   isMandatory: boolean;
@@ -24,19 +19,13 @@ export function MandatoryBadge({ isMandatory }: MandatoryBadgeProps) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge
-            variant="secondary"
-            className="gap-1 text-muted-foreground"
-          >
+          <Badge variant="secondary" className="gap-1 text-muted-foreground">
             <Lock className="h-3 w-3" />
             Mandatory
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          <p>
-            This policy is mandatory and cannot be disabled by department
-            managers
-          </p>
+          <p>This policy is mandatory and cannot be disabled by department managers</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

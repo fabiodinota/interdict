@@ -19,9 +19,7 @@ export function useAnomalies(severityFilter?: string) {
       const params = new URLSearchParams();
       if (severityFilter) params.set("severity", severityFilter);
       const qs = params.toString();
-      return api<ApiResponse<AnomalyAlert[]>>(
-        `/anomalies${qs ? `?${qs}` : ""}`
-      );
+      return api<ApiResponse<AnomalyAlert[]>>(`/anomalies${qs ? `?${qs}` : ""}`);
     },
     refetchInterval: 60_000,
   });

@@ -22,14 +22,12 @@ interface SlaTimerProps {
  */
 export function SlaTimer({ deadline, className }: SlaTimerProps) {
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
-    differenceInSeconds(new Date(deadline), new Date())
+    differenceInSeconds(new Date(deadline), new Date()),
   );
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setRemainingSeconds(
-        differenceInSeconds(new Date(deadline), new Date())
-      );
+      setRemainingSeconds(differenceInSeconds(new Date(deadline), new Date()));
     }, 1000);
 
     return () => clearInterval(timer);
@@ -52,8 +50,7 @@ export function SlaTimer({ deadline, className }: SlaTimerProps) {
   // Determine variant based on remaining fraction
   const fraction = remainingSeconds / TOTAL_SLA_SECONDS;
 
-  let variant: "default" | "secondary" | "destructive" | "outline" =
-    "secondary";
+  let variant: "default" | "secondary" | "destructive" | "outline" = "secondary";
   let extraClasses = "";
 
   if (remainingSeconds <= 0) {
@@ -64,10 +61,7 @@ export function SlaTimer({ deadline, className }: SlaTimerProps) {
   }
 
   return (
-    <Badge
-      variant={variant}
-      className={`font-mono text-xs ${extraClasses} ${className ?? ""}`}
-    >
+    <Badge variant={variant} className={`font-mono text-xs ${extraClasses} ${className ?? ""}`}>
       {formatTime(remainingSeconds)}
     </Badge>
   );

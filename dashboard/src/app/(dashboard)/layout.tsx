@@ -3,11 +3,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { Toaster } from "sonner";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Suspense>
@@ -25,8 +21,7 @@ export default function DashboardLayout({
             fontSize: "14px",
             padding: "16px",
             borderRadius: "12px",
-            boxShadow:
-              "0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)",
           },
         }}
         visibleToasts={3}

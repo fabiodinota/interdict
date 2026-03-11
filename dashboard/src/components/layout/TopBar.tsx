@@ -66,9 +66,7 @@ export function TopBar() {
       <nav className="flex items-center gap-1 text-sm">
         {breadcrumbs.map((crumb, index) => (
           <span key={crumb.href} className="flex items-center gap-1">
-            {index > 0 && (
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            )}
+            {index > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
             {index === breadcrumbs.length - 1 ? (
               <span className="font-medium text-foreground">{crumb.label}</span>
             ) : (
@@ -104,9 +102,7 @@ export function TopBar() {
                   {user?.displayName ?? user?.email ?? "Unknown"}
                 </p>
                 {user?.displayName && (
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user.email}
-                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                 )}
                 <div className="pt-1">
                   <Badge

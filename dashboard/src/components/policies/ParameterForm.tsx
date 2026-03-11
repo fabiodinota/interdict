@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,7 @@ function MultiSelectField({
         onChange([...value, optionValue]);
       }
     },
-    [value, onChange]
+    [value, onChange],
   );
 
   return (
@@ -62,10 +62,7 @@ function MultiSelectField({
           {options.map((option) => {
             const isSelected = value.includes(option.value);
             return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => toggleOption(option.value)}
-              >
+              <CommandItem key={option.value} onSelect={() => toggleOption(option.value)}>
                 <div
                   className={`mr-2 flex size-4 items-center justify-center rounded-sm border ${
                     isSelected
@@ -109,19 +106,14 @@ function ParameterField({
         <Input
           type="number"
           value={value !== undefined && value !== null ? String(value) : ""}
-          onChange={(e) =>
-            onChange(e.target.value ? Number(e.target.value) : undefined)
-          }
+          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
           placeholder={param.placeholder}
         />
       );
 
     case "select":
       return (
-        <Select
-          value={String(value ?? "")}
-          onValueChange={(v) => onChange(v)}
-        >
+        <Select value={String(value ?? "")} onValueChange={(v) => onChange(v)}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder={param.placeholder ?? "Select..."} />
           </SelectTrigger>
@@ -136,12 +128,7 @@ function ParameterField({
       );
 
     case "toggle":
-      return (
-        <Switch
-          checked={Boolean(value)}
-          onCheckedChange={(checked) => onChange(checked)}
-        />
-      );
+      return <Switch checked={Boolean(value)} onCheckedChange={(checked) => onChange(checked)} />;
 
     case "multi-select":
       return (
@@ -157,31 +144,24 @@ function ParameterField({
   }
 }
 
-export function ParameterForm({
-  template,
-  values,
-  onChange,
-  onNext,
-  onBack,
-}: ParameterFormProps) {
-  // Initialize defaults on mount
-  const [initialized, setInitialized] = useState(false);
+export function ParameterForm({ template, values, onChange, onNext, onBack }: ParameterFormProps) {
+  // Initialize defaults on first mount only
+  const initializedRef = useRef(false);
   useEffect(() => {
-    if (!initialized) {
-      const defaults: Record<string, unknown> = {};
-      let hasNewDefaults = false;
-      for (const param of template.parameters) {
-        if (values[param.key] === undefined && param.defaultValue !== undefined) {
-          defaults[param.key] = param.defaultValue;
-          hasNewDefaults = true;
-        }
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    const defaults: Record<string, unknown> = {};
+    let hasNewDefaults = false;
+    for (const param of template.parameters) {
+      if (values[param.key] === undefined && param.defaultValue !== undefined) {
+        defaults[param.key] = param.defaultValue;
+        hasNewDefaults = true;
       }
-      if (hasNewDefaults) {
-        onChange({ ...values, ...defaults });
-      }
-      setInitialized(true);
     }
-  }, [initialized, template.parameters, values, onChange]);
+    if (hasNewDefaults) {
+      onChange({ ...values, ...defaults });
+    }
+  }, [template.parameters, values, onChange]);
 
   function updateValue(key: string, value: unknown) {
     onChange({ ...values, [key]: value });
@@ -225,14 +205,10 @@ export function ParameterForm({
           <div key={param.key} className="space-y-1.5">
             <Label htmlFor={param.key}>
               {param.label}
-              {param.required && (
-                <span className="text-destructive ml-0.5">*</span>
-              )}
+              {param.required && <span className="text-destructive ml-0.5">*</span>}
             </Label>
             {param.description && (
-              <p className="text-xs text-muted-foreground">
-                {param.description}
-              </p>
+              <p className="text-xs text-muted-foreground">{param.description}</p>
             )}
             <ParameterField
               param={param}

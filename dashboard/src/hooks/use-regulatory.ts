@@ -53,8 +53,7 @@ export interface FrameworkDetail {
 export function useFrameworks() {
   return useQuery<ApiResponse<FrameworkSummary[]>>({
     queryKey: ["frameworks"],
-    queryFn: () =>
-      api<ApiResponse<FrameworkSummary[]>>("/regulatory/frameworks"),
+    queryFn: () => api<ApiResponse<FrameworkSummary[]>>("/regulatory/frameworks"),
   });
 }
 
@@ -62,8 +61,7 @@ export function useFrameworks() {
 export function useFramework(slug: string) {
   return useQuery<ApiResponse<FrameworkDetail>>({
     queryKey: ["frameworks", slug],
-    queryFn: () =>
-      api<ApiResponse<FrameworkDetail>>(`/regulatory/frameworks/${slug}`),
+    queryFn: () => api<ApiResponse<FrameworkDetail>>(`/regulatory/frameworks/${slug}`),
     enabled: !!slug,
   });
 }
@@ -126,7 +124,7 @@ export function useToggleFrameworkPolicy() {
         {
           method: "PUT",
           body: JSON.stringify({ isRequired }),
-        }
+        },
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["frameworks"] });

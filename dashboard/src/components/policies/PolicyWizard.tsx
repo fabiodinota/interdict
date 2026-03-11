@@ -21,13 +21,7 @@ import { RawRegoEditor } from "@/components/policies/RawRegoEditor";
 import { usePolicy, useCreatePolicy, useUpdatePolicy } from "@/hooks/use-policies";
 import type { PolicyCategory, PolicyTemplate, RuleCondition } from "@/types/policy-templates";
 
-const STEP_LABELS = [
-  "Category",
-  "Template",
-  "Parameters",
-  "Rules",
-  "Review",
-];
+const STEP_LABELS = ["Category", "Template", "Parameters", "Rules", "Review"];
 
 interface WizardState {
   step: number; // 1-5
@@ -76,11 +70,7 @@ function StepIndicator({
               <span className="hidden sm:inline">{label}</span>
             </button>
             {idx < STEP_LABELS.length - 1 && (
-              <div
-                className={`w-4 h-px mx-1 ${
-                  isCompleted ? "bg-primary" : "bg-border"
-                }`}
-              />
+              <div className={`w-4 h-px mx-1 ${isCompleted ? "bg-primary" : "bg-border"}`} />
             )}
           </div>
         );
@@ -231,11 +221,7 @@ export function PolicyWizard() {
     <div className="space-y-4">
       {/* Mode toggle */}
       <div className="flex justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleToggleRawMode}
-        >
+        <Button variant="outline" size="sm" onClick={handleToggleRawMode}>
           {state.rawMode ? (
             <>
               <LayoutList className="size-4" />
@@ -257,18 +243,10 @@ export function PolicyWizard() {
           policyName={state.policyName}
           policyDescription={state.policyDescription}
           entrypoint={state.entrypoint}
-          onRegoChange={(rego) =>
-            setState((prev) => ({ ...prev, rawRego: rego }))
-          }
-          onNameChange={(name) =>
-            setState((prev) => ({ ...prev, policyName: name }))
-          }
-          onDescriptionChange={(desc) =>
-            setState((prev) => ({ ...prev, policyDescription: desc }))
-          }
-          onEntrypointChange={(ep) =>
-            setState((prev) => ({ ...prev, entrypoint: ep }))
-          }
+          onRegoChange={(rego) => setState((prev) => ({ ...prev, rawRego: rego }))}
+          onNameChange={(name) => setState((prev) => ({ ...prev, policyName: name }))}
+          onDescriptionChange={(desc) => setState((prev) => ({ ...prev, policyDescription: desc }))}
+          onEntrypointChange={(ep) => setState((prev) => ({ ...prev, entrypoint: ep }))}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
           submitError={submitError}
@@ -281,9 +259,7 @@ export function PolicyWizard() {
         <>
           <StepIndicator
             currentStep={state.step}
-            onGoToStep={(step) =>
-              setState((prev) => ({ ...prev, step }))
-            }
+            onGoToStep={(step) => setState((prev) => ({ ...prev, step }))}
           />
 
           {/* Step 1: Category Picker */}
@@ -315,9 +291,7 @@ export function PolicyWizard() {
                   step: 3,
                 }))
               }
-              onBack={() =>
-                setState((prev) => ({ ...prev, step: 1 }))
-              }
+              onBack={() => setState((prev) => ({ ...prev, step: 1 }))}
             />
           )}
 
@@ -332,12 +306,8 @@ export function PolicyWizard() {
                   parameterValues: values,
                 }))
               }
-              onNext={() =>
-                setState((prev) => ({ ...prev, step: 4 }))
-              }
-              onBack={() =>
-                setState((prev) => ({ ...prev, step: 2 }))
-              }
+              onNext={() => setState((prev) => ({ ...prev, step: 4 }))}
+              onBack={() => setState((prev) => ({ ...prev, step: 2 }))}
             />
           )}
 
@@ -351,18 +321,10 @@ export function PolicyWizard() {
                   ruleConditions: conditions,
                 }))
               }
-              generatedRego={
-                state.selectedTemplate.generateRego(state.parameterValues)
-              }
-              onNext={() =>
-                setState((prev) => ({ ...prev, step: 5 }))
-              }
-              onBack={() =>
-                setState((prev) => ({ ...prev, step: 3 }))
-              }
-              onSkip={() =>
-                setState((prev) => ({ ...prev, step: 5 }))
-              }
+              generatedRego={state.selectedTemplate.generateRego(state.parameterValues)}
+              onNext={() => setState((prev) => ({ ...prev, step: 5 }))}
+              onBack={() => setState((prev) => ({ ...prev, step: 3 }))}
+              onSkip={() => setState((prev) => ({ ...prev, step: 5 }))}
             />
           )}
 
@@ -373,22 +335,16 @@ export function PolicyWizard() {
               policyName={state.policyName}
               policyDescription={state.policyDescription}
               entrypoint={state.entrypoint}
-              onNameChange={(name) =>
-                setState((prev) => ({ ...prev, policyName: name }))
-              }
+              onNameChange={(name) => setState((prev) => ({ ...prev, policyName: name }))}
               onDescriptionChange={(desc) =>
                 setState((prev) => ({
                   ...prev,
                   policyDescription: desc,
                 }))
               }
-              onEntrypointChange={(ep) =>
-                setState((prev) => ({ ...prev, entrypoint: ep }))
-              }
+              onEntrypointChange={(ep) => setState((prev) => ({ ...prev, entrypoint: ep }))}
               onSubmit={handleSubmit}
-              onBack={() =>
-                setState((prev) => ({ ...prev, step: 4 }))
-              }
+              onBack={() => setState((prev) => ({ ...prev, step: 4 }))}
               isSubmitting={isSubmitting}
               submitError={submitError}
               isEditMode={isEditMode}
@@ -403,20 +359,15 @@ export function PolicyWizard() {
           <DialogHeader>
             <DialogTitle>Switch to Wizard Mode?</DialogTitle>
             <DialogDescription>
-              Switching back to the wizard will reset all wizard state. Any
-              changes made in the raw editor will be lost. Are you sure?
+              Switching back to the wizard will reset all wizard state. Any changes made in the raw
+              editor will be lost. Are you sure?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowRawWarning(false)}
-            >
+            <Button variant="outline" onClick={() => setShowRawWarning(false)}>
               Cancel
             </Button>
-            <Button onClick={confirmSwitchToWizard}>
-              Switch to Wizard
-            </Button>
+            <Button onClick={confirmSwitchToWizard}>Switch to Wizard</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

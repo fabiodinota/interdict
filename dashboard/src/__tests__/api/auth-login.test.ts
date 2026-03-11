@@ -22,7 +22,7 @@ describe("POST /api/auth/login", () => {
 
   beforeEach(() => {
     fetchSpy = mockFetch(async () =>
-      jsonResponse({ success: true, data: { id: "u1", displayName: "Admin", role: "admin" } })
+      jsonResponse({ success: true, data: { id: "u1", displayName: "Admin", role: "admin" } }),
     );
   });
 
@@ -99,7 +99,7 @@ describe("POST /api/auth/login", () => {
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toBe("http://control-plane:3000/api/v1/auth/me");
     expect((init as RequestInit).headers).toEqual(
-      expect.objectContaining({ Authorization: "Bearer my-key" })
+      expect.objectContaining({ Authorization: "Bearer my-key" }),
     );
   });
 

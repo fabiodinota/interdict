@@ -32,12 +32,9 @@ export function PolicyOverrideTable({
   const setMandatory = useSetMandatory();
 
   // Optimistic state for pending toggles
-  const [pendingToggles, setPendingToggles] = useState<
-    Record<string, boolean>
-  >({});
+  const [pendingToggles, setPendingToggles] = useState<Record<string, boolean>>({});
 
-  const isComplianceOfficer =
-    userRole === "compliance_officer" || userRole === "super_admin";
+  const isComplianceOfficer = userRole === "compliance_officer" || userRole === "super_admin";
 
   async function handleToggle(policy: DepartmentEffectivePolicy) {
     const newEnabled = !policy.effectiveEnabled;
@@ -53,11 +50,7 @@ export function PolicyOverrideTable({
           policy_id: policy.policyId,
           enabled: newEnabled,
         });
-      } else if (
-        newEnabled &&
-        policy.overrideId &&
-        newEnabled === policy.globalEnabled
-      ) {
+      } else if (newEnabled && policy.overrideId && newEnabled === policy.globalEnabled) {
         // If toggling back to global default with an existing override, remove it
         await removeOverride.mutateAsync({
           overrideId: policy.overrideId,
@@ -82,10 +75,7 @@ export function PolicyOverrideTable({
     }
   }
 
-  async function handleMandatoryToggle(
-    policyId: string,
-    currentMandatory: boolean
-  ) {
+  async function handleMandatoryToggle(policyId: string, currentMandatory: boolean) {
     try {
       await setMandatory.mutateAsync({
         policyId,
@@ -106,8 +96,7 @@ export function PolicyOverrideTable({
   if (policies.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-dashed p-12 text-muted-foreground">
-        No policies found. Policies must be created before department
-        overrides can be configured.
+        No policies found. Policies must be created before department overrides can be configured.
       </div>
     );
   }
@@ -123,17 +112,14 @@ export function PolicyOverrideTable({
             <th className="px-4 py-3 text-center font-medium">Status</th>
             <th className="px-4 py-3 text-center font-medium">Mandatory</th>
             {isComplianceOfficer && (
-              <th className="px-4 py-3 text-center font-medium">
-                Set Mandatory
-              </th>
+              <th className="px-4 py-3 text-center font-medium">Set Mandatory</th>
             )}
           </tr>
         </thead>
         <tbody>
           {policies.map((policy) => {
             const effectiveEnabled = getEffectiveEnabled(policy);
-            const differsFromGlobal =
-              effectiveEnabled !== policy.globalEnabled;
+            const differsFromGlobal = effectiveEnabled !== policy.globalEnabled;
 
             return (
               <tr
@@ -145,9 +131,7 @@ export function PolicyOverrideTable({
                 }
               >
                 {/* Policy Name */}
-                <td className="px-4 py-3 font-medium">
-                  {policy.name}
-                </td>
+                <td className="px-4 py-3 font-medium">{policy.name}</td>
 
                 {/* Description (truncated) */}
                 <td className="max-w-xs truncate px-4 py-3 text-muted-foreground">
@@ -157,11 +141,17 @@ export function PolicyOverrideTable({
                 {/* Source Badge */}
                 <td className="px-4 py-3">
                   {policy.source === "Global" ? (
-                    <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+                    <Badge
+                      variant="outline"
+                      className="text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/20"
+                    >
                       Global
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50 dark:bg-purple-950/20">
+                    <Badge
+                      variant="outline"
+                      className="text-purple-600 border-purple-200 bg-purple-50 dark:bg-purple-950/20"
+                    >
                       Department override
                     </Badge>
                   )}
@@ -198,10 +188,7 @@ export function PolicyOverrideTable({
                     <Switch
                       checked={policy.isMandatory}
                       onCheckedChange={() =>
-                        handleMandatoryToggle(
-                          policy.policyId,
-                          policy.isMandatory
-                        )
+                        handleMandatoryToggle(policy.policyId, policy.isMandatory)
                       }
                       size="sm"
                       aria-label={`Set ${policy.name} as mandatory`}

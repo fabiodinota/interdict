@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CheckCircle2,
-  XCircle,
-  MinusCircle,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+import { CheckCircle2, XCircle, MinusCircle, ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { VerificationResult } from "@/types/api";
 
@@ -35,9 +29,7 @@ function OverallBanner({ overall }: { overall: VerificationResult["overall"] }) 
   }[overall];
 
   return (
-    <div
-      className={`rounded-md border px-4 py-2 text-sm font-medium ${config.className}`}
-    >
+    <div className={`rounded-md border px-4 py-2 text-sm font-medium ${config.className}`}>
       {config.label}
     </div>
   );
@@ -101,14 +93,9 @@ interface VerificationStepperProps {
   defaultExpanded?: boolean;
 }
 
-export function VerificationStepper({
-  result,
-  defaultExpanded = false,
-}: VerificationStepperProps) {
+export function VerificationStepper({ result, defaultExpanded = false }: VerificationStepperProps) {
   const [expandedSteps, setExpandedSteps] = useState<Record<number, boolean>>(
-    defaultExpanded
-      ? Object.fromEntries(result.steps.map((_, i) => [i, true]))
-      : {}
+    defaultExpanded ? Object.fromEntries(result.steps.map((_, i) => [i, true])) : {},
   );
 
   const toggleStep = (index: number) => {

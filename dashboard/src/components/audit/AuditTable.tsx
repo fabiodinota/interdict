@@ -20,12 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AuditRecord, AuditSearchResponse } from "@/hooks/use-audit";
 import { useVerifyBundles } from "@/hooks/use-evidence";
 import { BundleDetailPanel } from "@/components/evidence/BundleDetailPanel";
@@ -123,38 +118,32 @@ const columns = [
       }
     },
   }),
-  columnHelper.accessor(
-    (row) => row.actor_display_name || row.actor_identity,
-    {
-      id: "actor",
-      header: "Actor",
-      cell: (info) => {
-        const full = info.getValue();
-        const truncated = full && full.length > 24 ? `${full.slice(0, 24)}...` : full;
-        if (full && full.length > 24) {
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="cursor-default">{truncated}</span>
-                </TooltipTrigger>
-                <TooltipContent>{full}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        }
-        return <span>{full || "Unknown"}</span>;
-      },
-    }
-  ),
-  columnHelper.accessor(
-    (row) => row.department_display_name || row.department,
-    {
-      id: "department",
-      header: "Department",
-      cell: (info) => <span>{info.getValue() || "-"}</span>,
-    }
-  ),
+  columnHelper.accessor((row) => row.actor_display_name || row.actor_identity, {
+    id: "actor",
+    header: "Actor",
+    cell: (info) => {
+      const full = info.getValue();
+      const truncated = full && full.length > 24 ? `${full.slice(0, 24)}...` : full;
+      if (full && full.length > 24) {
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-default">{truncated}</span>
+              </TooltipTrigger>
+              <TooltipContent>{full}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+      return <span>{full || "Unknown"}</span>;
+    },
+  }),
+  columnHelper.accessor((row) => row.department_display_name || row.department, {
+    id: "department",
+    header: "Department",
+    cell: (info) => <span>{info.getValue() || "-"}</span>,
+  }),
   columnHelper.accessor("vendor", {
     header: "Vendor",
     cell: (info) => {
@@ -162,9 +151,7 @@ const columns = [
       return (
         <div>
           <div>{row.vendor_display_name || row.vendor}</div>
-          {row.model && (
-            <div className="text-xs text-muted-foreground">{row.model}</div>
-          )}
+          {row.model && <div className="text-xs text-muted-foreground">{row.model}</div>}
         </div>
       );
     },
@@ -269,8 +256,8 @@ export function AuditTable({
         <Search className="size-10 text-muted-foreground mb-3" />
         <h3 className="text-lg font-medium">No audit records found</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          No audit records found matching your filters. Try adjusting the search
-          criteria or date range.
+          No audit records found matching your filters. Try adjusting the search criteria or date
+          range.
         </p>
       </div>
     );
@@ -287,10 +274,7 @@ export function AuditTable({
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>

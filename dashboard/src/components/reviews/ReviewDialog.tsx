@@ -59,8 +59,7 @@ export function ReviewDialog({ item, open, onOpenChange }: ReviewDialogProps) {
     if (!item || !resolution) return;
 
     // For reject, force violation_confirmed if not already selected
-    const finalResolution =
-      action === "reject" ? "violation_confirmed" : resolution;
+    const finalResolution = action === "reject" ? "violation_confirmed" : resolution;
 
     await resolveReview.mutateAsync({
       reviewId: item.id,
@@ -93,8 +92,7 @@ export function ReviewDialog({ item, open, onOpenChange }: ReviewDialogProps) {
             <SlaTimer deadline={item.slaDeadline} />
           </div>
           <DialogDescription>
-            Review the interaction details and provide your assessment with
-            mandatory reasoning.
+            Review the interaction details and provide your assessment with mandatory reasoning.
           </DialogDescription>
         </DialogHeader>
 
@@ -105,9 +103,7 @@ export function ReviewDialog({ item, open, onOpenChange }: ReviewDialogProps) {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <span className="text-muted-foreground">Bundle ID:</span>
-                <p className="font-mono text-xs mt-0.5 truncate">
-                  {item.bundleId}
-                </p>
+                <p className="font-mono text-xs mt-0.5 truncate">{item.bundleId}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Actor:</span>
@@ -153,21 +149,15 @@ export function ReviewDialog({ item, open, onOpenChange }: ReviewDialogProps) {
 
           {/* Cryptographic Hashes */}
           <div>
-            <h4 className="text-sm font-semibold mb-2">
-              Cryptographic Evidence
-            </h4>
+            <h4 className="text-sm font-semibold mb-2">Cryptographic Evidence</h4>
             <div className="space-y-2 text-sm">
               <div>
                 <span className="text-muted-foreground">Prompt Hash:</span>
-                <p className="font-mono text-xs mt-0.5 break-all">
-                  {item.promptHash || "N/A"}
-                </p>
+                <p className="font-mono text-xs mt-0.5 break-all">{item.promptHash || "N/A"}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Response Hash:</span>
-                <p className="font-mono text-xs mt-0.5 break-all">
-                  {item.responseHash || "N/A"}
-                </p>
+                <p className="font-mono text-xs mt-0.5 break-all">{item.responseHash || "N/A"}</p>
               </div>
             </div>
           </div>
@@ -177,9 +167,7 @@ export function ReviewDialog({ item, open, onOpenChange }: ReviewDialogProps) {
             <>
               <Separator />
               <div>
-                <h4 className="text-sm font-semibold mb-2">
-                  Triggering Policy Rules
-                </h4>
+                <h4 className="text-sm font-semibold mb-2">Triggering Policy Rules</h4>
                 <div className="flex flex-wrap gap-1">
                   {item.policyRules.map((rule, idx) => (
                     <Badge key={idx} variant="outline" className="text-xs">
@@ -221,9 +209,7 @@ export function ReviewDialog({ item, open, onOpenChange }: ReviewDialogProps) {
             <div className="space-y-2">
               <Label htmlFor="resolution-notes">
                 Reasoning <span className="text-destructive">*</span>
-                <span className="text-muted-foreground text-xs ml-1">
-                  (minimum 10 characters)
-                </span>
+                <span className="text-muted-foreground text-xs ml-1">(minimum 10 characters)</span>
               </Label>
               <Textarea
                 id="resolution-notes"
@@ -242,11 +228,7 @@ export function ReviewDialog({ item, open, onOpenChange }: ReviewDialogProps) {
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={isSubmitting}
-          >
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button
@@ -254,9 +236,7 @@ export function ReviewDialog({ item, open, onOpenChange }: ReviewDialogProps) {
             onClick={() => handleResolve("reject")}
             disabled={!isValid || isSubmitting}
           >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : null}
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             Reject
           </Button>
           <Button
@@ -264,9 +244,7 @@ export function ReviewDialog({ item, open, onOpenChange }: ReviewDialogProps) {
             disabled={!isValid || isSubmitting}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : null}
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             Approve
           </Button>
         </DialogFooter>

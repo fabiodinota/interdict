@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
       });
     } catch (err) {
       // Log but don't block logout — cookie is cleared regardless
-      console.error("[logout] Failed to revoke server-side session:", err instanceof Error ? err.message : String(err));
+      console.error(
+        "[logout] Failed to revoke server-side session:",
+        err instanceof Error ? err.message : String(err),
+      );
     }
   }
 

@@ -22,9 +22,9 @@ interface ViolationChartProps {
 }
 
 const ACTION_COLORS: Record<string, string> = {
-  allow: "var(--color-chart-2)",   // green-ish
+  allow: "var(--color-chart-2)", // green-ish
   block: "var(--color-destructive)", // red
-  redact: "var(--color-chart-1)",  // orange-ish
+  redact: "var(--color-chart-1)", // orange-ish
 };
 
 const ACTION_LABELS: Record<string, string> = {

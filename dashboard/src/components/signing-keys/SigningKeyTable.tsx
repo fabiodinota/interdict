@@ -43,9 +43,7 @@ export function SigningKeyTable({ keys }: SigningKeyTableProps) {
             </TableCell>
             <TableCell>
               {key.is_active ? (
-                <Badge className="bg-green-100 text-green-800 border-green-200">
-                  Active
-                </Badge>
+                <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
               ) : (
                 <Badge variant="secondary">Retired</Badge>
               )}

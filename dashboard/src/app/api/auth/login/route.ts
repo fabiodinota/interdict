@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     if (!apiKey || typeof apiKey !== "string") {
       return NextResponse.json(
         { success: false, error: { message: "API key is required" } },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     if (!res.ok) {
       return NextResponse.json(
         { success: false, error: { message: "Invalid API key" } },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       { success: false, error: { message: "Login failed" } },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

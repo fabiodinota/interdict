@@ -13,11 +13,7 @@ export interface TemplateParameter {
   placeholder?: string;
 }
 
-export type PolicyCategory =
-  | "vendor_control"
-  | "content_inspection"
-  | "rate_limiting"
-  | "custom";
+export type PolicyCategory = "vendor_control" | "content_inspection" | "rate_limiting" | "custom";
 
 export interface PolicyCategoryMeta {
   id: PolicyCategory;

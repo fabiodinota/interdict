@@ -52,11 +52,7 @@ export interface AuditSearchResponse {
  * Server-side audit trail search with filters and cursor-based pagination.
  * Uses keepPreviousData to avoid loading flashes during page changes.
  */
-export function useAuditSearch(
-  filters: AuditFilters,
-  cursor?: string,
-  pageSize: number = 50
-) {
+export function useAuditSearch(filters: AuditFilters, cursor?: string, pageSize: number = 50) {
   return useQuery<AuditSearchResponse>({
     queryKey: ["audit", "search", filters, cursor, pageSize],
     queryFn: () => {

@@ -15,11 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  useAddModel,
-  useUpdateModel,
-  useDeleteModel,
-} from "@/hooks/use-vendors";
+import { useAddModel, useUpdateModel, useDeleteModel } from "@/hooks/use-vendors";
 import type { VendorModel } from "@/hooks/use-vendors";
 
 interface ModelListProps {
@@ -45,7 +41,7 @@ export function ModelList({ vendorId, models }: ModelListProps) {
           setNewModelName("");
           setShowAddForm(false);
         },
-      }
+      },
     );
   };
 
@@ -61,7 +57,7 @@ export function ModelList({ vendorId, models }: ModelListProps) {
     if (!deleteTarget) return;
     deleteModel.mutate(
       { vendorId, modelId: deleteTarget.id },
-      { onSuccess: () => setDeleteTarget(null) }
+      { onSuccess: () => setDeleteTarget(null) },
     );
   };
 
@@ -138,9 +134,7 @@ export function ModelList({ vendorId, models }: ModelListProps) {
                     onClick={handleDeleteModel}
                     disabled={deleteModel.isPending}
                   >
-                    {deleteModel.isPending && (
-                      <Loader2 className="size-4 mr-2 animate-spin" />
-                    )}
+                    {deleteModel.isPending && <Loader2 className="size-4 mr-2 animate-spin" />}
                     Remove
                   </Button>
                 </DialogFooter>
@@ -170,11 +164,7 @@ export function ModelList({ vendorId, models }: ModelListProps) {
             onClick={handleAddModel}
             disabled={addModel.isPending || !newModelName.trim()}
           >
-            {addModel.isPending ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              "Add"
-            )}
+            {addModel.isPending ? <Loader2 className="size-3 animate-spin" /> : "Add"}
           </Button>
           <Button
             variant="ghost"

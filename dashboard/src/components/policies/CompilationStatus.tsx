@@ -51,10 +51,7 @@ export function CompilationStatus({
           </Badge>
         )}
         {status === "failed" && (
-          <Badge
-            variant="destructive"
-            className="gap-1 cursor-pointer"
-          >
+          <Badge variant="destructive" className="gap-1 cursor-pointer">
             <X className="size-3" />
             Failed
           </Badge>
@@ -63,14 +60,8 @@ export function CompilationStatus({
 
       {status === "compiled" && (wasmHash || wasmSize) && (
         <div className="text-xs text-muted-foreground pl-1">
-          {wasmHash && (
-            <span className="font-mono">{wasmHash.slice(0, 12)}...</span>
-          )}
-          {wasmSize && (
-            <span className="ml-1">
-              ({(wasmSize / 1024).toFixed(1)} KB)
-            </span>
-          )}
+          {wasmHash && <span className="font-mono">{wasmHash.slice(0, 12)}...</span>}
+          {wasmSize && <span className="ml-1">({(wasmSize / 1024).toFixed(1)} KB)</span>}
         </div>
       )}
 

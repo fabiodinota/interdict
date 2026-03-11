@@ -112,12 +112,7 @@ export function ReportForm({ onGenerate, isGenerating }: ReportFormProps) {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={fromDate}
-                  onSelect={setFromDate}
-                  initialFocus
-                />
+                <Calendar mode="single" selected={fromDate} onSelect={setFromDate} initialFocus />
               </PopoverContent>
             </Popover>
           </div>
@@ -136,12 +131,7 @@ export function ReportForm({ onGenerate, isGenerating }: ReportFormProps) {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={toDate}
-                  onSelect={setToDate}
-                  initialFocus
-                />
+                <Calendar mode="single" selected={toDate} onSelect={setToDate} initialFocus />
               </PopoverContent>
             </Popover>
           </div>

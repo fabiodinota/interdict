@@ -12,9 +12,7 @@ export default function RegulatoryPage() {
       {!selectedSlug && (
         <>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Regulatory Frameworks
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight">Regulatory Frameworks</h1>
             <p className="text-muted-foreground mt-1">
               Select jurisdictions and manage compliance policy configurations
             </p>
@@ -23,12 +21,7 @@ export default function RegulatoryPage() {
         </>
       )}
 
-      {selectedSlug && (
-        <FrameworkDetail
-          slug={selectedSlug}
-          onBack={() => setSelectedSlug(null)}
-        />
-      )}
+      {selectedSlug && <FrameworkDetail slug={selectedSlug} onBack={() => setSelectedSlug(null)} />}
     </div>
   );
 }

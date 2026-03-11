@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  keepPreviousData,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
 import type { ReviewItem, ReviewResolution } from "@/types/api";
@@ -45,7 +40,7 @@ export interface ReviewItemResponse {
 export function useReviewQueue(
   statusFilter: string = "pending",
   cursor?: string,
-  pageSize: number = 50
+  pageSize: number = 50,
 ) {
   return useQuery<ReviewQueueResponse>({
     queryKey: ["reviews", "queue", statusFilter, cursor, pageSize],

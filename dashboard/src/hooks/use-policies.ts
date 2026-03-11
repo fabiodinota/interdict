@@ -122,8 +122,7 @@ export function useDeletePolicy() {
 export function usePolicyVersions(policyId: string) {
   return useQuery<ApiResponse<PolicyVersion[]>>({
     queryKey: ["policies", policyId, "versions"],
-    queryFn: () =>
-      api<ApiResponse<PolicyVersion[]>>(`/policies/${policyId}/versions`),
+    queryFn: () => api<ApiResponse<PolicyVersion[]>>(`/policies/${policyId}/versions`),
     enabled: !!policyId,
   });
 }
@@ -133,13 +132,7 @@ export function useRestoreVersion() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      policyId,
-      versionId,
-    }: {
-      policyId: string;
-      versionId: string;
-    }) =>
+    mutationFn: ({ policyId, versionId }: { policyId: string; versionId: string }) =>
       api<ApiResponse<Policy>>(`/policies/${policyId}/restore/${versionId}`, {
         method: "POST",
       }),

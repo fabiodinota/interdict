@@ -43,10 +43,10 @@ export function AuditFilters({ filters, onFiltersChange }: AuditFiltersProps) {
 
   const [localDepartment, setLocalDepartment] = useState(filters.department ?? "");
   const [fromDate, setFromDate] = useState<Date | undefined>(
-    filters.from_date ? new Date(filters.from_date) : undefined
+    filters.from_date ? new Date(filters.from_date) : undefined,
   );
   const [toDate, setToDate] = useState<Date | undefined>(
-    filters.to_date ? new Date(filters.to_date) : undefined
+    filters.to_date ? new Date(filters.to_date) : undefined,
   );
 
   const syncToUrl = useCallback(
@@ -60,7 +60,7 @@ export function AuditFilters({ filters, onFiltersChange }: AuditFiltersProps) {
       const qs = params.toString();
       router.replace(`/audit${qs ? `?${qs}` : ""}`, { scroll: false });
     },
-    [router]
+    [router],
   );
 
   const applyFilters = () => {

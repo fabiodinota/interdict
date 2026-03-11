@@ -1,12 +1,7 @@
 "use client";
 
 import { Activity, AlertTriangle, Shield, Building2 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -83,9 +78,7 @@ export function KpiCards({
               {isLoading || val === undefined ? (
                 <Skeleton className="h-8 w-24" />
               ) : (
-                <p className="text-2xl font-bold tracking-tight">
-                  {formatter.format(val)}
-                </p>
+                <p className="text-2xl font-bold tracking-tight">{formatter.format(val)}</p>
               )}
             </CardContent>
           </Card>

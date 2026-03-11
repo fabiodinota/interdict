@@ -2,10 +2,7 @@
 
 import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type {
-  EvidenceBundle,
-  VerificationResult,
-} from "@/types/api";
+import type { EvidenceBundle, VerificationResult } from "@/types/api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,7 +38,7 @@ export interface VerifyBundlesResponse {
 export function useEvidenceBundles(
   filters: EvidenceBundlesFilters,
   cursor?: string,
-  pageSize: number = 50
+  pageSize: number = 50,
 ) {
   return useQuery<EvidenceBundlesResponse>({
     queryKey: ["evidence", "bundles", filters, cursor, pageSize],
@@ -53,9 +50,7 @@ export function useEvidenceBundles(
       params.set("page_size", String(pageSize));
 
       const qs = params.toString();
-      return api<EvidenceBundlesResponse>(
-        `/evidence/bundles${qs ? `?${qs}` : ""}`
-      );
+      return api<EvidenceBundlesResponse>(`/evidence/bundles${qs ? `?${qs}` : ""}`);
     },
     placeholderData: keepPreviousData,
   });

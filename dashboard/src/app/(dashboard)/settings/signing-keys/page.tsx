@@ -19,9 +19,8 @@ export default function SigningKeysPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Signing Keys</h1>
         <p className="text-muted-foreground mt-1">
-          Manage Ed25519 signing keys used for evidence bundle integrity. Rotate
-          keys periodically -- retired keys remain valid for historical
-          verification.
+          Manage Ed25519 signing keys used for evidence bundle integrity. Rotate keys periodically
+          -- retired keys remain valid for historical verification.
         </p>
       </div>
 
@@ -31,11 +30,7 @@ export default function SigningKeysPage() {
       </div>
 
       {/* Content */}
-      {isLoading && (
-        <p className="text-sm text-muted-foreground">
-          Loading signing keys...
-        </p>
-      )}
+      {isLoading && <p className="text-sm text-muted-foreground">Loading signing keys...</p>}
 
       {isError && (
         <p className="text-sm text-red-600">
@@ -45,9 +40,7 @@ export default function SigningKeysPage() {
 
       {data && (
         <>
-          <p className="text-sm text-muted-foreground">
-            {keys.length} key(s)
-          </p>
+          <p className="text-sm text-muted-foreground">{keys.length} key(s)</p>
           <SigningKeyTable keys={keys} />
         </>
       )}

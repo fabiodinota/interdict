@@ -19,9 +19,7 @@ function MonoField({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1">
       <p className="text-xs text-muted-foreground font-medium">{label}</p>
-      <p className="text-xs font-mono bg-muted rounded px-2 py-1.5 break-all select-all">
-        {value}
-      </p>
+      <p className="text-xs font-mono bg-muted rounded px-2 py-1.5 break-all select-all">{value}</p>
     </div>
   );
 }
@@ -49,9 +47,7 @@ export function BundleDetailPanel({
         <SheetHeader>
           <SheetTitle>Bundle Details</SheetTitle>
           <SheetDescription>
-            {bundle
-              ? `Bundle ${bundle.bundle_id.substring(0, 12)}...`
-              : "No bundle selected"}
+            {bundle ? `Bundle ${bundle.bundle_id.substring(0, 12)}...` : "No bundle selected"}
           </SheetDescription>
         </SheetHeader>
 
@@ -94,10 +90,7 @@ export function BundleDetailPanel({
             {verificationResult && (
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold">Verification</h4>
-                <VerificationStepper
-                  result={verificationResult}
-                  defaultExpanded
-                />
+                <VerificationStepper result={verificationResult} defaultExpanded />
               </div>
             )}
 
@@ -108,15 +101,9 @@ export function BundleDetailPanel({
               <h4 className="text-sm font-semibold">Raw Cryptographic Data</h4>
               <div className="space-y-3">
                 <MonoField label="Chain Hash" value={bundle.chain_hash} />
-                <MonoField
-                  label="Previous Hash"
-                  value={bundle.previous_hash}
-                />
+                <MonoField label="Previous Hash" value={bundle.previous_hash} />
                 <MonoField label="Signature" value={bundle.signature} />
-                <MonoField
-                  label="Signing Key ID"
-                  value={bundle.signing_key_id}
-                />
+                <MonoField label="Signing Key ID" value={bundle.signing_key_id} />
               </div>
             </div>
           </div>

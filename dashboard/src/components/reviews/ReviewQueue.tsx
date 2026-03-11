@@ -35,9 +35,7 @@ const columnHelper = createColumnHelper<ReviewItem>();
 // Risk score badge color
 // ---------------------------------------------------------------------------
 
-function riskBadgeVariant(
-  score: number
-): "destructive" | "default" | "secondary" {
+function riskBadgeVariant(score: number): "destructive" | "default" | "secondary" {
   if (score > 80) return "destructive";
   if (score > 50) return "default";
   return "secondary";
@@ -82,8 +80,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
   const [selectedItem, setSelectedItem] = useState<ReviewItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const currentCursor =
-    cursors.length > 0 ? cursors[cursors.length - 1] : undefined;
+  const currentCursor = cursors.length > 0 ? cursors[cursors.length - 1] : undefined;
 
   const { data, isLoading } = useReviewQueue(statusFilter, currentCursor);
   const claimReview = useClaimReview();
@@ -95,13 +92,10 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
 
   const handleNextPage = useCallback(
     (cursor: string) => setCursors((prev) => [...prev, cursor]),
-    []
+    [],
   );
 
-  const handlePreviousPage = useCallback(
-    () => setCursors((prev) => prev.slice(0, -1)),
-    []
-  );
+  const handlePreviousPage = useCallback(() => setCursors((prev) => prev.slice(0, -1)), []);
 
   const handleReview = useCallback(
     async (item: ReviewItem) => {
@@ -122,7 +116,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
         setDialogOpen(true);
       }
     },
-    [claimReview, currentUserId]
+    [claimReview, currentUserId],
   );
 
   const handleFilterChange = useCallback((value: string) => {
@@ -148,9 +142,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
       columnHelper.accessor("actorIdentity", {
         header: "Actor",
         cell: (info) => (
-          <span className="text-sm truncate max-w-[150px] inline-block">
-            {info.getValue()}
-          </span>
+          <span className="text-sm truncate max-w-[150px] inline-block">{info.getValue()}</span>
         ),
       }),
       columnHelper.accessor("vendor", {
@@ -160,9 +152,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
       columnHelper.accessor("riskScore", {
         header: "Risk",
         cell: (info) => (
-          <Badge variant={riskBadgeVariant(info.getValue())}>
-            {info.getValue()}
-          </Badge>
+          <Badge variant={riskBadgeVariant(info.getValue())}>{info.getValue()}</Badge>
         ),
       }),
       columnHelper.accessor("status", {
@@ -182,23 +172,14 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
                 onClick={() => handleReview(item)}
                 disabled={claimReview.isPending}
               >
-                {claimReview.isPending ? (
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                ) : null}
+                {claimReview.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 Review
               </Button>
             );
           }
-          if (
-            item.status === "claimed" &&
-            item.claimedBy === currentUserId
-          ) {
+          if (item.status === "claimed" && item.claimedBy === currentUserId) {
             return (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleReview(item)}
-              >
+              <Button size="sm" variant="outline" onClick={() => handleReview(item)}>
                 Continue Review
               </Button>
             );
@@ -214,7 +195,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
         },
       }),
     ],
-    [handleReview, claimReview.isPending, currentUserId]
+    [handleReview, claimReview.isPending, currentUserId],
   );
 
   const items = data?.data ?? [];
@@ -238,11 +219,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
   return (
     <div className="space-y-4">
       {/* Status filter tabs */}
-      <Tabs
-        value={statusFilter}
-        onValueChange={handleFilterChange}
-        className="w-auto"
-      >
+      <Tabs value={statusFilter} onValueChange={handleFilterChange} className="w-auto">
         <TabsList>
           <TabsTrigger value="pending">Pending</TabsTrigger>
           <TabsTrigger value="claimed">Claimed</TabsTrigger>
@@ -260,10 +237,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -284,10 +258,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -311,10 +282,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
         <Button
           variant="outline"
           size="sm"
-          onClick={() =>
-            data?.pagination?.nextCursor &&
-            handleNextPage(data.pagination.nextCursor)
-          }
+          onClick={() => data?.pagination?.nextCursor && handleNextPage(data.pagination.nextCursor)}
           disabled={!data?.pagination?.nextCursor}
         >
           Next
@@ -323,11 +291,7 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
       </div>
 
       {/* Review dialog */}
-      <ReviewDialog
-        item={selectedItem}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
+      <ReviewDialog item={selectedItem} open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
   );
 }

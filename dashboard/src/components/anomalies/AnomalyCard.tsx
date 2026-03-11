@@ -1,12 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  TrendingUp,
-  Clock,
-  Repeat,
-  MessageSquare,
-} from "lucide-react";
+import { TrendingUp, Clock, Repeat, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,10 +13,7 @@ import { BaselineChart } from "./BaselineChart";
 // Config
 // ---------------------------------------------------------------------------
 
-const TYPE_CONFIG: Record<
-  AnomalyAlert["type"],
-  { label: string; icon: React.ElementType }
-> = {
+const TYPE_CONFIG: Record<AnomalyAlert["type"], { label: string; icon: React.ElementType }> = {
   volume_spike: { label: "Volume Spike", icon: TrendingUp },
   off_hours: { label: "Off-Hours Usage", icon: Clock },
   vendor_switch: { label: "Vendor Switch", icon: Repeat },
@@ -38,8 +30,7 @@ const SEVERITY_CONFIG: Record<
     barColor: "#3b82f6",
   },
   warning: {
-    badge:
-      "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    badge: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
     stripe: "bg-amber-500",
     barColor: "#f59e0b",
   },
@@ -64,32 +55,21 @@ export function AnomalyCard({ alert }: AnomalyCardProps) {
   const Icon = typeConfig.icon;
 
   const baselineAvg =
-    typeof alert.baseline.avg_count === "number"
-      ? alert.baseline.avg_count
-      : undefined;
+    typeof alert.baseline.avg_count === "number" ? alert.baseline.avg_count : undefined;
   const currentCount =
-    typeof alert.current.current_count === "number"
-      ? alert.current.current_count
-      : undefined;
+    typeof alert.current.current_count === "number" ? alert.current.current_count : undefined;
 
   return (
     <Card className="relative overflow-hidden">
       {/* Left color stripe */}
-      <div
-        className={cn(
-          "absolute left-0 top-0 bottom-0 w-1",
-          severityConfig.stripe
-        )}
-      />
+      <div className={cn("absolute left-0 top-0 bottom-0 w-1", severityConfig.stripe)} />
 
       <CardHeader className="pb-2 pl-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon className="size-4 text-muted-foreground" />
             <span className="text-sm font-medium">{typeConfig.label}</span>
-            <Badge className={cn("text-xs", severityConfig.badge)}>
-              {alert.severity}
-            </Badge>
+            <Badge className={cn("text-xs", severityConfig.badge)}>{alert.severity}</Badge>
           </div>
         </div>
         <p className="text-sm font-semibold">{alert.actorIdentity}</p>
@@ -133,12 +113,7 @@ export function AnomalyCard({ alert }: AnomalyCardProps) {
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2">
           {alert.actions.map((action) => (
-            <Button
-              key={action.href}
-              variant="outline"
-              size="sm"
-              asChild
-            >
+            <Button key={action.href} variant="outline" size="sm" asChild>
               <Link href={action.href}>{action.label}</Link>
             </Button>
           ))}
@@ -146,8 +121,7 @@ export function AnomalyCard({ alert }: AnomalyCardProps) {
 
         {/* Timestamp footer */}
         <p className="text-xs text-muted-foreground/60">
-          Detected at{" "}
-          {new Date(alert.detectedAt).toLocaleString()}
+          Detected at {new Date(alert.detectedAt).toLocaleString()}
         </p>
       </CardContent>
     </Card>

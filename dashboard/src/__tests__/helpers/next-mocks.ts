@@ -11,9 +11,7 @@ import { vi } from "vitest";
 // ---------------------------------------------------------------------------
 // Mock cookie jar used by next/headers cookies()
 // ---------------------------------------------------------------------------
-export function createMockCookieStore(
-  initial: Record<string, string> = {}
-): {
+export function createMockCookieStore(initial: Record<string, string> = {}): {
   get: (name: string) => { name: string; value: string } | undefined;
   getAll: () => { name: string; value: string }[];
   set: (...args: unknown[]) => void;
@@ -51,7 +49,7 @@ export function buildNextRequest(
     body?: string;
     headers?: Record<string, string>;
     cookies?: Record<string, string>;
-  } = {}
+  } = {},
 ): Request & {
   nextUrl: URL;
   cookies: ReturnType<typeof createMockCookieStore>;
@@ -88,9 +86,7 @@ export function mockNextHeadersCookies(jar: Record<string, string>) {
 // ---------------------------------------------------------------------------
 // Mock global fetch with a configurable response factory
 // ---------------------------------------------------------------------------
-export function mockFetch(
-  handler: (url: string, init?: RequestInit) => Promise<Response>
-) {
+export function mockFetch(handler: (url: string, init?: RequestInit) => Promise<Response>) {
   const spy = vi.fn(handler);
   vi.stubGlobal("fetch", spy);
   return spy;

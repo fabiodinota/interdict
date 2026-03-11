@@ -12,9 +12,7 @@ export function useCompilationStatus(policyId: string, enabled: boolean) {
   return useQuery<ApiResponse<CompilationStatusResponse>>({
     queryKey: ["policies", policyId, "compilation-status"],
     queryFn: () =>
-      api<ApiResponse<CompilationStatusResponse>>(
-        `/policies/${policyId}/compilation-status`
-      ),
+      api<ApiResponse<CompilationStatusResponse>>(`/policies/${policyId}/compilation-status`),
     enabled: enabled && !!policyId,
     refetchInterval: (query) => {
       const data = query.state.data;

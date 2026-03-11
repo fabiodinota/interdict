@@ -20,7 +20,7 @@ describe("GET /api/auth/saml-callback", () => {
 
   beforeEach(() => {
     fetchSpy = mockFetch(async () =>
-      jsonResponse({ success: true, data: { token: "session-jwt-abc" } })
+      jsonResponse({ success: true, data: { token: "session-jwt-abc" } }),
     );
   });
 
@@ -76,9 +76,7 @@ describe("GET /api/auth/saml-callback", () => {
   });
 
   it("redirects to /login?error=code_expired when response has no token", async () => {
-    fetchSpy = mockFetch(async () =>
-      jsonResponse({ success: false })
-    );
+    fetchSpy = mockFetch(async () => jsonResponse({ success: false }));
 
     const req = buildNextRequest("http://localhost:3001/api/auth/saml-callback?code=bad");
     const res = await GET(req as never);

@@ -7,7 +7,7 @@ export async function GET() {
   if (!token) {
     return NextResponse.json(
       { success: false, error: { message: "Not authenticated" } },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -22,7 +22,7 @@ export async function GET() {
     if (!res.ok) {
       return NextResponse.json(
         { success: false, error: { message: "Session expired" } },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function GET() {
   } catch {
     return NextResponse.json(
       { success: false, error: { message: "Failed to fetch user" } },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/login?error=code_expired", request.url));
     }
 
-    const json = await res.json() as { success: boolean; data?: { token: string } };
+    const json = (await res.json()) as { success: boolean; data?: { token: string } };
     if (!json.success || !json.data?.token) {
       return NextResponse.redirect(new URL("/login?error=code_expired", request.url));
     }

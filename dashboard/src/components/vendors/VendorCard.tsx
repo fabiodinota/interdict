@@ -35,9 +35,7 @@ export function VendorCard({ vendor }: VendorCardProps) {
               {vendor.display_name || vendor.name}
             </CardTitle>
             {vendor.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {vendor.description}
-              </p>
+              <p className="text-sm text-muted-foreground line-clamp-2">{vendor.description}</p>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -75,9 +73,7 @@ export function VendorCard({ vendor }: VendorCardProps) {
           {expanded ? "Hide models" : `Show models (${vendor.models?.length ?? 0})`}
         </button>
 
-        {expanded && (
-          <ModelList vendorId={vendor.id} models={vendor.models ?? []} />
-        )}
+        {expanded && <ModelList vendorId={vendor.id} models={vendor.models ?? []} />}
       </CardContent>
     </Card>
   );

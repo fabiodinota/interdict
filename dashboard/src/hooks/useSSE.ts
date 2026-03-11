@@ -27,10 +27,7 @@ let eventIdCounter = 0;
  * Reusable SSE hook that connects to an EventSource endpoint,
  * collects events, auto-reconnects on failure, and caps the buffer.
  */
-export function useSSE<T = unknown>(
-  url: string,
-  options: UseSSEOptions = {}
-): UseSSEReturn<T> {
+export function useSSE<T = unknown>(url: string, options: UseSSEOptions = {}): UseSSEReturn<T> {
   const { maxEvents = 50, reconnectDelay = 5000 } = options;
 
   const [events, setEvents] = useState<SSEEvent<T>[]>([]);
@@ -72,9 +69,7 @@ export function useSSE<T = unknown>(
           const parsed = data as Record<string, unknown>;
           const id = `sse-${++eventIdCounter}`;
           const timestamp =
-            typeof parsed.timestamp === "string"
-              ? parsed.timestamp
-              : new Date().toISOString();
+            typeof parsed.timestamp === "string" ? parsed.timestamp : new Date().toISOString();
 
           setEvents((prev) => {
             const next = [{ id, timestamp, data }, ...prev];

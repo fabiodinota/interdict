@@ -19,8 +19,7 @@ export function VendorList() {
     ? vendors.filter(
         (v) =>
           v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (v.display_name &&
-            v.display_name.toLowerCase().includes(searchQuery.toLowerCase()))
+          (v.display_name && v.display_name.toLowerCase().includes(searchQuery.toLowerCase())),
       )
     : vendors;
 
@@ -78,14 +77,11 @@ export function VendorList() {
       )}
 
       {/* No search results */}
-      {!isLoading &&
-        vendors.length > 0 &&
-        filteredVendors.length === 0 &&
-        searchQuery && (
-          <div className="text-center py-8 text-sm text-muted-foreground">
-            No vendors matching &quot;{searchQuery}&quot;
-          </div>
-        )}
+      {!isLoading && vendors.length > 0 && filteredVendors.length === 0 && searchQuery && (
+        <div className="text-center py-8 text-sm text-muted-foreground">
+          No vendors matching &quot;{searchQuery}&quot;
+        </div>
+      )}
     </div>
   );
 }

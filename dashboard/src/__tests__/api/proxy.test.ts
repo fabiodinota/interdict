@@ -65,7 +65,7 @@ describe("BFF Proxy Route", () => {
       expect(fetchSpy).toHaveBeenCalledOnce();
       const [, init] = fetchSpy.mock.calls[0];
       expect((init as RequestInit).headers).toEqual(
-        expect.objectContaining({ Authorization: "Bearer test-session-token" })
+        expect.objectContaining({ Authorization: "Bearer test-session-token" }),
       );
     });
   });
@@ -137,11 +137,12 @@ describe("BFF Proxy Route", () => {
   describe("SSE streaming", () => {
     it("returns streaming response for audit/stream path", async () => {
       const stream = new ReadableStream();
-      fetchSpy = mockFetch(async () =>
-        new Response(stream, {
-          status: 200,
-          headers: { "Content-Type": "text/event-stream" },
-        })
+      fetchSpy = mockFetch(
+        async () =>
+          new Response(stream, {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream" },
+          }),
       );
 
       const req = buildNextRequest("http://localhost:3001/api/proxy/audit/stream");
@@ -153,9 +154,7 @@ describe("BFF Proxy Route", () => {
     });
 
     it("returns upstream error status for failed SSE", async () => {
-      fetchSpy = mockFetch(async () =>
-        new Response(null, { status: 503 })
-      );
+      fetchSpy = mockFetch(async () => new Response(null, { status: 503 }));
 
       const req = buildNextRequest("http://localhost:3001/api/proxy/audit/stream");
       const res = await GET(req as never, makeParams(["audit", "stream"]));
@@ -206,15 +205,16 @@ describe("BFF Proxy Route", () => {
 
     it("passes through binary responses with correct headers", async () => {
       const pdfBody = new ReadableStream();
-      fetchSpy = mockFetch(async () =>
-        new Response(pdfBody, {
-          status: 200,
-          headers: {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": "attachment; filename=report.pdf",
-            "Content-Length": "12345",
-          },
-        })
+      fetchSpy = mockFetch(
+        async () =>
+          new Response(pdfBody, {
+            status: 200,
+            headers: {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": "attachment; filename=report.pdf",
+              "Content-Length": "12345",
+            },
+          }),
       );
 
       const req = buildNextRequest("http://localhost:3001/api/proxy/reports/download");
@@ -240,11 +240,12 @@ describe("BFF Proxy Route", () => {
     });
 
     it("returns 502 when upstream response body is null for non-JSON", async () => {
-      fetchSpy = mockFetch(async () =>
-        new Response(null, {
-          status: 200,
-          headers: { "Content-Type": "application/pdf" },
-        })
+      fetchSpy = mockFetch(
+        async () =>
+          new Response(null, {
+            status: 200,
+            headers: { "Content-Type": "application/pdf" },
+          }),
       );
 
       const req = buildNextRequest("http://localhost:3001/api/proxy/reports/download");

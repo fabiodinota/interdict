@@ -90,17 +90,13 @@ export function FrameworkDetail({ slug, onBack }: FrameworkDetailProps) {
           <div>
             <h2 className="text-xl font-bold tracking-tight">{framework.name}</h2>
             {framework.description && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {framework.description}
-              </p>
+              <p className="text-sm text-muted-foreground mt-1">{framework.description}</p>
             )}
             <div className="flex gap-2 mt-2">
               {framework.jurisdiction && (
                 <Badge variant="secondary">{framework.jurisdiction}</Badge>
               )}
-              {framework.version && (
-                <Badge variant="outline">v{framework.version}</Badge>
-              )}
+              {framework.version && <Badge variant="outline">v{framework.version}</Badge>}
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -126,9 +122,7 @@ export function FrameworkDetail({ slug, onBack }: FrameworkDetailProps) {
       {/* Policies table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            Policies ({framework.policies.length})
-          </CardTitle>
+          <CardTitle className="text-base">Policies ({framework.policies.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {framework.policies.length === 0 ? (
@@ -150,9 +144,7 @@ export function FrameworkDetail({ slug, onBack }: FrameworkDetailProps) {
                 <TableBody>
                   {framework.policies.map((fp) => (
                     <TableRow key={fp.id}>
-                      <TableCell className="font-medium">
-                        {fp.policyName}
-                      </TableCell>
+                      <TableCell className="font-medium">{fp.policyName}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {fp.requirementRef || "-"}
                       </TableCell>
@@ -170,9 +162,7 @@ export function FrameworkDetail({ slug, onBack }: FrameworkDetailProps) {
                       <TableCell className="text-right">
                         <Switch
                           checked={fp.isRequired}
-                          onCheckedChange={() =>
-                            handleTogglePolicy(fp.policyId, fp.isRequired)
-                          }
+                          onCheckedChange={() => handleTogglePolicy(fp.policyId, fp.isRequired)}
                           disabled={togglePolicy.isPending}
                         />
                       </TableCell>

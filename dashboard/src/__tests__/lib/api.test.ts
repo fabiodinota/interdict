@@ -32,14 +32,12 @@ describe("api() fetch wrapper", () => {
 
     const [, init] = fetchSpy.mock.calls[0];
     expect((init as RequestInit).headers).toEqual(
-      expect.objectContaining({ "Content-Type": "application/json" })
+      expect.objectContaining({ "Content-Type": "application/json" }),
     );
   });
 
   it("returns parsed JSON on success", async () => {
-    fetchSpy = mockFetch(async () =>
-      jsonResponse({ data: { policies: [{ id: "p1" }] } })
-    );
+    fetchSpy = mockFetch(async () => jsonResponse({ data: { policies: [{ id: "p1" }] } }));
 
     const result = await api<{ data: { policies: { id: string }[] } }>("/policies");
     expect(result.data.policies[0].id).toBe("p1");
@@ -47,7 +45,7 @@ describe("api() fetch wrapper", () => {
 
   it("throws ApiError with status and message on non-ok response", async () => {
     fetchSpy = mockFetch(async () =>
-      jsonResponse({ error: { message: "Not found", code: "POLICY_NOT_FOUND" } }, 404)
+      jsonResponse({ error: { message: "Not found", code: "POLICY_NOT_FOUND" } }, 404),
     );
 
     await expect(api("/policies/999")).rejects.toThrow(ApiError);
@@ -65,11 +63,12 @@ describe("api() fetch wrapper", () => {
   });
 
   it("handles non-JSON error responses gracefully", async () => {
-    fetchSpy = mockFetch(async () =>
-      new Response("Internal Server Error", {
-        status: 500,
-        headers: { "Content-Type": "text/plain" },
-      })
+    fetchSpy = mockFetch(
+      async () =>
+        new Response("Internal Server Error", {
+          status: 500,
+          headers: { "Content-Type": "text/plain" },
+        }),
     );
 
     try {
@@ -96,7 +95,7 @@ describe("api() fetch wrapper", () => {
       expect.objectContaining({
         "Content-Type": "application/json",
         "X-Custom": "value",
-      })
+      }),
     );
   });
 });

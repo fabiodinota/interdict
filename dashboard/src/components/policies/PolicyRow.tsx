@@ -52,11 +52,7 @@ export function PolicyRow({ policy }: PolicyRowProps) {
           onClick={() => setExpanded(!expanded)}
           aria-label={expanded ? "Collapse" : "Expand"}
         >
-          {expanded ? (
-            <ChevronDown className="size-4" />
-          ) : (
-            <ChevronRight className="size-4" />
-          )}
+          {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
         </button>
 
         <div className="flex-1 min-w-0">
@@ -68,9 +64,7 @@ export function PolicyRow({ policy }: PolicyRowProps) {
             {policy.name}
           </button>
           {policy.description && (
-            <p className="text-xs text-muted-foreground truncate max-w-md">
-              {policy.description}
-            </p>
+            <p className="text-xs text-muted-foreground truncate max-w-md">{policy.description}</p>
           )}
         </div>
 
@@ -124,30 +118,20 @@ export function PolicyRow({ policy }: PolicyRowProps) {
       )}
 
       {/* Delete confirmation dialog */}
-      <Dialog
-        open={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-      >
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Policy</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{policy.name}&quot;? This
-              action cannot be undone.
+              Are you sure you want to delete &quot;{policy.name}&quot;? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteConfirm(false)}
-            >
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deletePolicy.isPending}
-            >
+            <Button variant="destructive" onClick={handleDelete} disabled={deletePolicy.isPending}>
               {deletePolicy.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>

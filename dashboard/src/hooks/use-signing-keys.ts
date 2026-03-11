@@ -9,8 +9,7 @@ import type { ApiResponse, SigningKeyInfo, RotateKeyResult } from "@/types/api";
 export function useSigningKeys() {
   return useQuery<ApiResponse<SigningKeyInfo[]>>({
     queryKey: ["signing-keys"],
-    queryFn: () =>
-      api<ApiResponse<SigningKeyInfo[]>>("/admin/signing-keys"),
+    queryFn: () => api<ApiResponse<SigningKeyInfo[]>>("/admin/signing-keys"),
   });
 }
 

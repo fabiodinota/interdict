@@ -11,12 +11,9 @@ export default function EvidenceVerificationPage() {
 
   const { data, isLoading } = useEvidenceBundles({}, currentCursor);
 
-  const handleNextPage = useCallback(
-    (cursor: string) => {
-      setCursors((prev) => [...prev, cursor]);
-    },
-    []
-  );
+  const handleNextPage = useCallback((cursor: string) => {
+    setCursors((prev) => [...prev, cursor]);
+  }, []);
 
   const handlePreviousPage = useCallback(() => {
     setCursors((prev) => prev.slice(0, -1));
@@ -26,13 +23,10 @@ export default function EvidenceVerificationPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Evidence Verification
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight">Evidence Verification</h1>
         <p className="text-muted-foreground mt-1">
-          Verify evidence bundle integrity through cryptographic checks:
-          hash chain recomputation, Ed25519 signature validation, and
-          Merkle anchor verification (via CLI).
+          Verify evidence bundle integrity through cryptographic checks: hash chain recomputation,
+          Ed25519 signature validation, and Merkle anchor verification (via CLI).
         </p>
       </div>
 

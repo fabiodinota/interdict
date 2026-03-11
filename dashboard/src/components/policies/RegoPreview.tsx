@@ -36,9 +36,7 @@ function highlightRego(source: string): React.ReactNode[] {
       // Plain text before match
       if (match.index > lastIndex) {
         parts.push(
-          <span key={`${i}-${partIdx++}`}>
-            {remaining.slice(lastIndex, match.index)}
-          </span>
+          <span key={`${i}-${partIdx++}`}>{remaining.slice(lastIndex, match.index)}</span>,
         );
       }
 
@@ -47,21 +45,21 @@ function highlightRego(source: string): React.ReactNode[] {
         parts.push(
           <span key={`${i}-${partIdx++}`} className="text-blue-500 font-semibold">
             {match[0]}
-          </span>
+          </span>,
         );
       } else if (match[2]) {
         // String
         parts.push(
           <span key={`${i}-${partIdx++}`} className="text-green-600 dark:text-green-400">
             {match[0]}
-          </span>
+          </span>,
         );
       } else if (match[3]) {
         // Number
         parts.push(
           <span key={`${i}-${partIdx++}`} className="text-amber-600 dark:text-amber-400">
             {match[0]}
-          </span>
+          </span>,
         );
       }
 
@@ -70,9 +68,7 @@ function highlightRego(source: string): React.ReactNode[] {
 
     // Remaining text
     if (lastIndex < remaining.length) {
-      parts.push(
-        <span key={`${i}-${partIdx++}`}>{remaining.slice(lastIndex)}</span>
-      );
+      parts.push(<span key={`${i}-${partIdx++}`}>{remaining.slice(lastIndex)}</span>);
     }
 
     return (
@@ -113,9 +109,7 @@ export function RegoPreview({
   isEditMode,
 }: RegoPreviewProps) {
   const canSubmit =
-    policyName.trim() !== "" &&
-    regoSource.trim() !== "" &&
-    entrypoint.trim() !== "";
+    policyName.trim() !== "" && regoSource.trim() !== "" && entrypoint.trim() !== "";
 
   return (
     <div className="space-y-6">

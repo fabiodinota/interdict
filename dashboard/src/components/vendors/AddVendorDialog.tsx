@@ -49,7 +49,7 @@ export function AddVendorDialog() {
           resetForm();
           setOpen(false);
         },
-      }
+      },
     );
   };
 
@@ -71,9 +71,7 @@ export function AddVendorDialog() {
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Add New Vendor</DialogTitle>
-            <DialogDescription>
-              Register a new AI vendor for policy enforcement.
-            </DialogDescription>
+            <DialogDescription>Register a new AI vendor for policy enforcement.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -117,20 +115,14 @@ export function AddVendorDialog() {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={createVendor.isPending || !name.trim() || !displayName.trim()}
             >
-              {createVendor.isPending && (
-                <Loader2 className="size-4 mr-2 animate-spin" />
-              )}
+              {createVendor.isPending && <Loader2 className="size-4 mr-2 animate-spin" />}
               Create Vendor
             </Button>
           </DialogFooter>

@@ -29,9 +29,8 @@ export function RotateKeyDialog({
         <DialogHeader>
           <DialogTitle>Rotate Signing Key</DialogTitle>
           <DialogDescription>
-            This will generate a new Ed25519 keypair and retire the current
-            active key. Previously signed evidence bundles will remain
-            verifiable.
+            This will generate a new Ed25519 keypair and retire the current active key. Previously
+            signed evidence bundles will remain verifiable.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

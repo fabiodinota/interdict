@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-
 interface RawRegoEditorProps {
   regoSource: string;
   policyName: string;
@@ -60,13 +59,11 @@ export function RawRegoEditor({
         });
       }
     },
-    [onRegoChange]
+    [onRegoChange],
   );
 
   const canSubmit =
-    policyName.trim() !== "" &&
-    regoSource.trim() !== "" &&
-    entrypoint.trim() !== "";
+    policyName.trim() !== "" && regoSource.trim() !== "" && entrypoint.trim() !== "";
 
   // Compute line numbers
   const lineCount = regoSource.split("\n").length;
@@ -77,8 +74,8 @@ export function RawRegoEditor({
       <div>
         <h3 className="text-lg font-medium">Raw Rego Editor</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Write your Rego policy directly. Use the Interdict package structure
-          with <code className="text-xs bg-muted px-1 rounded">package interdict.policy</code>.
+          Write your Rego policy directly. Use the Interdict package structure with{" "}
+          <code className="text-xs bg-muted px-1 rounded">package interdict.policy</code>.
         </p>
       </div>
 

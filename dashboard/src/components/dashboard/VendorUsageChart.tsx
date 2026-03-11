@@ -80,10 +80,7 @@ function CustomTooltip({ active, payload }: VendorTooltipProps) {
 }
 
 export function VendorUsageChart({ data, isLoading }: VendorUsageChartProps) {
-  const chartData = useMemo(
-    () => (data ? aggregateByVendor(data) : []),
-    [data]
-  );
+  const chartData = useMemo(() => (data ? aggregateByVendor(data) : []), [data]);
 
   return (
     <Card>
@@ -110,10 +107,7 @@ export function VendorUsageChart({ data, isLoading }: VendorUsageChartProps) {
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="requestCount" name="Requests" radius={[4, 4, 0, 0]}>
                 {chartData.map((_entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={VENDOR_COLORS[index % VENDOR_COLORS.length]}
-                  />
+                  <Cell key={`cell-${index}`} fill={VENDOR_COLORS[index % VENDOR_COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>

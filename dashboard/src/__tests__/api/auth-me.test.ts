@@ -25,7 +25,7 @@ describe("GET /api/auth/me", () => {
   beforeEach(() => {
     mockToken = "valid-token";
     fetchSpy = mockFetch(async () =>
-      jsonResponse({ success: true, data: { id: "u1", displayName: "Admin" } })
+      jsonResponse({ success: true, data: { id: "u1", displayName: "Admin" } }),
     );
   });
 
@@ -78,7 +78,7 @@ describe("GET /api/auth/me", () => {
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toBe("http://control-plane:3000/api/v1/auth/me");
     expect((init as RequestInit).headers).toEqual(
-      expect.objectContaining({ Authorization: "Bearer valid-token" })
+      expect.objectContaining({ Authorization: "Bearer valid-token" }),
     );
   });
 });

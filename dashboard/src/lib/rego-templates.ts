@@ -352,13 +352,9 @@ ${condition}
     ],
     generateRego: (params) => {
       const vendor = escapeRegoString(String(params.vendor || ""));
-      const allowedModels = Array.isArray(params.allowed_models)
-        ? params.allowed_models
-        : [];
+      const allowedModels = Array.isArray(params.allowed_models) ? params.allowed_models : [];
       const action = String(params.action || "block");
-      const modelSet = allowedModels
-        .map((m) => `"${escapeRegoString(String(m))}"`)
-        .join(", ");
+      const modelSet = allowedModels.map((m) => `"${escapeRegoString(String(m))}"`).join(", ");
 
       return `package interdict.policy
 

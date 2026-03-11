@@ -19,13 +19,10 @@ export default function DepartmentPoliciesPage() {
   const departmentIds = user?.departmentIds ?? [];
 
   // Auto-select first department, or allow selection if multiple
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<
-    string | undefined
-  >(undefined);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>(undefined);
 
   // Use first department as default once loaded
-  const activeDepartmentId =
-    selectedDepartmentId ?? departmentIds[0] ?? undefined;
+  const activeDepartmentId = selectedDepartmentId ?? departmentIds[0] ?? undefined;
 
   const {
     data: effectiveData,
@@ -38,18 +35,14 @@ export default function DepartmentPoliciesPage() {
   // Summary stats
   const stats = useMemo(() => {
     const total = policies.length;
-    const overrides = policies.filter(
-      (p) => p.source === "Department override"
-    ).length;
+    const overrides = policies.filter((p) => p.source === "Department override").length;
     const mandatory = policies.filter((p) => p.isMandatory).length;
     return { total, overrides, mandatory };
   }, [policies]);
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center p-12 text-muted-foreground">
-        Loading...
-      </div>
+      <div className="flex items-center justify-center p-12 text-muted-foreground">Loading...</div>
     );
   }
 
@@ -59,8 +52,8 @@ export default function DepartmentPoliciesPage() {
       <div className="space-y-4 p-6">
         <h1 className="text-2xl font-bold tracking-tight">Department Policy Management</h1>
         <div className="flex items-center justify-center rounded-lg border border-dashed p-12 text-muted-foreground">
-          You are not assigned to any department. Contact your administrator to
-          be assigned to a department before managing policy overrides.
+          You are not assigned to any department. Contact your administrator to be assigned to a
+          department before managing policy overrides.
         </div>
       </div>
     );
@@ -72,8 +65,7 @@ export default function DepartmentPoliciesPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Department Policy Management</h1>
         <p className="text-muted-foreground mt-1">
-          Toggle inherited policies for your department. Mandatory policies
-          cannot be disabled.
+          Toggle inherited policies for your department. Mandatory policies cannot be disabled.
         </p>
       </div>
 
@@ -81,10 +73,7 @@ export default function DepartmentPoliciesPage() {
       {departmentIds.length > 1 && (
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium">Department:</label>
-          <Select
-            value={activeDepartmentId}
-            onValueChange={setSelectedDepartmentId}
-          >
+          <Select value={activeDepartmentId} onValueChange={setSelectedDepartmentId}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select department" />
             </SelectTrigger>
@@ -127,8 +116,7 @@ export default function DepartmentPoliciesPage() {
       {/* Error State */}
       {error && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load policies:{" "}
-          {error instanceof Error ? error.message : "Unknown error"}
+          Failed to load policies: {error instanceof Error ? error.message : "Unknown error"}
         </div>
       )}
 

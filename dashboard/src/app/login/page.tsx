@@ -4,13 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ShieldCheck, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,9 +55,7 @@ function LoginContent() {
             <ShieldCheck className="h-6 w-6 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold">Interdict</CardTitle>
-          <CardDescription>
-            AI Governance Compliance Dashboard
-          </CardDescription>
+          <CardDescription>AI Governance Compliance Dashboard</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {samlErrorMessage && !error && (
@@ -83,9 +75,7 @@ function LoginContent() {
               />
             </div>
 
-            {error && (
-              <p className="text-sm text-destructive font-medium">{error}</p>
-            )}
+            {error && <p className="text-sm text-destructive font-medium">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={isLoading || !apiKey}>
               {isLoading ? (
@@ -106,18 +96,11 @@ function LoginContent() {
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    or
-                  </span>
+                  <span className="bg-background px-2 text-muted-foreground">or</span>
                 </div>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleSsoLogin}
-              >
+              <Button type="button" variant="outline" className="w-full" onClick={handleSsoLogin}>
                 <Lock className="mr-2 h-4 w-4" />
                 Sign in with SSO
               </Button>
