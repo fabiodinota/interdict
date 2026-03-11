@@ -18,13 +18,18 @@ import {
   apiResponse,
   NotFoundError,
 } from "../../shared/utilities";
-import type { AppDb } from "../../shared/types";
+import type { AppDb, RouteContext } from "../../shared/types";
 import {
   ActivateFrameworkBody,
   TogglePolicyBody,
 } from "./model";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
+
+type RegulatoryRouteContext<
+  TBody = unknown,
+  TParams = Record<string, string>,
+> = RouteContext<TBody, Record<string, string | undefined>, TParams>;
 
 /** Extract the Drizzle db from the Elysia store, falling back to the global singleton. */
 function resolveDb(store: unknown): AppDb {
@@ -43,8 +48,9 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   /**
    * GET /frameworks - List all frameworks with activation status (Read-Only Auditor+)
    */
-  .get("/frameworks", async (ctx: any) => {
-    const db = resolveDb(ctx.store);
+  .get("/frameworks", async (ctx) => {
+    const routeCtx = ctx as unknown as RegulatoryRouteContext;
+    const db = resolveDb(routeCtx.store);
 
     // Bulk queries — exactly 3 DB round-trips regardless of framework count (HIGH-S1)
     const [allFrameworks, allPolicyCounts, allActivations] = await Promise.all([
@@ -95,9 +101,10 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    */
   .get(
     "/frameworks/:slug",
-    async (ctx: any) => {
-      const db = resolveDb(ctx.store);
-      const params = ctx.params;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as RegulatoryRouteContext<unknown, { slug: string }>;
+      const db = resolveDb(routeCtx.store);
+      const params = routeCtx.params;
 
       const fwRows = await db
         .select()
@@ -191,10 +198,11 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    */
   .post(
     "/frameworks/:slug/activate",
-    async (ctx: any) => {
-      const db = resolveDb(ctx.store);
-      const params = ctx.params;
-      const body = ctx.body;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as RegulatoryRouteContext<{ is_active?: boolean }, { slug: string }>;
+      const db = resolveDb(routeCtx.store);
+      const params = routeCtx.params;
+      const body = routeCtx.body;
 
       const fwRows = await db
         .select()
@@ -243,9 +251,10 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    */
   .post(
     "/frameworks/:slug/deactivate",
-    async (ctx: any) => {
-      const db = resolveDb(ctx.store);
-      const params = ctx.params;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as RegulatoryRouteContext<unknown, { slug: string }>;
+      const db = resolveDb(routeCtx.store);
+      const params = routeCtx.params;
 
       const fwRows = await db
         .select()
@@ -296,10 +305,14 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
    */
   .put(
     "/frameworks/:slug/policies/:policyId/toggle",
-    async (ctx: any) => {
-      const db = resolveDb(ctx.store);
-      const params = ctx.params;
-      const body = ctx.body;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as RegulatoryRouteContext<
+        { isRequired: boolean },
+        { slug: string; policyId: string }
+      >;
+      const db = resolveDb(routeCtx.store);
+      const params = routeCtx.params;
+      const body = routeCtx.body;
 
       // Verify framework exists
       const fwRows = await db
@@ -353,8 +366,9 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   /**
    * GET /active-policies - Get all currently active policy IDs (additive merge)
    */
-  .get("/active-policies", async (ctx: any) => {
-    const db = resolveDb(ctx.store);
+  .get("/active-policies", async (ctx) => {
+    const routeCtx = ctx as unknown as RegulatoryRouteContext;
+    const db = resolveDb(routeCtx.store);
 
     // 1. Get all directly active custom policies (not in any framework)
     const allActivePolicies = await db

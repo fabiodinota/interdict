@@ -482,8 +482,11 @@ export class ReviewService {
         if (bundle?.policy_rules_json) {
           policyRules = JSON.parse(bundle.policy_rules_json);
         }
-      } catch {
-        // Ignore parse errors
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(
+          `[reviews] Failed to parse policy_rules_json for bundle ${row.bundleId}: ${message}`
+        );
       }
 
       return {

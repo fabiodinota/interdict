@@ -13,6 +13,7 @@
 import { inArray } from "drizzle-orm";
 import { users, vendors, policies } from "../../db/schema/index";
 import type { ClickHouseAuditRow, AuditRecord } from "./model";
+import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,7 +48,7 @@ interface EnrichedPolicyRule {
  * @returns Enriched audit records with display names
  */
 export async function enrichAuditRecords(
-  db: any,
+  db: AppDb,
   rows: ClickHouseAuditRow[]
 ): Promise<AuditRecord[]> {
   if (rows.length === 0) {
@@ -120,7 +121,7 @@ export async function enrichAuditRecords(
  * Returns Map<email, displayName>.
  */
 async function batchLookupUsers(
-  db: any,
+  db: AppDb,
   emails: string[]
 ): Promise<Map<string, string>> {
   const map = new Map<string, string>();
@@ -142,7 +143,7 @@ async function batchLookupUsers(
  * Returns Map<name, displayName>.
  */
 async function batchLookupVendors(
-  db: any,
+  db: AppDb,
   names: string[]
 ): Promise<Map<string, string>> {
   const map = new Map<string, string>();
@@ -164,7 +165,7 @@ async function batchLookupVendors(
  * Returns Map<id, name>.
  */
 async function batchLookupPolicies(
-  db: any,
+  db: AppDb,
   ids: string[]
 ): Promise<Map<string, string>> {
   const map = new Map<string, string>();
@@ -193,7 +194,11 @@ function safeParsePolicyRules(json: string): PolicyRuleEntry[] {
   try {
     const parsed = JSON.parse(json);
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (error: unknown) {
+    console.warn("[audit] malformed policy_rules_json during enrichment", {
+      error: error instanceof Error ? error.message : String(error),
+      length: json.length,
+    });
     return [];
   }
 }

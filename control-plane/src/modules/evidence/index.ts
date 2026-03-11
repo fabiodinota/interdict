@@ -12,12 +12,22 @@
 
 import { Elysia } from "elysia";
 import { EvidenceVerificationService } from "./service";
-import { VerifyBundlesBody, BundlesQueryParams } from "./model";
+import {
+  VerifyBundlesBody,
+  BundlesQueryParams,
+} from "./model";
 import { apiResponse, paginatedResponse } from "../../shared/utilities";
-import type { AppStore } from "../../shared/types";
+import type { AppStore, RouteContext } from "../../shared/types";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
+
+type EvidenceRouteContext<
+  TBody = unknown,
+  TQuery = Record<string, string | undefined>,
+> = RouteContext<TBody, TQuery> & {
+  evidenceService: EvidenceVerificationService;
+};
 
 export const evidenceModule = new Elysia({ prefix: "/api/v1/evidence" })
   .use(authPlugin)
@@ -36,9 +46,10 @@ export const evidenceModule = new Elysia({ prefix: "/api/v1/evidence" })
   // ---------------------------------------------------------------------------
   .post(
     "/verify",
-    async (ctx: any) => {
-      const results = await ctx.evidenceService.verifyBundles(
-        ctx.body.bundle_ids
+    async (ctx) => {
+      const routeCtx = ctx as unknown as EvidenceRouteContext<{ bundle_ids: string[] }>;
+      const results = await routeCtx.evidenceService.verifyBundles(
+        routeCtx.body.bundle_ids
       );
       return apiResponse(results);
     },
@@ -53,21 +64,25 @@ export const evidenceModule = new Elysia({ prefix: "/api/v1/evidence" })
   // ---------------------------------------------------------------------------
   .get(
     "/bundles",
-    async (ctx: any) => {
+    async (ctx) => {
+      const routeCtx = ctx as unknown as EvidenceRouteContext<
+        unknown,
+        { cursor?: string; page_size?: number; from_date?: string; to_date?: string }
+      >;
       const filters = {
-        from_date: ctx.query.from_date,
-        to_date: ctx.query.to_date,
+        from_date: routeCtx.query.from_date,
+        to_date: routeCtx.query.to_date,
       };
 
-      const pageSize = ctx.query.page_size
-        ? parseInt(String(ctx.query.page_size), 10)
+      const pageSize = routeCtx.query.page_size
+        ? parseInt(String(routeCtx.query.page_size), 10)
         : undefined;
 
-      const result = await ctx.evidenceService.listBundles(
+      const result = await routeCtx.evidenceService.listBundles(
         filters,
-        ctx.query.cursor,
+        routeCtx.query.cursor,
         pageSize,
-        ctx.user.departmentIds
+        routeCtx.user.departmentIds
       );
 
       return paginatedResponse(

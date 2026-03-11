@@ -1,8 +1,8 @@
 /**
  * Shared type aliases for the control plane.
  *
- * These replace `db: any`, `store as { db: any; clickhouse: any }`,
- * and `ctx: any` throughout the codebase (Phase 21).
+ * These replace untyped database, store, and route context usage across the
+ * control plane (Phase 21 / Phase 26).
  */
 
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
@@ -15,6 +15,9 @@ import type * as schema from "../db/schema/index";
 
 /** Drizzle ORM database instance with all Interdict schemas. */
 export type AppDb = PostgresJsDatabase<typeof schema>;
+
+/** Drizzle transaction handle inferred from AppDb.transaction(). */
+export type AppTx = Parameters<Parameters<AppDb["transaction"]>[0]>[0];
 
 /** ClickHouse client for evidence/analytics queries. */
 export type AppClickHouse = ClickHouseClient;
@@ -33,8 +36,11 @@ export interface AppStore {
 export interface AuthenticatedUser {
   id: string;
   email: string;
+  displayName: string;
   role: string;
+  isService: boolean;
   departmentId?: string;
+  departmentIds: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -44,7 +50,7 @@ export interface AuthenticatedUser {
 /**
  * Typed Elysia route context for authenticated endpoints.
  *
- * Replaces `ctx: any` in route handlers. The generic parameters
+ * Replaces untyped route handler context. The generic parameters
  * allow each handler to specify its body, query, and params shapes.
  */
 export interface RouteContext<

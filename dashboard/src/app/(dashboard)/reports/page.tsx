@@ -27,7 +27,7 @@ export default function ReportsPage() {
           isSuccess={generateReport.isSuccess}
           isError={generateReport.isError}
           errorMessage={generateReport.error?.message}
-          filename={(generateReport.data as { filename?: string } | undefined)?.filename}
+          filename={generateReport.data?.filename}
         />
       </div>
     </div>

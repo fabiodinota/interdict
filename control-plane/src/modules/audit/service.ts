@@ -16,6 +16,7 @@ import {
 import { enrichAuditRecords } from "./enrichment";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "../../shared/utilities";
 import type { AuditRecord } from "./model";
+import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // AuditService
@@ -23,9 +24,9 @@ import type { AuditRecord } from "./model";
 
 export class AuditService {
   private clickhouse: ClickHouseClient;
-  private db: any;
+  private db: AppDb;
 
-  constructor(clickhouse: ClickHouseClient, db: any) {
+  constructor(clickhouse: ClickHouseClient, db: AppDb) {
     this.clickhouse = clickhouse;
     this.db = db;
   }

@@ -20,9 +20,28 @@ export interface KernelConnection {
   /** Last acknowledged policy version */
   currentVersion: number;
   /** Open server-stream for pushing updates */
-  stream: grpc.ServerWritableStream<any, any>;
+  stream: grpc.ServerWritableStream<SubscribeRequestMessage, PolicyUpdateMessage>;
   connectedAt: Date;
   lastAckAt: Date | null;
+}
+
+export interface SubscribeRequestMessage {
+  kernel_id: string;
+  current_version: number;
+  org_id: string;
+  dept_id: string;
+  team_id: string;
+}
+
+export interface AckRequestMessage {
+  kernel_id: string;
+  version: number;
+  accepted: boolean;
+  error_message: string;
+}
+
+export interface AckResponseMessage {
+  acknowledged: boolean;
 }
 
 /**
@@ -68,7 +87,7 @@ export class KernelTracker {
     orgId: string,
     deptId: string,
     teamId: string,
-    stream: grpc.ServerWritableStream<any, any>
+    stream: grpc.ServerWritableStream<SubscribeRequestMessage, PolicyUpdateMessage>
   ): void {
     // If kernel is already connected, unregister the old connection
     if (this.connections.has(kernelId)) {

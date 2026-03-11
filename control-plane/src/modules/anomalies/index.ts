@@ -14,6 +14,13 @@ import { AnomalyQueryParams } from "./model";
 import { apiResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
 import { clickhouse as chClient } from "../../db/clickhouse";
+import type { AppStore, RouteContext } from "../../shared/types";
+import type { AnomalyAlert } from "./model";
+
+type AnomalyRouteContext<
+  TBody = unknown,
+  TQuery = Record<string, string | undefined>,
+> = RouteContext<TBody, TQuery> & { anomalyService: AnomalyService };
 
 export const anomaliesModule = new Elysia({ prefix: "/api/v1/anomalies" })
   .use(authPlugin)
@@ -21,7 +28,7 @@ export const anomaliesModule = new Elysia({ prefix: "/api/v1/anomalies" })
   // Derive AnomalyService from decorated clickhouse
   // ---------------------------------------------------------------------------
   .derive(({ store }) => {
-    const s = store as { clickhouse: any };
+    const s = store as unknown as Partial<AppStore>;
     return {
       anomalyService: new AnomalyService(s.clickhouse ?? chClient),
     };
@@ -32,16 +39,23 @@ export const anomaliesModule = new Elysia({ prefix: "/api/v1/anomalies" })
   // ---------------------------------------------------------------------------
   .get(
     "/",
-    async (ctx: any) => {
-      const alerts = await ctx.anomalyService.detectAnomalies();
+    async (ctx) => {
+      const routeCtx = ctx as unknown as AnomalyRouteContext<
+        unknown,
+        { severity?: AnomalyAlert["severity"] }
+      >;
+      const result = await routeCtx.anomalyService.detectAnomalies();
 
       // Optional severity filter
-      const severityFilter = ctx.query.severity;
+      const severityFilter = routeCtx.query.severity;
       const filtered = severityFilter
-        ? alerts.filter((a: any) => a.severity === severityFilter)
-        : alerts;
+        ? result.alerts.filter((alert) => alert.severity === severityFilter)
+        : result.alerts;
 
-      return apiResponse(filtered);
+      return apiResponse(
+        filtered,
+        result.warnings.length > 0 ? { warnings: result.warnings } : undefined
+      );
     },
     {
       auth: ["compliance_officer"],
@@ -54,8 +68,9 @@ export const anomaliesModule = new Elysia({ prefix: "/api/v1/anomalies" })
   // ---------------------------------------------------------------------------
   .get(
     "/summary",
-    async (ctx: any) => {
-      const summary = await ctx.anomalyService.getSummary();
+    async (ctx) => {
+      const routeCtx = ctx as unknown as AnomalyRouteContext;
+      const summary = await routeCtx.anomalyService.getSummary();
       return apiResponse(summary);
     },
     {

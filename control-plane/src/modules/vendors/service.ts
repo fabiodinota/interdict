@@ -7,7 +7,7 @@
  * Deleting a vendor hard-deletes (vendor registry is not audit-sensitive).
  */
 
-import { eq, desc, and, lt, or, sql } from "drizzle-orm";
+import { eq, desc, and, lt, or, sql, type SQL } from "drizzle-orm";
 import { vendors, vendorModels } from "../../db/schema/vendors";
 import {
   NotFoundError,
@@ -17,6 +17,7 @@ import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
 } from "../../shared/utilities";
+import type { AppDb, AppTx } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,7 +50,13 @@ export interface UpdateModelInput {
 // Serializers
 // ---------------------------------------------------------------------------
 
-function serializeModel(m: any) {
+type VendorRow = typeof vendors.$inferSelect;
+type VendorModelRow = typeof vendorModels.$inferSelect;
+type SerializedModel = ReturnType<typeof serializeModel>;
+type SerializedVendor = ReturnType<typeof serializeVendor>;
+type VendorListResult = { items: SerializedVendor[]; nextCursor: string | null };
+
+function serializeModel(m: VendorModelRow) {
   return {
     id: m.id,
     model_name: m.modelName,
@@ -59,7 +66,7 @@ function serializeModel(m: any) {
   };
 }
 
-function serializeVendor(v: any, models: any[] = []) {
+function serializeVendor(v: VendorRow, models: VendorModelRow[] = []) {
   return {
     id: v.id,
     name: v.name,
@@ -73,26 +80,46 @@ function serializeVendor(v: any, models: any[] = []) {
   };
 }
 
+function getConstraintErrorDetails(err: unknown): { code?: string; message: string } {
+  const record = err as {
+    code?: unknown;
+    message?: unknown;
+    cause?: { code?: unknown; message?: unknown };
+  };
+
+  return {
+    code:
+      typeof record?.code === "string"
+        ? record.code
+        : typeof record?.cause?.code === "string"
+          ? record.cause.code
+          : undefined,
+    message:
+      `${typeof record?.message === "string" ? record.message : ""}` +
+      `${typeof record?.cause?.message === "string" ? record.cause.message : ""}`,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Service Factory
 // ---------------------------------------------------------------------------
 
 export interface VendorService {
-  create(body: CreateVendorInput): Promise<any>;
-  getById(id: string): Promise<any>;
-  update(id: string, body: UpdateVendorInput): Promise<any>;
+  create(body: CreateVendorInput): Promise<SerializedVendor>;
+  getById(id: string): Promise<SerializedVendor>;
+  update(id: string, body: UpdateVendorInput): Promise<SerializedVendor>;
   delete(id: string): Promise<void>;
-  list(cursor?: string, pageSize?: number, statusFilter?: string): Promise<any>;
-  addModel(vendorId: string, body: CreateModelInput): Promise<any>;
-  updateModel(vendorId: string, modelId: string, body: UpdateModelInput): Promise<any>;
+  list(cursor?: string, pageSize?: number, statusFilter?: string): Promise<VendorListResult>;
+  addModel(vendorId: string, body: CreateModelInput): Promise<SerializedModel>;
+  updateModel(vendorId: string, modelId: string, body: UpdateModelInput): Promise<SerializedModel>;
   removeModel(vendorId: string, modelId: string): Promise<void>;
-  listModels(vendorId: string): Promise<any[]>;
+  listModels(vendorId: string): Promise<SerializedModel[]>;
 }
 
 /**
  * Create a VendorService bound to a database instance.
  */
-export function createVendorService(db: any): VendorService {
+export function createVendorService(db: AppDb): VendorService {
   return {
     /**
      * Create a new vendor.
@@ -111,10 +138,9 @@ export function createVendorService(db: any): VendorService {
           .returning();
 
         return serializeVendor(vendor);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Handle unique constraint violation (DrizzleQueryError wraps PG error in .cause)
-        const pgCode = err.code ?? err.cause?.code;
-        const msg = (err.message ?? "") + (err.cause?.message ?? "");
+        const { code: pgCode, message: msg } = getConstraintErrorDetails(err);
         if (
           pgCode === "23505" ||
           msg.includes("unique") ||
@@ -154,7 +180,7 @@ export function createVendorService(db: any): VendorService {
      * If status changes to 'blocked', cascade to all models.
      */
     async update(id: string, body: UpdateVendorInput) {
-      const result = await db.transaction(async (tx: any) => {
+      const result = await db.transaction(async (tx: AppTx) => {
         const [vendor] = await tx
           .select()
           .from(vendors)
@@ -164,7 +190,9 @@ export function createVendorService(db: any): VendorService {
           throw new NotFoundError("Vendor not found");
         }
 
-        const updates: Record<string, any> = { updatedAt: new Date() };
+        const updates: Partial<typeof vendors.$inferInsert> & { updatedAt: Date } = {
+          updatedAt: new Date(),
+        };
         if (body.display_name !== undefined) updates.displayName = body.display_name;
         if (body.status !== undefined) updates.status = body.status;
         if (body.base_url !== undefined) updates.baseUrl = body.base_url;
@@ -217,7 +245,7 @@ export function createVendorService(db: any): VendorService {
     async list(cursor?: string, pageSize?: number, statusFilter?: string) {
       const limit = Math.min(pageSize || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
-      const conditions: any[] = [];
+      const conditions: SQL<unknown>[] = [];
 
       if (statusFilter) {
         conditions.push(eq(vendors.status, statusFilter));
@@ -248,8 +276,8 @@ export function createVendorService(db: any): VendorService {
       const items = hasMore ? rows.slice(0, limit) : rows;
 
       // Batch-fetch models for all vendors
-      const vendorIds = items.map((v: any) => v.id);
-      let modelsByVendor = new Map<string, any[]>();
+      const vendorIds = items.map((vendor) => vendor.id);
+      const modelsByVendor = new Map<string, VendorModelRow[]>();
 
       if (vendorIds.length > 0) {
         const allModels = await db
@@ -264,8 +292,8 @@ export function createVendorService(db: any): VendorService {
         }
       }
 
-      const serialized = items.map((v: any) =>
-        serializeVendor(v, modelsByVendor.get(v.id) || [])
+      const serialized = items.map((vendor) =>
+        serializeVendor(vendor, modelsByVendor.get(vendor.id) ?? [])
       );
 
       const nextCursor = hasMore
@@ -304,9 +332,8 @@ export function createVendorService(db: any): VendorService {
           .returning();
 
         return serializeModel(model);
-      } catch (err: any) {
-        const pgCode = err.code ?? err.cause?.code;
-        const msg = (err.message ?? "") + (err.cause?.message ?? "");
+      } catch (err: unknown) {
+        const { code: pgCode, message: msg } = getConstraintErrorDetails(err);
         if (
           pgCode === "23505" ||
           msg.includes("unique") ||

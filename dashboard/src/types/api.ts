@@ -125,7 +125,7 @@ export interface VendorUsage {
 // Phase 11: Evidence Verification Types
 // ---------------------------------------------------------------------------
 
-export interface EvidenceBundle {
+export interface EvidenceBundleListItem {
   bundle_id: string;
   chain_hash: string;
   previous_hash: string;
@@ -137,6 +137,8 @@ export interface EvidenceBundle {
   vendor: string;
   policy_action: string;
 }
+
+export type EvidenceBundle = EvidenceBundleListItem;
 
 export interface VerificationStep {
   name: string;

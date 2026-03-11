@@ -22,10 +22,15 @@ import {
   apiResponse,
   paginatedResponse,
 } from "../../shared/utilities";
-import type { AppStore } from "../../shared/types";
+import type { AppStore, RouteContext } from "../../shared/types";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
+
+type AuditRouteContext<
+  TBody = unknown,
+  TQuery = Record<string, string | undefined>,
+> = RouteContext<TBody, TQuery> & { auditService: AuditService };
 
 export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   .use(authPlugin)
@@ -44,26 +49,40 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   // ---------------------------------------------------------------------------
   .get(
     "/search",
-    async (ctx: any) => {
+    async (ctx) => {
+      const routeCtx = ctx as unknown as AuditRouteContext<
+        unknown,
+        {
+          vendor?: string;
+          department?: string;
+          actor?: string;
+          policy_action?: "allow" | "block" | "redact";
+          from_date?: string;
+          to_date?: string;
+          kernel_id?: string;
+          cursor?: string;
+          page_size?: number;
+        }
+      >;
       const filters = {
-        vendor: ctx.query.vendor,
-        department: ctx.query.department,
-        actor_identity: ctx.query.actor,
-        policy_action: ctx.query.policy_action,
-        from_date: ctx.query.from_date,
-        to_date: ctx.query.to_date,
-        kernel_id: ctx.query.kernel_id,
+        vendor: routeCtx.query.vendor,
+        department: routeCtx.query.department,
+        actor_identity: routeCtx.query.actor,
+        policy_action: routeCtx.query.policy_action,
+        from_date: routeCtx.query.from_date,
+        to_date: routeCtx.query.to_date,
+        kernel_id: routeCtx.query.kernel_id,
       };
 
-      const pageSize = ctx.query.page_size
-        ? parseInt(String(ctx.query.page_size), 10)
+      const pageSize = routeCtx.query.page_size
+        ? parseInt(String(routeCtx.query.page_size), 10)
         : undefined;
 
-      const result = await ctx.auditService.search(
+      const result = await routeCtx.auditService.search(
         filters,
-        ctx.query.cursor,
+        routeCtx.query.cursor,
         pageSize,
-        ctx.user.departmentIds
+        routeCtx.user.departmentIds
       );
 
       return paginatedResponse(
@@ -83,18 +102,27 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   // ---------------------------------------------------------------------------
   .get(
     "/stream",
-    async function* (ctx: any) {
+    async function* (ctx) {
+      const routeCtx = ctx as unknown as AuditRouteContext<
+        unknown,
+        {
+          vendor?: string;
+          department?: string;
+          actor?: string;
+          policy_action?: "allow" | "block" | "redact";
+        }
+      >;
       const pollIntervalMs = 2500; // Poll every 2.5 seconds
       let lastTimestamp = new Date().toISOString();
 
       const filters = {
-        vendor: ctx.query.vendor,
-        department: ctx.query.department,
-        actor_identity: ctx.query.actor,
-        policy_action: ctx.query.policy_action,
+        vendor: routeCtx.query.vendor,
+        department: routeCtx.query.department,
+        actor_identity: routeCtx.query.actor,
+        policy_action: routeCtx.query.policy_action,
       };
 
-      const departmentIds = ctx.user.departmentIds;
+      const departmentIds = routeCtx.user.departmentIds;
 
       // Yield initial connection event
       yield {
@@ -108,7 +136,7 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
       // Poll loop
       while (true) {
         try {
-          const events = await ctx.auditService.streamEvents(
+          const events = await routeCtx.auditService.streamEvents(
             lastTimestamp,
             filters,
             departmentIds
@@ -157,11 +185,12 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   // ---------------------------------------------------------------------------
   .get(
     "/stats/violations",
-    async (ctx: any) => {
-      const data = await ctx.auditService.getHourlyViolations(
-        ctx.query.from,
-        ctx.query.to,
-        ctx.user.departmentIds  // HIGH-011: scope to user's visible departments
+    async (ctx) => {
+      const routeCtx = ctx as unknown as AuditRouteContext<unknown, { from: string; to: string }>;
+      const data = await routeCtx.auditService.getHourlyViolations(
+        routeCtx.query.from,
+        routeCtx.query.to,
+        routeCtx.user.departmentIds  // HIGH-011: scope to user's visible departments
       );
       return apiResponse(data);
     },
@@ -176,12 +205,13 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   // ---------------------------------------------------------------------------
   .get(
     "/stats/vendor-usage",
-    async (ctx: any) => {
-      const data = await ctx.auditService.getVendorUsage(
-        ctx.query.from,
-        ctx.query.to,
-        ctx.query.vendor,
-        ctx.user.departmentIds  // HIGH-011: scope to user's visible departments
+    async (ctx) => {
+      const routeCtx = ctx as unknown as AuditRouteContext<unknown, { from: string; to: string; vendor?: string }>;
+      const data = await routeCtx.auditService.getVendorUsage(
+        routeCtx.query.from,
+        routeCtx.query.to,
+        routeCtx.query.vendor,
+        routeCtx.user.departmentIds  // HIGH-011: scope to user's visible departments
       );
       return apiResponse(data);
     },
@@ -196,12 +226,16 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   // ---------------------------------------------------------------------------
   .get(
     "/stats/department-summary",
-    async (ctx: any) => {
-      const data = await ctx.auditService.getDepartmentSummary(
-        ctx.query.from,
-        ctx.query.to,
-        ctx.query.department,
-        ctx.user.departmentIds
+    async (ctx) => {
+      const routeCtx = ctx as unknown as AuditRouteContext<
+        unknown,
+        { from: string; to: string; department?: string }
+      >;
+      const data = await routeCtx.auditService.getDepartmentSummary(
+        routeCtx.query.from,
+        routeCtx.query.to,
+        routeCtx.query.department,
+        routeCtx.user.departmentIds
       );
       return apiResponse(data);
     },

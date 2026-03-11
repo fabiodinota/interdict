@@ -12,8 +12,11 @@ import {
   CreatePolicyBody,
   UpdatePolicyBody,
   PolicyListQuery,
+  type CreatePolicyBodyType,
+  type UpdatePolicyBodyType,
+  type PolicyListQueryType,
 } from "./model";
-import { createPolicyService } from "./service";
+import { createPolicyService, type PolicyService } from "./service";
 import { validateRego } from "../compiler/validator";
 import {
   apiResponse,
@@ -22,26 +25,34 @@ import {
 } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
+import type { AppStore, RouteContext } from "../../shared/types";
+
+type PolicyRouteContext<
+  TBody = unknown,
+  TQuery = Record<string, string | undefined>,
+  TParams = Record<string, string>,
+> = RouteContext<TBody, TQuery, TParams> & { policyService: PolicyService };
 
 export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
   .use(authPlugin)
   .derive(({ store }) => {
-    const db = (store as any).db ?? pgDb;
-    return { policyService: createPolicyService(db) };
+    const appStore = store as unknown as Partial<AppStore>;
+    return { policyService: createPolicyService(appStore.db ?? pgDb) };
   })
 
   // POST / -- Create policy (Policy Admin+)
   .post(
     "/",
-    async (ctx: any) => {
+    async (ctx) => {
+      const routeCtx = ctx as unknown as PolicyRouteContext<CreatePolicyBodyType>;
       // Pre-validate Rego syntax
-      const validation = await validateRego(ctx.body.rego_source);
+      const validation = await validateRego(routeCtx.body.rego_source);
       if (!validation.valid) {
         throw new ValidationError("Invalid Rego syntax", validation.errors);
       }
 
-      const result = await ctx.policyService.create(ctx.body);
-      ctx.set.status = 201;
+      const result = await routeCtx.policyService.create(routeCtx.body);
+      routeCtx.set.status = 201;
       return apiResponse(result);
     },
     { auth: ["policy_admin"], body: CreatePolicyBody }
@@ -50,12 +61,13 @@ export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
   // GET / -- List active policies (Read-Only Auditor+)
   .get(
     "/",
-    async (ctx: any) => {
-      const pageSize = ctx.query.page_size
-        ? Number(ctx.query.page_size)
+    async (ctx) => {
+      const routeCtx = ctx as unknown as PolicyRouteContext<unknown, PolicyListQueryType>;
+      const pageSize = routeCtx.query.page_size
+        ? Number(routeCtx.query.page_size)
         : undefined;
-      const { items, nextCursor } = await ctx.policyService.list(
-        ctx.query.cursor,
+      const { items, nextCursor } = await routeCtx.policyService.list(
+        routeCtx.query.cursor,
         pageSize
       );
       return paginatedResponse(items, nextCursor);
@@ -66,8 +78,9 @@ export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
   // GET /:id -- Get policy by ID (Read-Only Auditor+)
   .get(
     "/:id",
-    async (ctx: any) => {
-      const result = await ctx.policyService.getById(ctx.params.id);
+    async (ctx) => {
+      const routeCtx = ctx as unknown as PolicyRouteContext<unknown, Record<string, string | undefined>, { id: string }>;
+      const result = await routeCtx.policyService.getById(routeCtx.params.id);
       return apiResponse(result);
     },
     { auth: ["read_only_auditor"], params: t.Object({ id: t.String() }) }
@@ -76,14 +89,19 @@ export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
   // PUT /:id -- Update policy (creates new version) (Policy Admin+)
   .put(
     "/:id",
-    async (ctx: any) => {
+    async (ctx) => {
+      const routeCtx = ctx as unknown as PolicyRouteContext<
+        UpdatePolicyBodyType,
+        Record<string, string | undefined>,
+        { id: string }
+      >;
       // Pre-validate Rego syntax
-      const validation = await validateRego(ctx.body.rego_source);
+      const validation = await validateRego(routeCtx.body.rego_source);
       if (!validation.valid) {
         throw new ValidationError("Invalid Rego syntax", validation.errors);
       }
 
-      const result = await ctx.policyService.update(ctx.params.id, ctx.body);
+      const result = await routeCtx.policyService.update(routeCtx.params.id, routeCtx.body);
       return apiResponse(result);
     },
     {
@@ -96,9 +114,10 @@ export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
   // DELETE /:id -- Soft-delete policy (Policy Admin+)
   .delete(
     "/:id",
-    async (ctx: any) => {
-      await ctx.policyService.delete(ctx.params.id);
-      ctx.set.status = 204;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as PolicyRouteContext<unknown, Record<string, string | undefined>, { id: string }>;
+      await routeCtx.policyService.delete(routeCtx.params.id);
+      routeCtx.set.status = 204;
       return;
     },
     { auth: ["policy_admin"], params: t.Object({ id: t.String() }) }
@@ -107,8 +126,9 @@ export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
   // GET /:id/versions -- Version history (Read-Only Auditor+)
   .get(
     "/:id/versions",
-    async (ctx: any) => {
-      const versions = await ctx.policyService.getVersionHistory(ctx.params.id);
+    async (ctx) => {
+      const routeCtx = ctx as unknown as PolicyRouteContext<unknown, Record<string, string | undefined>, { id: string }>;
+      const versions = await routeCtx.policyService.getVersionHistory(routeCtx.params.id);
       return apiResponse(versions);
     },
     { auth: ["read_only_auditor"], params: t.Object({ id: t.String() }) }
@@ -117,10 +137,15 @@ export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
   // POST /:id/restore/:versionId -- Restore a previous version (Policy Admin+)
   .post(
     "/:id/restore/:versionId",
-    async (ctx: any) => {
-      const result = await ctx.policyService.restoreVersion(
-        ctx.params.id,
-        ctx.params.versionId
+    async (ctx) => {
+      const routeCtx = ctx as unknown as PolicyRouteContext<
+        unknown,
+        Record<string, string | undefined>,
+        { id: string; versionId: string }
+      >;
+      const result = await routeCtx.policyService.restoreVersion(
+        routeCtx.params.id,
+        routeCtx.params.versionId
       );
       return apiResponse(result);
     },

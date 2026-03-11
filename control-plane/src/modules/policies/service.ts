@@ -21,6 +21,7 @@ import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
 } from "../../shared/utilities";
+import type { AppDb, AppTx } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,6 +56,11 @@ interface VersionRow {
   changeDescription: string | null;
 }
 
+type PolicyRow = typeof policies.$inferSelect;
+type SerializedVersion = ReturnType<typeof serializeVersion>;
+type SerializedPolicy = ReturnType<typeof serializePolicy>;
+type PolicyListResult = { items: SerializedPolicy[]; nextCursor: string | null };
+
 // ---------------------------------------------------------------------------
 // Serializers
 // ---------------------------------------------------------------------------
@@ -74,7 +80,7 @@ function serializeVersion(v: VersionRow) {
   };
 }
 
-function serializePolicy(p: any, currentVersion?: VersionRow | null) {
+function serializePolicy(p: PolicyRow, currentVersion?: VersionRow | null) {
   return {
     id: p.id,
     name: p.name,
@@ -88,18 +94,38 @@ function serializePolicy(p: any, currentVersion?: VersionRow | null) {
   };
 }
 
+function getConstraintErrorDetails(err: unknown): { code?: string; message: string } {
+  const record = err as {
+    code?: unknown;
+    message?: unknown;
+    cause?: { code?: unknown; message?: unknown };
+  };
+
+  return {
+    code:
+      typeof record?.code === "string"
+        ? record.code
+        : typeof record?.cause?.code === "string"
+          ? record.cause.code
+          : undefined,
+    message:
+      `${typeof record?.message === "string" ? record.message : ""}` +
+      `${typeof record?.cause?.message === "string" ? record.cause.message : ""}`,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Service Factory
 // ---------------------------------------------------------------------------
 
 export interface PolicyService {
-  create(body: CreatePolicyInput): Promise<any>;
-  getById(id: string): Promise<any>;
-  update(id: string, body: UpdatePolicyInput): Promise<any>;
+  create(body: CreatePolicyInput): Promise<SerializedPolicy>;
+  getById(id: string): Promise<SerializedPolicy>;
+  update(id: string, body: UpdatePolicyInput): Promise<SerializedPolicy>;
   delete(id: string): Promise<void>;
-  getVersionHistory(policyId: string): Promise<any[]>;
-  restoreVersion(policyId: string, versionId: string): Promise<any>;
-  list(cursor?: string, pageSize?: number): Promise<any>;
+  getVersionHistory(policyId: string): Promise<SerializedVersion[]>;
+  restoreVersion(policyId: string, versionId: string): Promise<SerializedPolicy>;
+  list(cursor?: string, pageSize?: number): Promise<PolicyListResult>;
 }
 
 /**
@@ -108,7 +134,7 @@ export interface PolicyService {
  * The service uses transactions for create/update to ensure consistency
  * between the policies and policy_versions tables.
  */
-export function createPolicyService(db: any): PolicyService {
+export function createPolicyService(db: AppDb): PolicyService {
   return {
     /**
      * Create a new policy with version 1.
@@ -118,7 +144,7 @@ export function createPolicyService(db: any): PolicyService {
       const entrypoint = body.entrypoint || "data.interdict.policy.verdict";
 
       try {
-        const result = await db.transaction(async (tx: any) => {
+        const result = await db.transaction(async (tx: AppTx) => {
           // Insert policy
           const [policy] = await tx
             .insert(policies)
@@ -150,10 +176,9 @@ export function createPolicyService(db: any): PolicyService {
         });
 
         return serializePolicy(result.policy, result.version);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Handle unique constraint violation (DrizzleQueryError wraps PG error in .cause)
-        const pgCode = err.code ?? err.cause?.code;
-        const msg = (err.message ?? "") + (err.cause?.message ?? "");
+        const { code: pgCode, message: msg } = getConstraintErrorDetails(err);
         if (
           pgCode === "23505" ||
           msg.includes("unique") ||
@@ -196,7 +221,7 @@ export function createPolicyService(db: any): PolicyService {
      * Increments version number, dispatches async compilation.
      */
     async update(id: string, body: UpdatePolicyInput) {
-      const result = await db.transaction(async (tx: any) => {
+      const result = await db.transaction(async (tx: AppTx) => {
         // Check policy exists and is active
         const [policy] = await tx
           .select()
@@ -304,7 +329,7 @@ export function createPolicyService(db: any): PolicyService {
      * Restore a previous version by creating a new version with its content.
      */
     async restoreVersion(policyId: string, versionId: string) {
-      const result = await db.transaction(async (tx: any) => {
+      const result = await db.transaction(async (tx: AppTx) => {
         // Verify policy exists and is active
         const [policy] = await tx
           .select()
@@ -403,10 +428,10 @@ export function createPolicyService(db: any): PolicyService {
 
       // Fetch current versions for all policies in batch
       const versionIds = items
-        .map((p: any) => p.currentVersionId)
-        .filter(Boolean);
+        .map((p) => p.currentVersionId)
+        .filter((versionId): versionId is string => Boolean(versionId));
 
-      let versionMap = new Map<string, any>();
+      const versionMap = new Map<string, VersionRow>();
       if (versionIds.length > 0) {
         const versions = await db
           .select()
@@ -419,8 +444,13 @@ export function createPolicyService(db: any): PolicyService {
         }
       }
 
-      const serialized = items.map((p: any) =>
-        serializePolicy(p, versionMap.get(p.currentVersionId) || null)
+      const serialized = items.map((policy) =>
+        serializePolicy(
+          policy,
+          policy.currentVersionId
+            ? versionMap.get(policy.currentVersionId) ?? null
+            : null
+        )
       );
 
       const nextCursor = hasMore

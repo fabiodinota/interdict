@@ -71,18 +71,40 @@ export async function validateRego(
       if (parsed.errors && Array.isArray(parsed.errors)) {
         return {
           valid: false,
-          errors: parsed.errors.map((e: any) => ({
-            message: e.message || String(e),
-            line: e.location?.row,
-            column: e.location?.col,
-          })),
+          errors: parsed.errors.map((error: unknown): ValidationError => {
+            const record =
+              typeof error === "object" && error !== null
+                ? (error as {
+                    message?: unknown;
+                    location?: { row?: unknown; col?: unknown };
+                  })
+                : {};
+
+            return {
+              message:
+                typeof record.message === "string"
+                  ? record.message
+                  : String(error),
+              line:
+                typeof record.location?.row === "number"
+                  ? record.location.row
+                  : undefined,
+              column:
+                typeof record.location?.col === "number"
+                  ? record.location.col
+                  : undefined,
+            };
+          }),
         };
       }
       return {
         valid: false,
         errors: [{ message: output }],
       };
-    } catch {
+    } catch (error: unknown) {
+      console.warn("[compiler] Failed to parse OPA validation JSON output", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Could not parse as JSON -- return raw error text
       // Strip temp file paths from error messages for cleaner output
       const cleanedOutput = output.replace(
@@ -94,12 +116,13 @@ export async function validateRego(
         errors: [{ message: cleanedOutput }],
       };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     // OPA binary not found or other system error
+    const message = err instanceof Error ? err.message : String(err);
     if (
-      err.message?.includes("not found") ||
-      err.message?.includes("ENOENT") ||
-      err.message?.includes("No such file")
+      message.includes("not found") ||
+      message.includes("ENOENT") ||
+      message.includes("No such file")
     ) {
       return {
         valid: false,
@@ -113,14 +136,16 @@ export async function validateRego(
     }
     return {
       valid: false,
-      errors: [{ message: `Validation error: ${err.message || String(err)}` }],
+      errors: [{ message: `Validation error: ${message}` }],
     };
   } finally {
     // Clean up temp file
     try {
       await $`rm -f ${tmpFile}`.quiet().nothrow();
-    } catch {
-      // Ignore cleanup failures
+    } catch (error: unknown) {
+      console.warn("[compiler] Failed to remove temporary Rego validation file", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }

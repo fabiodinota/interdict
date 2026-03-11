@@ -10,12 +10,18 @@ import { ReportService } from "./service";
 import { generatePDF } from "./pdf-generator";
 import { generateCSV } from "./csv-generator";
 import { ValidationError } from "../../shared/utilities";
-import type { AppStore } from "../../shared/types";
+import type { AppStore, RouteContext } from "../../shared/types";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
+type ReportRouteContext = RouteContext<{
+  format: "pdf" | "csv";
+  from_date: string;
+  to_date: string;
+}>;
 
 export const reportsModule = new Elysia({ prefix: "/api/v1/reports" })
   .use(authPlugin)
@@ -28,8 +34,9 @@ export const reportsModule = new Elysia({ prefix: "/api/v1/reports" })
    */
   .post(
     "/generate",
-    async (ctx: any) => {
-      const { format, from_date, to_date } = ctx.body;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as ReportRouteContext;
+      const { format, from_date, to_date } = routeCtx.body;
 
       // Validate date range
       const from = new Date(from_date);
@@ -48,7 +55,7 @@ export const reportsModule = new Elysia({ prefix: "/api/v1/reports" })
       }
 
       // Gather report data
-      const store = ctx.store as unknown as Partial<AppStore>;
+      const store = routeCtx.store as unknown as Partial<AppStore>;
       const reportService = new ReportService(store.clickhouse ?? chClient, store.db ?? pgDb);
       const reportData = await reportService.getReportData(from_date, to_date);
 
@@ -57,8 +64,8 @@ export const reportsModule = new Elysia({ prefix: "/api/v1/reports" })
 
       if (format === "pdf") {
         const pdfBuffer = await generatePDF(reportData);
-        ctx.set.headers["Content-Type"] = "application/pdf";
-        ctx.set.headers["Content-Disposition"] =
+        routeCtx.set.headers["Content-Type"] = "application/pdf";
+        routeCtx.set.headers["Content-Disposition"] =
           `attachment; filename="interdict-report-${dateLabel}.pdf"`;
         return new Response(new Uint8Array(pdfBuffer), {
           headers: {

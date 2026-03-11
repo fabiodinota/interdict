@@ -18,11 +18,12 @@ import {
 } from "../../db/schema";
 import type { EffectivePolicyRow } from "./model";
 import { ForbiddenError, ValidationError, NotFoundError } from "../../shared/utilities";
+import type { AppDb } from "../../shared/types";
 
 export class DepartmentOverrideService {
-  private db: any;
+  private db: AppDb;
 
-  constructor(db: any) {
+  constructor(db: AppDb) {
     this.db = db;
   }
 
@@ -88,7 +89,7 @@ export class DepartmentOverrideService {
       )
       .orderBy(policies.name);
 
-    return rows.map((row: any) => ({
+    return rows.map((row) => ({
       policyId: row.policyId,
       name: row.name,
       description: row.description ?? "",

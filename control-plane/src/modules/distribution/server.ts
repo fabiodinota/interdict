@@ -23,6 +23,9 @@ import {
   kernelTracker,
   type PolicyUpdateMessage,
   type PolicyEntryMessage,
+  type SubscribeRequestMessage,
+  type AckRequestMessage,
+  type AckResponseMessage,
 } from "./tracker";
 import type { AppDb } from "../../shared/types";
 
@@ -41,7 +44,21 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   oneofs: true,
 });
 
-const protoDescriptor = grpc.loadPackageDefinition(packageDefinition) as any;
+interface PolicyDistributionProtoDescriptor {
+  interdict: {
+    policy: {
+      v1: {
+        PolicyDistribution: {
+          service: grpc.ServiceDefinition<grpc.UntypedServiceImplementation>;
+        };
+      };
+    };
+  };
+}
+
+const protoDescriptor = grpc.loadPackageDefinition(
+  packageDefinition
+) as unknown as PolicyDistributionProtoDescriptor;
 const PolicyDistributionService =
   protoDescriptor.interdict.policy.v1.PolicyDistribution.service;
 
@@ -158,7 +175,14 @@ export async function buildFullSnapshot(
   for (const row of scopeRows) {
     let vendorIds: string[] = [];
     if (row.vendorIds) {
-      try { vendorIds = JSON.parse(row.vendorIds); } catch { /* invalid JSON → empty */ }
+      try {
+        vendorIds = JSON.parse(row.vendorIds);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(
+          `[distribution] Invalid vendorIds JSON for policy ${row.policyId}: ${message}`
+        );
+      }
     }
     const entry: PolicyScopeEntry = {
       orgId: row.orgId ?? "default",
@@ -246,7 +270,7 @@ export async function buildFullSnapshot(
  * the client disconnects or an error occurs.
  */
 function createSubscribeHandler(db: AppDb) {
-  return (call: grpc.ServerWritableStream<any, any>) => {
+  return (call: grpc.ServerWritableStream<SubscribeRequestMessage, PolicyUpdateMessage>) => {
     const request = call.request;
     const kernelId: string = request.kernel_id || "";
     const currentVersion: number = request.current_version || 0;
@@ -327,8 +351,8 @@ function createSubscribeHandler(db: AppDb) {
  */
 function createAcknowledgeHandler() {
   return (
-    call: grpc.ServerUnaryCall<any, any>,
-    callback: grpc.sendUnaryData<any>
+    call: grpc.ServerUnaryCall<AckRequestMessage, AckResponseMessage>,
+    callback: grpc.sendUnaryData<AckResponseMessage>
   ) => {
     const request = call.request;
     const kernelId: string = request.kernel_id || "";

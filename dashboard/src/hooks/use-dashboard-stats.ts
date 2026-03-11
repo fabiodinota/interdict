@@ -27,14 +27,12 @@ export interface VendorUsageRecord {
 
 interface PolicyItem {
   id: string;
-  enabled: boolean;
-  [key: string]: unknown;
+  is_active: boolean;
 }
 
 interface VendorItem {
   id: string;
   status: string;
-  [key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +80,7 @@ export function useActivePoliciesCount() {
       const res = await api<ApiResponse<{ items: PolicyItem[] }>>(
         "/policies"
       );
-      return res.data.items.filter((p) => p.enabled).length;
+      return res.data.items.filter((policy) => policy.is_active).length;
     },
     refetchInterval: 30_000,
     placeholderData: keepPreviousData,

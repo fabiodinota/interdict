@@ -20,6 +20,14 @@ import {
 import { apiResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
+import type { AppStore, RouteContext } from "../../shared/types";
+
+type DepartmentOverrideRouteContext<
+  TBody = unknown,
+  TParams = Record<string, string>,
+> = RouteContext<TBody, Record<string, string | undefined>, TParams> & {
+  overrideService: DepartmentOverrideService;
+};
 
 export const departmentOverridesModule = new Elysia({
   prefix: "/api/v1/department-overrides",
@@ -29,7 +37,7 @@ export const departmentOverridesModule = new Elysia({
   // Derive service from decorated db
   // ---------------------------------------------------------------------------
   .derive(({ store }) => {
-    const s = store as { db: any };
+    const s = store as unknown as Partial<AppStore>;
     return {
       overrideService: new DepartmentOverrideService(s.db ?? pgDb),
     };
@@ -40,11 +48,12 @@ export const departmentOverridesModule = new Elysia({
   // ---------------------------------------------------------------------------
   .get(
     "/effective/:departmentId",
-    async (ctx: any) => {
-      const policies = await ctx.overrideService.getEffectivePolicies(
-        ctx.params.departmentId,
-        ctx.user.id,
-        ctx.user.role
+    async (ctx) => {
+      const routeCtx = ctx as unknown as DepartmentOverrideRouteContext<unknown, { departmentId: string }>;
+      const policies = await routeCtx.overrideService.getEffectivePolicies(
+        routeCtx.params.departmentId,
+        routeCtx.user.id,
+        routeCtx.user.role
       );
       return apiResponse(policies);
     },
@@ -59,13 +68,18 @@ export const departmentOverridesModule = new Elysia({
   // ---------------------------------------------------------------------------
   .put(
     "/override",
-    async (ctx: any) => {
-      const result = await ctx.overrideService.setOverride(
-        ctx.body.department_id,
-        ctx.body.policy_id,
-        ctx.body.enabled,
-        ctx.user.id,
-        ctx.user.role
+    async (ctx) => {
+      const routeCtx = ctx as unknown as DepartmentOverrideRouteContext<{
+        department_id: string;
+        policy_id: string;
+        enabled: boolean;
+      }>;
+      const result = await routeCtx.overrideService.setOverride(
+        routeCtx.body.department_id,
+        routeCtx.body.policy_id,
+        routeCtx.body.enabled,
+        routeCtx.user.id,
+        routeCtx.user.role
       );
       return apiResponse(result);
     },
@@ -80,11 +94,12 @@ export const departmentOverridesModule = new Elysia({
   // ---------------------------------------------------------------------------
   .delete(
     "/override/:id",
-    async (ctx: any) => {
-      await ctx.overrideService.removeOverride(
-        ctx.params.id,
-        ctx.user.id,
-        ctx.user.role
+    async (ctx) => {
+      const routeCtx = ctx as unknown as DepartmentOverrideRouteContext<unknown, { id: string }>;
+      await routeCtx.overrideService.removeOverride(
+        routeCtx.params.id,
+        routeCtx.user.id,
+        routeCtx.user.role
       );
       return apiResponse({ deleted: true });
     },
@@ -99,10 +114,14 @@ export const departmentOverridesModule = new Elysia({
   // ---------------------------------------------------------------------------
   .put(
     "/mandatory/:policyId",
-    async (ctx: any) => {
-      await ctx.overrideService.setMandatory(
-        ctx.params.policyId,
-        ctx.body.is_mandatory
+    async (ctx) => {
+      const routeCtx = ctx as unknown as DepartmentOverrideRouteContext<
+        { is_mandatory: boolean },
+        { policyId: string }
+      >;
+      await routeCtx.overrideService.setMandatory(
+        routeCtx.params.policyId,
+        routeCtx.body.is_mandatory
       );
       return apiResponse({ updated: true });
     },

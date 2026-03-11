@@ -95,6 +95,46 @@ export interface ReportData {
   }> | null;
 }
 
+interface SummaryRow {
+  total_requests: number | string;
+  total_violations: number | string;
+  unique_actors: number | string;
+  unique_vendors: number | string;
+}
+
+interface CountRow {
+  count: number | string;
+}
+
+interface ViolationsByTypeRow extends CountRow {
+  action: string;
+}
+
+interface ViolationsByDepartmentRow extends CountRow {
+  department: string;
+}
+
+interface ViolationsByVendorRow extends CountRow {
+  vendor: string;
+}
+
+interface TopIncidentRow {
+  timestamp: string;
+  actor: string;
+  vendor: string;
+  model: string;
+  action: string;
+  tokenCount: number | string;
+}
+
+async function jsonRows<T>(result: { json: () => Promise<unknown> }): Promise<T[]> {
+  return (await result.json()) as T[];
+}
+
+function toDatePartition(value: string): string {
+  return value.substring(0, 10);
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -170,6 +210,8 @@ export class ReportService {
   // -------------------------------------------------------------------------
 
   private async getSummaryStats(from: string, to: string) {
+    const fromDate = toDatePartition(from);
+    const toDate = toDatePartition(to);
     const result = await this.clickhouse.query({
       query: `
         SELECT
@@ -178,12 +220,15 @@ export class ReportService {
           uniq(actor_identity) as unique_actors,
           uniq(vendor) as unique_vendors
         FROM evidence_bundles
-        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+        WHERE event_date >= {from_date:String}
+          AND event_date <= {to_date:String}
+          AND timestamp >= parseDateTimeBestEffort({from:String})
+          AND timestamp <= parseDateTimeBestEffort({to:String})
       `,
-      query_params: { from, to },
+      query_params: { from, to, from_date: fromDate, to_date: toDate },
       format: "JSONEachRow",
     });
-    const rows: any[] = await result.json();
+    const rows = await jsonRows<SummaryRow>(result);
     if (rows.length > 0) {
       return {
         totalRequests: Number(rows[0].total_requests) || 0,
@@ -196,58 +241,75 @@ export class ReportService {
   }
 
   private async getViolationsByType(from: string, to: string) {
+    const fromDate = toDatePartition(from);
+    const toDate = toDatePartition(to);
     const result = await this.clickhouse.query({
       query: `
         SELECT policy_action as action, count() as count
         FROM evidence_bundles
-        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+        WHERE event_date >= {from_date:String}
+          AND event_date <= {to_date:String}
+          AND timestamp >= parseDateTimeBestEffort({from:String})
+          AND timestamp <= parseDateTimeBestEffort({to:String})
         GROUP BY policy_action
         ORDER BY count DESC
       `,
-      query_params: { from, to },
+      query_params: { from, to, from_date: fromDate, to_date: toDate },
       format: "JSONEachRow",
     });
-    const rows: any[] = await result.json();
+    const rows = await jsonRows<ViolationsByTypeRow>(result);
     return rows.map((r) => ({ action: r.action, count: Number(r.count) }));
   }
 
   private async getViolationsByDepartment(from: string, to: string) {
+    const fromDate = toDatePartition(from);
+    const toDate = toDatePartition(to);
     const result = await this.clickhouse.query({
       query: `
         SELECT department, count() as count
         FROM evidence_bundles
-        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+        WHERE event_date >= {from_date:String}
+          AND event_date <= {to_date:String}
+          AND timestamp >= parseDateTimeBestEffort({from:String})
+          AND timestamp <= parseDateTimeBestEffort({to:String})
           AND policy_action IN ('block', 'redact')
         GROUP BY department
         ORDER BY count DESC
         LIMIT 20
       `,
-      query_params: { from, to },
+      query_params: { from, to, from_date: fromDate, to_date: toDate },
       format: "JSONEachRow",
     });
-    const rows: any[] = await result.json();
+    const rows = await jsonRows<ViolationsByDepartmentRow>(result);
     return rows.map((r) => ({ department: r.department, count: Number(r.count) }));
   }
 
   private async getViolationsByVendor(from: string, to: string) {
+    const fromDate = toDatePartition(from);
+    const toDate = toDatePartition(to);
     const result = await this.clickhouse.query({
       query: `
         SELECT vendor, count() as count
         FROM evidence_bundles
-        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+        WHERE event_date >= {from_date:String}
+          AND event_date <= {to_date:String}
+          AND timestamp >= parseDateTimeBestEffort({from:String})
+          AND timestamp <= parseDateTimeBestEffort({to:String})
           AND policy_action IN ('block', 'redact')
         GROUP BY vendor
         ORDER BY count DESC
         LIMIT 20
       `,
-      query_params: { from, to },
+      query_params: { from, to, from_date: fromDate, to_date: toDate },
       format: "JSONEachRow",
     });
-    const rows: any[] = await result.json();
+    const rows = await jsonRows<ViolationsByVendorRow>(result);
     return rows.map((r) => ({ vendor: r.vendor, count: Number(r.count) }));
   }
 
   private async getTopIncidents(from: string, to: string) {
+    const fromDate = toDatePartition(from);
+    const toDate = toDatePartition(to);
     const result = await this.clickhouse.query({
       query: `
         SELECT
@@ -258,15 +320,18 @@ export class ReportService {
           policy_action as action,
           token_count as tokenCount
         FROM evidence_bundles
-        WHERE timestamp >= parseDateTimeBestEffort({from:String}) AND timestamp <= parseDateTimeBestEffort({to:String})
+        WHERE event_date >= {from_date:String}
+          AND event_date <= {to_date:String}
+          AND timestamp >= parseDateTimeBestEffort({from:String})
+          AND timestamp <= parseDateTimeBestEffort({to:String})
           AND policy_action IN ('block', 'redact')
         ORDER BY timestamp DESC
         LIMIT 10
       `,
-      query_params: { from, to },
+      query_params: { from, to, from_date: fromDate, to_date: toDate },
       format: "JSONEachRow",
     });
-    const rows: any[] = await result.json();
+    const rows = await jsonRows<TopIncidentRow>(result);
     return rows.map((r) => ({
       timestamp: r.timestamp,
       actor: r.actor,
@@ -299,10 +364,10 @@ export class ReportService {
       )
       .orderBy(policies.name);
 
-    return rows.map((p: any) => ({
-      name: p.name,
-      enabled: p.isActive,
-      compilationStatus: p.compilationStatus ?? null,
+    return rows.map((policy) => ({
+      name: policy.name,
+      enabled: policy.isActive,
+      compilationStatus: policy.compilationStatus ?? null,
     }));
   }
 
@@ -325,11 +390,11 @@ export class ReportService {
       .groupBy(vendors.id, vendors.name, vendors.displayName, vendors.status)
       .orderBy(vendors.name);
 
-    return rows.map((v: any) => ({
-      name: v.name,
-      displayName: v.displayName || v.name,
-      status: v.status,
-      modelCount: Number(v.modelCount),
+    return rows.map((vendor) => ({
+      name: vendor.name,
+      displayName: vendor.displayName || vendor.name,
+      status: vendor.status,
+      modelCount: Number(vendor.modelCount),
     }));
   }
 
@@ -361,19 +426,17 @@ export class ReportService {
         .groupBy(frameworkPolicies.frameworkId),
     ]);
 
-    const activeFrameworkIds = new Set(
-      activeActivations.map((a: any) => a.frameworkId)
-    );
+    const activeFrameworkIds = new Set(activeActivations.map((activation) => activation.frameworkId));
     const countMap = new Map<string, number>(
-      policyCounts.map((r: any) => [r.frameworkId, Number(r.activePolicyCount)])
+      policyCounts.map((row) => [row.frameworkId, Number(row.activePolicyCount)])
     );
 
     return allFrameworks
-      .filter((fw: any) => activeFrameworkIds.has(fw.id))
-      .map((fw: any) => ({
-        name: fw.name,
-        jurisdiction: fw.jurisdiction,
-        activePolicyCount: countMap.get(fw.id) ?? 0,
+      .filter((framework) => activeFrameworkIds.has(framework.id))
+      .map((framework) => ({
+        name: framework.name,
+        jurisdiction: framework.jurisdiction,
+        activePolicyCount: countMap.get(framework.id) ?? 0,
       }));
   }
 }

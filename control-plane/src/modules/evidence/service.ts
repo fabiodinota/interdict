@@ -33,6 +33,7 @@ import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
 } from "../../shared/utilities";
+import type { AppDb } from "../../shared/types";
 import type {
   VerificationResult,
   VerificationStep,
@@ -99,6 +100,10 @@ function concatBytes(...arrays: Uint8Array[]): Uint8Array {
   return result;
 }
 
+function toChDateTime(date: Date): string {
+  return date.toISOString().replace("T", " ").replace("Z", "");
+}
+
 // 32 zero bytes (hex-encoded) — the genesis sentinel for previous_hash
 const GENESIS_PREVIOUS_HEX = "0".repeat(64);
 
@@ -108,9 +113,9 @@ const GENESIS_PREVIOUS_HEX = "0".repeat(64);
 
 export class EvidenceVerificationService {
   private clickhouse: ClickHouseClient;
-  private db: any;
+  private db: AppDb;
 
-  constructor(clickhouse: ClickHouseClient, db: any) {
+  constructor(clickhouse: ClickHouseClient, db: AppDb) {
     this.clickhouse = clickhouse;
     this.db = db;
   }
@@ -154,7 +159,7 @@ export class EvidenceVerificationService {
       conditions.push(
         "(timestamp < {cursor_ts:DateTime64(3)} OR (timestamp = {cursor_ts:DateTime64(3)} AND bundle_id < {cursor_id:String}))"
       );
-      params.cursor_ts = new Date(c.timestamp).toISOString();
+      params.cursor_ts = toChDateTime(new Date(c.timestamp));
       params.cursor_id = c.id;
     }
 
@@ -548,14 +553,15 @@ export class EvidenceVerificationService {
           valid: valid ? "true" : "false",
         },
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       return {
         name: "Ed25519 Signature",
         passed: false,
         details: {
           signing_key_id: bundle.signing_key_id,
           public_key_hex: publicKeyHex,
-          error: `Verification error: ${err.message}`,
+          error: `Verification error: ${message}`,
         },
       };
     }

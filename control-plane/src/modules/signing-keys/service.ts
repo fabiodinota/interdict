@@ -14,6 +14,7 @@ import { writeFileSync, mkdirSync } from "fs";
 import { dirname } from "path";
 import { eq, desc } from "drizzle-orm";
 import { signingKeys } from "../../db/schema/auth";
+import type { AppDb, AppTx } from "../../shared/types";
 
 // ed25519 keypair generation via Node/Bun crypto
 import { generateKeyPairSync } from "crypto";
@@ -38,11 +39,13 @@ export interface RotateResult {
   private_key_written_to: string | null;
 }
 
+type SigningKeyRow = typeof signingKeys.$inferSelect;
+
 // ---------------------------------------------------------------------------
 // Serializer
 // ---------------------------------------------------------------------------
 
-function serializeKey(k: any): SigningKeyInfo {
+function serializeKey(k: SigningKeyRow): SigningKeyInfo {
   return {
     id: k.id,
     key_id: k.keyId,
@@ -66,10 +69,7 @@ export interface SigningKeysService {
   registerExistingKey(keyId: string, publicKeyHex: string): Promise<SigningKeyInfo>;
 }
 
-/**
- * Create a SigningKeysService bound to a database instance.
- */
-export function createSigningKeysService(db: any): SigningKeysService {
+export function createSigningKeysService(db: AppDb): SigningKeysService {
   return {
     /**
      * List all signing keys ordered by creation date (newest first).
@@ -138,7 +138,7 @@ export function createSigningKeysService(db: any): SigningKeysService {
       const now = new Date();
       let privateKeyWrittenTo: string | null = null;
 
-      await db.transaction(async (tx: any) => {
+      await db.transaction(async (tx: AppTx) => {
         // Retire all currently active keys
         await tx
           .update(signingKeys)
@@ -160,9 +160,10 @@ export function createSigningKeysService(db: any): SigningKeysService {
           mkdirSync(dirname(outputPath), { recursive: true });
           writeFileSync(outputPath, rawPrivateKey, { mode: 0o600 });
           privateKeyWrittenTo = outputPath;
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
           console.error(
-            `[signing-keys] Failed to write private key to ${outputPath}: ${err.message}`
+            `[signing-keys] Failed to write private key to ${outputPath}: ${message}`
           );
           // Key is still registered in DB; operator can manually extract
         }

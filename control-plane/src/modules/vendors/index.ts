@@ -13,25 +13,38 @@ import {
   CreateModelBody,
   UpdateModelBody,
   VendorListQuery,
+  type CreateVendorBodyType,
+  type UpdateVendorBodyType,
+  type CreateModelBodyType,
+  type UpdateModelBodyType,
+  type VendorListQueryType,
 } from "./model";
-import { createVendorService } from "./service";
+import { createVendorService, type VendorService } from "./service";
 import { apiResponse, paginatedResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
+import type { AppStore, RouteContext } from "../../shared/types";
+
+type VendorRouteContext<
+  TBody = unknown,
+  TQuery = Record<string, string | undefined>,
+  TParams = Record<string, string>,
+> = RouteContext<TBody, TQuery, TParams> & { vendorService: VendorService };
 
 export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
   .use(authPlugin)
   .derive(({ store }) => {
-    const db = (store as any).db ?? pgDb;
-    return { vendorService: createVendorService(db) };
+    const appStore = store as unknown as Partial<AppStore>;
+    return { vendorService: createVendorService(appStore.db ?? pgDb) };
   })
 
   // POST / -- Create vendor (Policy Admin+)
   .post(
     "/",
-    async (ctx: any) => {
-      const result = await ctx.vendorService.create(ctx.body);
-      ctx.set.status = 201;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as VendorRouteContext<CreateVendorBodyType>;
+      const result = await routeCtx.vendorService.create(routeCtx.body);
+      routeCtx.set.status = 201;
       return apiResponse(result);
     },
     { auth: ["policy_admin"], body: CreateVendorBody }
@@ -40,14 +53,15 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
   // GET / -- List vendors with optional status filter (Read-Only Auditor+)
   .get(
     "/",
-    async (ctx: any) => {
-      const pageSize = ctx.query.page_size
-        ? Number(ctx.query.page_size)
+    async (ctx) => {
+      const routeCtx = ctx as unknown as VendorRouteContext<unknown, VendorListQueryType>;
+      const pageSize = routeCtx.query.page_size
+        ? Number(routeCtx.query.page_size)
         : undefined;
-      const { items, nextCursor } = await ctx.vendorService.list(
-        ctx.query.cursor,
+      const { items, nextCursor } = await routeCtx.vendorService.list(
+        routeCtx.query.cursor,
         pageSize,
-        ctx.query.status
+        routeCtx.query.status
       );
       return paginatedResponse(items, nextCursor);
     },
@@ -57,8 +71,9 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
   // GET /:id -- Get vendor with models (Read-Only Auditor+)
   .get(
     "/:id",
-    async (ctx: any) => {
-      const result = await ctx.vendorService.getById(ctx.params.id);
+    async (ctx) => {
+      const routeCtx = ctx as unknown as VendorRouteContext<unknown, Record<string, string | undefined>, { id: string }>;
+      const result = await routeCtx.vendorService.getById(routeCtx.params.id);
       return apiResponse(result);
     },
     { auth: ["read_only_auditor"], params: t.Object({ id: t.String() }) }
@@ -67,8 +82,13 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
   // PUT /:id -- Update vendor (Policy Admin+)
   .put(
     "/:id",
-    async (ctx: any) => {
-      const result = await ctx.vendorService.update(ctx.params.id, ctx.body);
+    async (ctx) => {
+      const routeCtx = ctx as unknown as VendorRouteContext<
+        UpdateVendorBodyType,
+        Record<string, string | undefined>,
+        { id: string }
+      >;
+      const result = await routeCtx.vendorService.update(routeCtx.params.id, routeCtx.body);
       return apiResponse(result);
     },
     {
@@ -81,9 +101,10 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
   // DELETE /:id -- Delete vendor (Policy Admin+)
   .delete(
     "/:id",
-    async (ctx: any) => {
-      await ctx.vendorService.delete(ctx.params.id);
-      ctx.set.status = 204;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as VendorRouteContext<unknown, Record<string, string | undefined>, { id: string }>;
+      await routeCtx.vendorService.delete(routeCtx.params.id);
+      routeCtx.set.status = 204;
       return;
     },
     { auth: ["policy_admin"], params: t.Object({ id: t.String() }) }
@@ -92,9 +113,14 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
   // POST /:id/models -- Add model to vendor (Policy Admin+)
   .post(
     "/:id/models",
-    async (ctx: any) => {
-      const result = await ctx.vendorService.addModel(ctx.params.id, ctx.body);
-      ctx.set.status = 201;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as VendorRouteContext<
+        CreateModelBodyType,
+        Record<string, string | undefined>,
+        { id: string }
+      >;
+      const result = await routeCtx.vendorService.addModel(routeCtx.params.id, routeCtx.body);
+      routeCtx.set.status = 201;
       return apiResponse(result);
     },
     {
@@ -107,11 +133,16 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
   // PUT /:id/models/:modelId -- Update model status (Policy Admin+)
   .put(
     "/:id/models/:modelId",
-    async (ctx: any) => {
-      const result = await ctx.vendorService.updateModel(
-        ctx.params.id,
-        ctx.params.modelId,
-        ctx.body
+    async (ctx) => {
+      const routeCtx = ctx as unknown as VendorRouteContext<
+        UpdateModelBodyType,
+        Record<string, string | undefined>,
+        { id: string; modelId: string }
+      >;
+      const result = await routeCtx.vendorService.updateModel(
+        routeCtx.params.id,
+        routeCtx.params.modelId,
+        routeCtx.body
       );
       return apiResponse(result);
     },
@@ -125,9 +156,14 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
   // DELETE /:id/models/:modelId -- Remove model (Policy Admin+)
   .delete(
     "/:id/models/:modelId",
-    async (ctx: any) => {
-      await ctx.vendorService.removeModel(ctx.params.id, ctx.params.modelId);
-      ctx.set.status = 204;
+    async (ctx) => {
+      const routeCtx = ctx as unknown as VendorRouteContext<
+        unknown,
+        Record<string, string | undefined>,
+        { id: string; modelId: string }
+      >;
+      await routeCtx.vendorService.removeModel(routeCtx.params.id, routeCtx.params.modelId);
+      routeCtx.set.status = 204;
       return;
     },
     {
