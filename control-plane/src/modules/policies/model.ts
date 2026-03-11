@@ -15,9 +15,7 @@ export const CreatePolicyBody = t.Object({
   name: t.String({ minLength: 1, maxLength: 255 }),
   description: t.Optional(t.String()),
   rego_source: t.String({ minLength: 1 }),
-  entrypoint: t.Optional(
-    t.String({ default: "interdict/policy/verdict" })
-  ),
+  entrypoint: t.Optional(t.String({ default: "interdict/policy/verdict" })),
 });
 
 export const UpdatePolicyBody = t.Object({

@@ -129,23 +129,7 @@ export class RegulatoryService {
    * Check whether a framework has an active activation record.
    */
   private isFrameworkActive(frameworkId: string): boolean {
-    return this.store.frameworkActivations.some(
-      (a) => a.frameworkId === frameworkId && a.isActive
-    );
-  }
-
-  /**
-   * Get the latest activation record for a framework.
-   */
-  private getLatestActivation(
-    frameworkId: string
-  ): FrameworkActivationRow | undefined {
-    const activations = this.store.frameworkActivations
-      .filter((a) => a.frameworkId === frameworkId)
-      .sort(
-        (a, b) => b.activatedAt.getTime() - a.activatedAt.getTime()
-      );
-    return activations[0];
+    return this.store.frameworkActivations.some((a) => a.frameworkId === frameworkId && a.isActive);
   }
 
   /**
@@ -155,12 +139,8 @@ export class RegulatoryService {
   list(): FrameworkListItem[] {
     return this.store.frameworks
       .map((fw) => {
-        const fwPolicies = this.store.frameworkPolicies.filter(
-          (fp) => fp.frameworkId === fw.id
-        );
-        const activePolicyCount = fwPolicies.filter(
-          (fp) => fp.isRequired
-        ).length;
+        const fwPolicies = this.store.frameworkPolicies.filter((fp) => fp.frameworkId === fw.id);
+        const activePolicyCount = fwPolicies.filter((fp) => fp.isRequired).length;
 
         return {
           id: fw.id,
@@ -195,9 +175,7 @@ export class RegulatoryService {
     const policies = fwPolicies.map((fp) => {
       const policy = this.store.policies.find((p) => p.id === fp.policyId);
       const currentVersion = policy?.currentVersionId
-        ? this.store.policyVersions.find(
-            (pv) => pv.id === policy.currentVersionId
-          )
+        ? this.store.policyVersions.find((pv) => pv.id === policy.currentVersionId)
         : undefined;
 
       return {
@@ -251,7 +229,7 @@ export class RegulatoryService {
    */
   deactivate(frameworkId: string): void {
     const activation = this.store.frameworkActivations.find(
-      (a) => a.frameworkId === frameworkId && a.isActive
+      (a) => a.frameworkId === frameworkId && a.isActive,
     );
     if (!activation) {
       return; // Not active, no-op
@@ -266,13 +244,9 @@ export class RegulatoryService {
    * Allows disabling specific policies within an active framework.
    */
   togglePolicy(frameworkPolicyId: string, isRequired: boolean): void {
-    const fp = this.store.frameworkPolicies.find(
-      (p) => p.id === frameworkPolicyId
-    );
+    const fp = this.store.frameworkPolicies.find((p) => p.id === frameworkPolicyId);
     if (!fp) {
-      throw new NotFoundError(
-        `Framework policy '${frameworkPolicyId}' not found`
-      );
+      throw new NotFoundError(`Framework policy '${frameworkPolicyId}' not found`);
     }
     fp.isRequired = isRequired;
   }
@@ -311,7 +285,7 @@ export class RegulatoryService {
       if (policy.isActive) {
         // Check if this policy is part of any framework
         const isFrameworkPolicy = this.store.frameworkPolicies.some(
-          (fp) => fp.policyId === policy.id
+          (fp) => fp.policyId === policy.id,
         );
         if (!isFrameworkPolicy) {
           // Standalone custom policy -- include if active
@@ -322,9 +296,7 @@ export class RegulatoryService {
 
     // 2. Framework policies from active frameworks where is_required=true
     const activeFrameworkIds = new Set(
-      this.store.frameworkActivations
-        .filter((a) => a.isActive)
-        .map((a) => a.frameworkId)
+      this.store.frameworkActivations.filter((a) => a.isActive).map((a) => a.frameworkId),
     );
 
     for (const fp of this.store.frameworkPolicies) {

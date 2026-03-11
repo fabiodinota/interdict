@@ -11,17 +11,17 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { eq, and, desc, lt, or, gt, type SQL } from "drizzle-orm";
-import { apiKeys, userDepartments, sessions, samlHandoffCodes } from "../../db/schema/auth";
-import { users } from "../../db/schema/organization";
+import { and, desc, eq, gt, lt, or, type SQL } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import * as schema from "../../db/schema";
+import type * as schema from "../../db/schema";
+import { apiKeys, samlHandoffCodes, sessions, userDepartments } from "../../db/schema/auth";
+import { users } from "../../db/schema/organization";
 import {
-  NotFoundError,
-  encodeCursor,
-  decodeCursor,
   DEFAULT_PAGE_SIZE,
+  decodeCursor,
+  encodeCursor,
   MAX_PAGE_SIZE,
+  NotFoundError,
 } from "../../shared/utilities";
 import { roleInheritsFrom } from "./permissions";
 
@@ -92,7 +92,7 @@ export interface AuthService {
   authenticateByApiKey(token: string): Promise<AuthenticatedUser | null>;
   createApiKey(
     userId: string,
-    label?: string
+    label?: string,
   ): Promise<{
     plaintext: string;
     keyId: string;
@@ -106,7 +106,7 @@ export interface AuthService {
     userRole: string,
     showAll?: boolean,
     cursor?: string,
-    pageSize?: number
+    pageSize?: number,
   ): Promise<{
     items: Array<{
       id: string;
@@ -135,7 +135,7 @@ export interface AuthService {
     email: string,
     displayName: string,
     externalId: string,
-    roleHint?: string
+    roleHint?: string,
   ): Promise<AuthenticatedUser>;
 }
 
@@ -179,9 +179,7 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
         .from(userDepartments)
         .where(eq(userDepartments.userId, user.id));
 
-      const departmentIds = deptRows.map(
-        (r: { departmentId: string }) => r.departmentId
-      );
+      const departmentIds = deptRows.map((r: { departmentId: string }) => r.departmentId);
 
       // Update lastUsedAt fire-and-forget (don't await)
       db.update(apiKeys)
@@ -190,9 +188,7 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
         .then(() => {})
         .catch((error: unknown) => {
           const message = error instanceof Error ? error.message : String(error);
-          console.warn(
-            `[auth] Failed to update lastUsedAt for API key ${keyRow.id}: ${message}`
-          );
+          console.warn(`[auth] Failed to update lastUsedAt for API key ${keyRow.id}: ${message}`);
         });
 
       return {
@@ -269,7 +265,7 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
       userRole: string,
       showAll = false,
       cursor?: string,
-      pageSize?: number
+      pageSize?: number,
     ) {
       const limit = Math.min(pageSize || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
@@ -288,13 +284,12 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
         conditions.push(
           or(
             lt(apiKeys.createdAt, cursorDate),
-            and(eq(apiKeys.createdAt, cursorDate), lt(apiKeys.id, cursorId))
-          )!
+            and(eq(apiKeys.createdAt, cursorDate), lt(apiKeys.id, cursorId)),
+          )!,
         );
       }
 
-      const whereClause =
-        conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
       const rows = await db
         .select({
@@ -323,10 +318,7 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
       }));
 
       const nextCursor = hasMore
-        ? encodeCursor(
-            items[items.length - 1].createdAt.getTime(),
-            items[items.length - 1].id
-          )
+        ? encodeCursor(items[items.length - 1].createdAt.getTime(), items[items.length - 1].id)
         : null;
 
       return { items: serialized, nextCursor };
@@ -352,9 +344,7 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
         .from(userDepartments)
         .where(eq(userDepartments.userId, userId));
 
-      const departments = deptRows.map(
-        (r: { departmentId: string }) => r.departmentId
-      );
+      const departments = deptRows.map((r: { departmentId: string }) => r.departmentId);
 
       return {
         id: user.id,
@@ -371,19 +361,12 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
      * Looks up session in sessions table, checks expiry, joins with users.
      * Returns null if session not found, expired, or user inactive.
      */
-    async authenticateBySessionToken(
-      token: string
-    ): Promise<AuthenticatedUser | null> {
+    async authenticateBySessionToken(token: string): Promise<AuthenticatedUser | null> {
       const tokenHash = hashSessionToken(token);
       const [session] = await db
         .select()
         .from(sessions)
-        .where(
-          and(
-            eq(sessions.tokenHash, tokenHash),
-            gt(sessions.expiresAt, new Date())
-          )
-        );
+        .where(and(eq(sessions.tokenHash, tokenHash), gt(sessions.expiresAt, new Date())));
 
       if (!session) return null;
 
@@ -401,9 +384,7 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
         .from(userDepartments)
         .where(eq(userDepartments.userId, user.id));
 
-      const departmentIds = deptRows.map(
-        (r: { departmentId: string }) => r.departmentId
-      );
+      const departmentIds = deptRows.map((r: { departmentId: string }) => r.departmentId);
 
       return {
         id: user.id,
@@ -469,8 +450,8 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
           and(
             eq(samlHandoffCodes.code, code),
             eq(samlHandoffCodes.used, false),
-            gt(samlHandoffCodes.expiresAt, new Date())
-          )
+            gt(samlHandoffCodes.expiresAt, new Date()),
+          ),
         )
         .returning({ userId: samlHandoffCodes.userId });
 
@@ -500,7 +481,7 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
       email: string,
       displayName: string,
       externalId: string,
-      roleHint?: string
+      roleHint?: string,
     ): Promise<AuthenticatedUser> {
       // Check if user already exists
       const [existingUser] = await db
@@ -528,7 +509,7 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
         // NEW-PII: log without email (PII) — use opaque message only
         console.info(
           `[auth] SAML JIT provisioning new user as read_only_auditor` +
-            (roleHint ? ` (IdP roleHint ignored)` : "")
+            (roleHint ? ` (IdP roleHint ignored)` : ""),
         );
 
         // JIT provision: create new user
@@ -549,19 +530,14 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
       }
 
       // Fetch user with departments for AuthenticatedUser
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId));
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
 
       const deptRows = await db
         .select({ departmentId: userDepartments.departmentId })
         .from(userDepartments)
         .where(eq(userDepartments.userId, userId));
 
-      const departmentIds = deptRows.map(
-        (r: { departmentId: string }) => r.departmentId
-      );
+      const departmentIds = deptRows.map((r: { departmentId: string }) => r.departmentId);
 
       return {
         id: user.id,

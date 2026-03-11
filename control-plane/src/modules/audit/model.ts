@@ -16,13 +16,7 @@ export const AuditFilters = t.Object({
   vendor: t.Optional(t.String()),
   department: t.Optional(t.String()),
   actor_identity: t.Optional(t.String()),
-  policy_action: t.Optional(
-    t.Union([
-      t.Literal("allow"),
-      t.Literal("block"),
-      t.Literal("redact"),
-    ])
-  ),
+  policy_action: t.Optional(t.Union([t.Literal("allow"), t.Literal("block"), t.Literal("redact")])),
   from_date: t.Optional(t.String({ format: "date-time" })),
   to_date: t.Optional(t.String({ format: "date-time" })),
   kernel_id: t.Optional(t.String()),
@@ -33,20 +27,12 @@ export const AuditQueryParams = t.Object({
   vendor: t.Optional(t.String()),
   department: t.Optional(t.String()),
   actor: t.Optional(t.String()),
-  policy_action: t.Optional(
-    t.Union([
-      t.Literal("allow"),
-      t.Literal("block"),
-      t.Literal("redact"),
-    ])
-  ),
+  policy_action: t.Optional(t.Union([t.Literal("allow"), t.Literal("block"), t.Literal("redact")])),
   from_date: t.Optional(t.String()),
   to_date: t.Optional(t.String()),
   kernel_id: t.Optional(t.String()),
   cursor: t.Optional(t.String()),
-  page_size: t.Optional(
-    t.Number({ minimum: 1, maximum: 200, default: 50 })
-  ),
+  page_size: t.Optional(t.Number({ minimum: 1, maximum: 200, default: 50 })),
 });
 
 /** A single enriched audit record returned by the search API */

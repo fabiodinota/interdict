@@ -6,17 +6,17 @@
  */
 
 import type { ClickHouseClient } from "@clickhouse/client";
+import type { AppDb } from "../../shared/types";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "../../shared/utilities";
+import { enrichAuditRecords } from "./enrichment";
+import type { AuditRecord } from "./model";
 import {
+  type AuditTrailFilters,
   queryAuditTrail,
+  queryDepartmentSummary,
   queryHourlyViolations,
   queryVendorUsage,
-  queryDepartmentSummary,
-  type AuditTrailFilters,
 } from "./queries";
-import { enrichAuditRecords } from "./enrichment";
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "../../shared/utilities";
-import type { AuditRecord } from "./model";
-import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // AuditService
@@ -43,7 +43,7 @@ export class AuditService {
    */
   private applyDepartmentScope(
     filters: AuditTrailFilters,
-    departmentIds?: string[]
+    departmentIds?: string[],
   ): AuditTrailFilters {
     // Empty array = full visibility (Super Admin, unscoped Compliance Officer, etc.)
     if (!departmentIds || departmentIds.length === 0) {
@@ -80,7 +80,7 @@ export class AuditService {
     filters: AuditTrailFilters,
     cursor?: string,
     pageSize?: number,
-    departmentIds?: string[]
+    departmentIds?: string[],
   ): Promise<{
     items: AuditRecord[];
     nextCursor: string | null;
@@ -89,12 +89,7 @@ export class AuditService {
     const limit = Math.min(pageSize ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
     const scopedFilters = this.applyDepartmentScope(filters, departmentIds);
 
-    const result = await queryAuditTrail(
-      this.clickhouse,
-      scopedFilters,
-      cursor,
-      limit
-    );
+    const result = await queryAuditTrail(this.clickhouse, scopedFilters, cursor, limit);
 
     const enriched = await enrichAuditRecords(this.db, result.items);
 
@@ -126,7 +121,7 @@ export class AuditService {
     from: string,
     to: string,
     department?: string,
-    departmentIds?: string[]
+    departmentIds?: string[],
   ) {
     // For department summary, apply scope directly to queryDepartmentSummary
     // which accepts both single department and departmentIds array
@@ -135,29 +130,13 @@ export class AuditService {
         // Validate user's explicit filter is within scope
         if (!departmentIds.includes(department)) {
           // Return empty -- query with impossible filter
-          return queryDepartmentSummary(
-            this.clickhouse,
-            from,
-            to,
-            "__no_access__"
-          );
+          return queryDepartmentSummary(this.clickhouse, from, to, "__no_access__");
         }
         // User's explicit filter is within scope -- keep it
-        return queryDepartmentSummary(
-          this.clickhouse,
-          from,
-          to,
-          department
-        );
+        return queryDepartmentSummary(this.clickhouse, from, to, department);
       }
       // No explicit department filter -- scope to user's departments
-      return queryDepartmentSummary(
-        this.clickhouse,
-        from,
-        to,
-        undefined,
-        departmentIds
-      );
+      return queryDepartmentSummary(this.clickhouse, from, to, undefined, departmentIds);
     }
     return queryDepartmentSummary(this.clickhouse, from, to, department);
   }
@@ -169,7 +148,7 @@ export class AuditService {
   async streamEvents(
     lastTimestamp: string,
     filters: AuditTrailFilters,
-    departmentIds?: string[]
+    departmentIds?: string[],
   ): Promise<AuditRecord[]> {
     const scopedFilters = this.applyDepartmentScope(filters, departmentIds);
 
@@ -180,7 +159,7 @@ export class AuditService {
         from_date: lastTimestamp,
       },
       undefined,
-      50 // Limit per poll
+      50, // Limit per poll
     );
 
     if (result.items.length === 0) {

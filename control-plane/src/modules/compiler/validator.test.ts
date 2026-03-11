@@ -5,7 +5,7 @@
  * Tests mock the Bun shell subprocess to avoid OPA binary dependency.
  */
 
-import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { describe, expect, test } from "bun:test";
 
 // We mock at the module level via a mock factory
 // The actual validator will use Bun.$ for subprocess calls
@@ -40,7 +40,7 @@ default verdict = {"action": "allow"}
     const result = await validateRego("");
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
-    expect(result.errors!.length).toBeGreaterThan(0);
+    expect(result.errors?.length).toBeGreaterThan(0);
   });
 
   test("result has structured error format when invalid", async () => {
@@ -52,7 +52,7 @@ default verdict = {"action": "allow"}
     const result = await validateRego(invalidRego);
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
-    expect(result.errors!.length).toBeGreaterThan(0);
+    expect(result.errors?.length).toBeGreaterThan(0);
     // Each error should have at least a message
     for (const err of result.errors!) {
       expect(err).toHaveProperty("message");

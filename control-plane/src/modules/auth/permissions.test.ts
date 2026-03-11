@@ -7,10 +7,10 @@
 
 import { describe, expect, it } from "bun:test";
 import {
-  ROLE_HIERARCHY,
   DEFAULT_PERMISSIONS,
-  PERMISSIONS,
   hasPermission,
+  PERMISSIONS,
+  ROLE_HIERARCHY,
   roleHierarchyLevel,
   roleInheritsFrom,
 } from "./permissions";

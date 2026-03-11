@@ -6,16 +6,9 @@
  * Each (departmentId, policyId) pair has at most one override.
  */
 
-import {
-  pgTable,
-  uuid,
-  boolean,
-  timestamp,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
-import { departments } from "./organization";
+import { boolean, pgTable, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { departments, users } from "./organization";
 import { policies } from "./policies";
-import { users } from "./organization";
 
 export const departmentPolicyOverrides = pgTable(
   "department_policy_overrides",
@@ -32,10 +25,5 @@ export const departmentPolicyOverrides = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [
-    uniqueIndex("dept_policy_override_unique").on(
-      table.departmentId,
-      table.policyId
-    ),
-  ]
+  (table) => [uniqueIndex("dept_policy_override_unique").on(table.departmentId, table.policyId)],
 );

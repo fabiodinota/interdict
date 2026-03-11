@@ -27,18 +27,18 @@
 import type { ClickHouseClient } from "@clickhouse/client";
 import { eq } from "drizzle-orm";
 import { signingKeys } from "../../db/schema/auth";
+import type { AppDb } from "../../shared/types";
 import {
-  encodeCursor,
-  decodeCursor,
   DEFAULT_PAGE_SIZE,
+  decodeCursor,
+  encodeCursor,
   MAX_PAGE_SIZE,
 } from "../../shared/utilities";
-import type { AppDb } from "../../shared/types";
 import type {
+  EvidenceBundleListItem,
+  EvidenceBundleRow,
   VerificationResult,
   VerificationStep,
-  EvidenceBundleRow,
-  EvidenceBundleListItem,
 } from "./model";
 
 // ---------------------------------------------------------------------------
@@ -127,7 +127,7 @@ export class EvidenceVerificationService {
     filters: { from_date?: string; to_date?: string },
     cursor: string | undefined,
     pageSize: number | undefined,
-    departmentIds?: string[]
+    departmentIds?: string[],
   ): Promise<{
     items: EvidenceBundleListItem[];
     nextCursor: string | null;
@@ -157,7 +157,7 @@ export class EvidenceVerificationService {
     if (cursor) {
       const c = decodeCursor(cursor);
       conditions.push(
-        "(timestamp < {cursor_ts:DateTime64(3)} OR (timestamp = {cursor_ts:DateTime64(3)} AND bundle_id < {cursor_id:String}))"
+        "(timestamp < {cursor_ts:DateTime64(3)} OR (timestamp = {cursor_ts:DateTime64(3)} AND bundle_id < {cursor_id:String}))",
       );
       params.cursor_ts = toChDateTime(new Date(c.timestamp));
       params.cursor_id = c.id;
@@ -169,8 +169,7 @@ export class EvidenceVerificationService {
       params.dept_ids = departmentIds;
     }
 
-    const where =
-      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const query = `SELECT ${EVIDENCE_COLUMNS} FROM evidence_bundles ${where} ORDER BY timestamp DESC, bundle_id DESC LIMIT {limit:UInt32}`;
 
@@ -188,7 +187,7 @@ export class EvidenceVerificationService {
       hasMore && items.length > 0
         ? encodeCursor(
             new Date(items[items.length - 1].timestamp).getTime(),
-            items[items.length - 1].bundle_id
+            items[items.length - 1].bundle_id,
           )
         : null;
 
@@ -286,9 +285,7 @@ export class EvidenceVerificationService {
   /**
    * Fetch bundles and their predecessors from ClickHouse.
    */
-  private async fetchBundles(
-    bundleIds: string[]
-  ): Promise<Map<string, EvidenceBundleRow>> {
+  private async fetchBundles(bundleIds: string[]): Promise<Map<string, EvidenceBundleRow>> {
     if (bundleIds.length === 0) return new Map();
 
     const resultSet = await this.clickhouse.query({
@@ -310,7 +307,7 @@ export class EvidenceVerificationService {
    */
   private async fetchPredecessor(
     kernelId: string,
-    sequenceNumber: number
+    sequenceNumber: number,
   ): Promise<EvidenceBundleRow | null> {
     if (sequenceNumber <= 1) return null;
 
@@ -336,9 +333,7 @@ export class EvidenceVerificationService {
    * - If content_bytes are available, recompute chain_hash = SHA-256(previous_hash || content_bytes)
    *   and verify it matches the stored chain_hash (same algorithm as interdict-verify).
    */
-  private async verifyHashChain(
-    bundle: EvidenceBundleRow
-  ): Promise<VerificationStep> {
+  private async verifyHashChain(bundle: EvidenceBundleRow): Promise<VerificationStep> {
     const seqNum =
       typeof bundle.sequence_number === "string"
         ? parseInt(bundle.sequence_number, 10)
@@ -346,8 +341,7 @@ export class EvidenceVerificationService {
 
     // Genesis bundle: sequence_number == 1, previous_hash must be 32 zero bytes
     if (seqNum === 1) {
-      const isGenesisValid =
-        bundle.previous_hash === GENESIS_PREVIOUS_HEX;
+      const isGenesisValid = bundle.previous_hash === GENESIS_PREVIOUS_HEX;
 
       // If content_bytes are available, also verify chain_hash recomputation
       let chainHashValid: boolean | null = null;
@@ -387,10 +381,7 @@ export class EvidenceVerificationService {
     }
 
     // Non-genesis: fetch predecessor
-    const predecessor = await this.fetchPredecessor(
-      bundle.kernel_id,
-      seqNum
-    );
+    const predecessor = await this.fetchPredecessor(bundle.kernel_id, seqNum);
 
     if (!predecessor) {
       return {
@@ -410,11 +401,7 @@ export class EvidenceVerificationService {
     // If content_bytes are available, also verify chain_hash recomputation
     let chainHashValid: boolean | null = null;
     let recomputedChainHash = "";
-    if (
-      linkageValid &&
-      bundle.content_bytes &&
-      bundle.content_bytes.length > 0
-    ) {
+    if (linkageValid && bundle.content_bytes && bundle.content_bytes.length > 0) {
       const prevBytes = hexToBytes(bundle.previous_hash);
       const contentBytes = hexToBytes(bundle.content_bytes);
       const hashInput = concatBytes(prevBytes, contentBytes);
@@ -457,9 +444,7 @@ export class EvidenceVerificationService {
    * check is skipped with an explicit explanation rather than producing a
    * false failure.
    */
-  private async verifySignature(
-    bundle: EvidenceBundleRow
-  ): Promise<VerificationStep> {
+  private async verifySignature(bundle: EvidenceBundleRow): Promise<VerificationStep> {
     // content_bytes are required for correct signature verification
     if (!bundle.content_bytes || bundle.content_bytes.length === 0) {
       return {
@@ -530,7 +515,7 @@ export class EvidenceVerificationService {
         publicKeyBytes as unknown as BufferSource,
         { name: "Ed25519" },
         false,
-        ["verify"]
+        ["verify"],
       );
 
       // Verify signature over the protobuf content bytes (not chain_hash).
@@ -539,7 +524,7 @@ export class EvidenceVerificationService {
         "Ed25519",
         cryptoKey,
         signatureBytes as unknown as BufferSource,
-        contentBytes as unknown as BufferSource
+        contentBytes as unknown as BufferSource,
       );
 
       return {
@@ -548,7 +533,7 @@ export class EvidenceVerificationService {
         details: {
           signing_key_id: bundle.signing_key_id,
           public_key_hex: publicKeyHex,
-          signature_hex: bundle.signature.substring(0, 32) + "...",
+          signature_hex: `${bundle.signature.substring(0, 32)}...`,
           content_bytes_length: String(contentBytes.length),
           valid: valid ? "true" : "false",
         },

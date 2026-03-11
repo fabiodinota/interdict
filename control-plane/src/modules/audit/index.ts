@@ -11,26 +11,23 @@
  */
 
 import { Elysia, t } from "elysia";
-import { AuditService } from "./service";
+import { clickhouse as chClient } from "../../db/clickhouse";
+import { db as pgDb } from "../../db/postgres";
+import type { AppStore, RouteContext } from "../../shared/types";
+import { apiResponse, paginatedResponse } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
 import {
   AuditQueryParams,
+  DepartmentSummaryQuery,
   HourlyViolationsQuery,
   VendorUsageQuery,
-  DepartmentSummaryQuery,
 } from "./model";
-import {
-  apiResponse,
-  paginatedResponse,
-} from "../../shared/utilities";
-import type { AppStore, RouteContext } from "../../shared/types";
-import { authPlugin } from "../auth/middleware";
-import { db as pgDb } from "../../db/postgres";
-import { clickhouse as chClient } from "../../db/clickhouse";
+import { AuditService } from "./service";
 
-type AuditRouteContext<
-  TBody = unknown,
-  TQuery = Record<string, string | undefined>,
-> = RouteContext<TBody, TQuery> & { auditService: AuditService };
+type AuditRouteContext<TBody = unknown, TQuery = Record<string, string | undefined>> = RouteContext<
+  TBody,
+  TQuery
+> & { auditService: AuditService };
 
 export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   .use(authPlugin)
@@ -82,19 +79,15 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
         filters,
         routeCtx.query.cursor,
         pageSize,
-        routeCtx.user.departmentIds
+        routeCtx.user.departmentIds,
       );
 
-      return paginatedResponse(
-        result.items,
-        result.nextCursor,
-        undefined
-      );
+      return paginatedResponse(result.items, result.nextCursor, undefined);
     },
     {
       auth: ["read_only_auditor"],
       query: AuditQueryParams,
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -139,7 +132,7 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
           const events = await routeCtx.auditService.streamEvents(
             lastTimestamp,
             filters,
-            departmentIds
+            departmentIds,
           );
 
           for (const event of events) {
@@ -169,14 +162,10 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
         department: t.Optional(t.String()),
         actor: t.Optional(t.String()),
         policy_action: t.Optional(
-          t.Union([
-            t.Literal("allow"),
-            t.Literal("block"),
-            t.Literal("redact"),
-          ])
+          t.Union([t.Literal("allow"), t.Literal("block"), t.Literal("redact")]),
         ),
       }),
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -190,14 +179,14 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
       const data = await routeCtx.auditService.getHourlyViolations(
         routeCtx.query.from,
         routeCtx.query.to,
-        routeCtx.user.departmentIds  // HIGH-011: scope to user's visible departments
+        routeCtx.user.departmentIds, // HIGH-011: scope to user's visible departments
       );
       return apiResponse(data);
     },
     {
       auth: ["read_only_auditor"],
       query: HourlyViolationsQuery,
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -206,19 +195,22 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
   .get(
     "/stats/vendor-usage",
     async (ctx) => {
-      const routeCtx = ctx as unknown as AuditRouteContext<unknown, { from: string; to: string; vendor?: string }>;
+      const routeCtx = ctx as unknown as AuditRouteContext<
+        unknown,
+        { from: string; to: string; vendor?: string }
+      >;
       const data = await routeCtx.auditService.getVendorUsage(
         routeCtx.query.from,
         routeCtx.query.to,
         routeCtx.query.vendor,
-        routeCtx.user.departmentIds  // HIGH-011: scope to user's visible departments
+        routeCtx.user.departmentIds, // HIGH-011: scope to user's visible departments
       );
       return apiResponse(data);
     },
     {
       auth: ["read_only_auditor"],
       query: VendorUsageQuery,
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -235,12 +227,12 @@ export const auditModule = new Elysia({ prefix: "/api/v1/audit" })
         routeCtx.query.from,
         routeCtx.query.to,
         routeCtx.query.department,
-        routeCtx.user.departmentIds
+        routeCtx.user.departmentIds,
       );
       return apiResponse(data);
     },
     {
       auth: ["read_only_auditor"],
       query: DepartmentSummaryQuery,
-    }
+    },
   );

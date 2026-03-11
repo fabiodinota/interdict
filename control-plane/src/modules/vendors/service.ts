@@ -7,17 +7,17 @@
  * Deleting a vendor hard-deletes (vendor registry is not audit-sensitive).
  */
 
-import { eq, desc, and, lt, or, sql, type SQL } from "drizzle-orm";
-import { vendors, vendorModels } from "../../db/schema/vendors";
-import {
-  NotFoundError,
-  ConflictError,
-  encodeCursor,
-  decodeCursor,
-  DEFAULT_PAGE_SIZE,
-  MAX_PAGE_SIZE,
-} from "../../shared/utilities";
+import { and, desc, eq, lt, or, type SQL, sql } from "drizzle-orm";
+import { vendorModels, vendors } from "../../db/schema/vendors";
 import type { AppDb, AppTx } from "../../shared/types";
+import {
+  ConflictError,
+  DEFAULT_PAGE_SIZE,
+  decodeCursor,
+  encodeCursor,
+  MAX_PAGE_SIZE,
+  NotFoundError,
+} from "../../shared/utilities";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -141,14 +141,8 @@ export function createVendorService(db: AppDb): VendorService {
       } catch (err: unknown) {
         // Handle unique constraint violation (DrizzleQueryError wraps PG error in .cause)
         const { code: pgCode, message: msg } = getConstraintErrorDetails(err);
-        if (
-          pgCode === "23505" ||
-          msg.includes("unique") ||
-          msg.includes("duplicate")
-        ) {
-          throw new ConflictError(
-            `Vendor with name '${body.name}' already exists`
-          );
+        if (pgCode === "23505" || msg.includes("unique") || msg.includes("duplicate")) {
+          throw new ConflictError(`Vendor with name '${body.name}' already exists`);
         }
         throw err;
       }
@@ -158,19 +152,13 @@ export function createVendorService(db: AppDb): VendorService {
      * Get vendor by ID with all models.
      */
     async getById(id: string) {
-      const [vendor] = await db
-        .select()
-        .from(vendors)
-        .where(eq(vendors.id, id));
+      const [vendor] = await db.select().from(vendors).where(eq(vendors.id, id));
 
       if (!vendor) {
         throw new NotFoundError("Vendor not found");
       }
 
-      const models = await db
-        .select()
-        .from(vendorModels)
-        .where(eq(vendorModels.vendorId, id));
+      const models = await db.select().from(vendorModels).where(eq(vendorModels.vendorId, id));
 
       return serializeVendor(vendor, models);
     },
@@ -181,10 +169,7 @@ export function createVendorService(db: AppDb): VendorService {
      */
     async update(id: string, body: UpdateVendorInput) {
       const result = await db.transaction(async (tx: AppTx) => {
-        const [vendor] = await tx
-          .select()
-          .from(vendors)
-          .where(eq(vendors.id, id));
+        const [vendor] = await tx.select().from(vendors).where(eq(vendors.id, id));
 
         if (!vendor) {
           throw new NotFoundError("Vendor not found");
@@ -212,10 +197,7 @@ export function createVendorService(db: AppDb): VendorService {
             .where(eq(vendorModels.vendorId, id));
         }
 
-        const models = await tx
-          .select()
-          .from(vendorModels)
-          .where(eq(vendorModels.vendorId, id));
+        const models = await tx.select().from(vendorModels).where(eq(vendorModels.vendorId, id));
 
         return { vendor: updated, models };
       });
@@ -227,10 +209,7 @@ export function createVendorService(db: AppDb): VendorService {
      * Hard delete a vendor (cascades to models via FK).
      */
     async delete(id: string) {
-      const [vendor] = await db
-        .select()
-        .from(vendors)
-        .where(eq(vendors.id, id));
+      const [vendor] = await db.select().from(vendors).where(eq(vendors.id, id));
 
       if (!vendor) {
         throw new NotFoundError("Vendor not found");
@@ -257,13 +236,12 @@ export function createVendorService(db: AppDb): VendorService {
         conditions.push(
           or(
             lt(vendors.updatedAt, cursorDate),
-            and(eq(vendors.updatedAt, cursorDate), lt(vendors.id, cursorId))
-          )!
+            and(eq(vendors.updatedAt, cursorDate), lt(vendors.id, cursorId)),
+          )!,
         );
       }
 
-      const whereClause =
-        conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
       const rows = await db
         .select()
@@ -293,14 +271,11 @@ export function createVendorService(db: AppDb): VendorService {
       }
 
       const serialized = items.map((vendor) =>
-        serializeVendor(vendor, modelsByVendor.get(vendor.id) ?? [])
+        serializeVendor(vendor, modelsByVendor.get(vendor.id) ?? []),
       );
 
       const nextCursor = hasMore
-        ? encodeCursor(
-            items[items.length - 1].updatedAt.getTime(),
-            items[items.length - 1].id
-          )
+        ? encodeCursor(items[items.length - 1].updatedAt.getTime(), items[items.length - 1].id)
         : null;
 
       return { items: serialized, nextCursor };
@@ -312,10 +287,7 @@ export function createVendorService(db: AppDb): VendorService {
      */
     async addModel(vendorId: string, body: CreateModelInput) {
       // Verify vendor exists
-      const [vendor] = await db
-        .select()
-        .from(vendors)
-        .where(eq(vendors.id, vendorId));
+      const [vendor] = await db.select().from(vendors).where(eq(vendors.id, vendorId));
 
       if (!vendor) {
         throw new NotFoundError("Vendor not found");
@@ -334,14 +306,8 @@ export function createVendorService(db: AppDb): VendorService {
         return serializeModel(model);
       } catch (err: unknown) {
         const { code: pgCode, message: msg } = getConstraintErrorDetails(err);
-        if (
-          pgCode === "23505" ||
-          msg.includes("unique") ||
-          msg.includes("duplicate")
-        ) {
-          throw new ConflictError(
-            `Model '${body.model_name}' already exists for this vendor`
-          );
+        if (pgCode === "23505" || msg.includes("unique") || msg.includes("duplicate")) {
+          throw new ConflictError(`Model '${body.model_name}' already exists for this vendor`);
         }
         throw err;
       }
@@ -354,12 +320,7 @@ export function createVendorService(db: AppDb): VendorService {
       const [model] = await db
         .select()
         .from(vendorModels)
-        .where(
-          and(
-            eq(vendorModels.id, modelId),
-            eq(vendorModels.vendorId, vendorId)
-          )
-        );
+        .where(and(eq(vendorModels.id, modelId), eq(vendorModels.vendorId, vendorId)));
 
       if (!model) {
         throw new NotFoundError("Model not found");
@@ -381,12 +342,7 @@ export function createVendorService(db: AppDb): VendorService {
       const [model] = await db
         .select()
         .from(vendorModels)
-        .where(
-          and(
-            eq(vendorModels.id, modelId),
-            eq(vendorModels.vendorId, vendorId)
-          )
-        );
+        .where(and(eq(vendorModels.id, modelId), eq(vendorModels.vendorId, vendorId)));
 
       if (!model) {
         throw new NotFoundError("Model not found");
@@ -400,10 +356,7 @@ export function createVendorService(db: AppDb): VendorService {
      */
     async listModels(vendorId: string) {
       // Verify vendor exists
-      const [vendor] = await db
-        .select()
-        .from(vendors)
-        .where(eq(vendors.id, vendorId));
+      const [vendor] = await db.select().from(vendors).where(eq(vendors.id, vendorId));
 
       if (!vendor) {
         throw new NotFoundError("Vendor not found");

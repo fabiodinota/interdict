@@ -13,28 +13,28 @@
  * to Phase 7 (requires a policy_scope_assignments join table).
  */
 
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
-import { join, resolve } from "node:path";
-import { readFileSync } from "node:fs";
-import { eq, and, max, inArray } from "drizzle-orm";
-import { policies, policyVersions, policyScopeAssignments } from "../../db/schema/policies";
+import { and, eq, inArray, max } from "drizzle-orm";
+import { policies, policyScopeAssignments, policyVersions } from "../../db/schema/policies";
+import type { AppDb } from "../../shared/types";
 import {
-  kernelTracker,
-  type PolicyUpdateMessage,
-  type PolicyEntryMessage,
-  type SubscribeRequestMessage,
   type AckRequestMessage,
   type AckResponseMessage,
+  kernelTracker,
+  type PolicyEntryMessage,
+  type PolicyUpdateMessage,
+  type SubscribeRequestMessage,
 } from "./tracker";
-import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
 // Proto Loading
 // ---------------------------------------------------------------------------
 
 const PROTO_PATH = resolve(
-  join(__dirname, "../../../../proto/interdict/policy/v1/policy_distribution.proto")
+  join(__dirname, "../../../../proto/interdict/policy/v1/policy_distribution.proto"),
 );
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
@@ -57,10 +57,9 @@ interface PolicyDistributionProtoDescriptor {
 }
 
 const protoDescriptor = grpc.loadPackageDefinition(
-  packageDefinition
+  packageDefinition,
 ) as unknown as PolicyDistributionProtoDescriptor;
-const PolicyDistributionService =
-  protoDescriptor.interdict.policy.v1.PolicyDistribution.service;
+const PolicyDistributionService = protoDescriptor.interdict.policy.v1.PolicyDistribution.service;
 
 // ---------------------------------------------------------------------------
 // Full Snapshot Builder
@@ -122,7 +121,7 @@ export async function buildFullSnapshot(
   db: AppDb,
   orgId: string,
   deptId: string,
-  teamId: string
+  teamId: string,
 ): Promise<PolicyUpdateMessage> {
   if (!orgId) throw new Error("orgId required for policy snapshot");
 
@@ -151,24 +150,20 @@ export async function buildFullSnapshot(
       policyVersions,
       and(
         eq(policyVersions.policyId, policies.id),
-        eq(policyVersions.id, policies.currentVersionId)
-      )
+        eq(policyVersions.id, policies.currentVersionId),
+      ),
     )
-    .where(
-      and(
-        eq(policies.isActive, true),
-        eq(policyVersions.compilationStatus, "compiled")
-      )
-    );
+    .where(and(eq(policies.isActive, true), eq(policyVersions.compilationStatus, "compiled")));
 
   // Bulk-load scope assignments for all active policies
   const policyIds = activePolicies.map((p) => p.policyId as string);
-  const scopeRows = policyIds.length > 0
-    ? await db
-        .select()
-        .from(policyScopeAssignments)
-        .where(inArray(policyScopeAssignments.policyId, policyIds))
-    : [];
+  const scopeRows =
+    policyIds.length > 0
+      ? await db
+          .select()
+          .from(policyScopeAssignments)
+          .where(inArray(policyScopeAssignments.policyId, policyIds))
+      : [];
 
   // Build policyId → scopes map
   const scopeMap = new Map<string, PolicyScopeEntry[]>();
@@ -180,7 +175,7 @@ export async function buildFullSnapshot(
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         console.warn(
-          `[distribution] Invalid vendorIds JSON for policy ${row.policyId}: ${message}`
+          `[distribution] Invalid vendorIds JSON for policy ${row.policyId}: ${message}`,
         );
       }
     }
@@ -199,17 +194,17 @@ export async function buildFullSnapshot(
 
   for (const row of activePolicies) {
     // Resolve scope — default to org-wide if no assignments exist
-    const scopes = scopeMap.get(row.policyId) ?? [{
-      orgId: orgId,  // default to requesting kernel's org
-      deptId: "",
-      teamId: "",
-      vendorIds: [],
-    }];
+    const scopes = scopeMap.get(row.policyId) ?? [
+      {
+        orgId: orgId, // default to requesting kernel's org
+        deptId: "",
+        teamId: "",
+        vendorIds: [],
+      },
+    ];
 
     // Phase 18: filter by kernel scope — include policy if ANY scope matches
-    const matchingScope = scopes.find((s) =>
-      scopeMatchesKernel(s, orgId, deptId, teamId)
-    );
+    const matchingScope = scopes.find((s) => scopeMatchesKernel(s, orgId, deptId, teamId));
     if (!matchingScope) continue; // policy not in this kernel's scope
 
     let wasmBytes = Buffer.alloc(0);
@@ -221,14 +216,12 @@ export async function buildFullSnapshot(
           wasmBytes = Buffer.from(await file.arrayBuffer());
         } else {
           console.warn(
-            `[distribution] Wasm file not found for policy ${row.policyId}: ${row.wasmPath}`
+            `[distribution] Wasm file not found for policy ${row.policyId}: ${row.wasmPath}`,
           );
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(
-          `[distribution] Failed to read wasm file for policy ${row.policyId}: ${msg}`
-        );
+        console.error(`[distribution] Failed to read wasm file for policy ${row.policyId}: ${msg}`);
       }
     }
 
@@ -279,9 +272,7 @@ function createSubscribeHandler(db: AppDb) {
     const teamId: string = request.team_id || "";
 
     if (!kernelId) {
-      call.destroy(
-        new Error("kernel_id is required in SubscribeRequest")
-      );
+      call.destroy(new Error("kernel_id is required in SubscribeRequest"));
       return;
     }
 
@@ -291,7 +282,7 @@ function createSubscribeHandler(db: AppDb) {
     }
 
     console.log(
-      `[distribution] Subscribe request from kernel ${kernelId} (version=${currentVersion}, org=${orgId})`
+      `[distribution] Subscribe request from kernel ${kernelId} (version=${currentVersion}, org=${orgId})`,
     );
 
     // Register the kernel in the tracker
@@ -303,19 +294,17 @@ function createSubscribeHandler(db: AppDb) {
         try {
           call.write(snapshot);
           console.log(
-            `[distribution] Full snapshot v${snapshot.version} sent to kernel ${kernelId} (${snapshot.policies.length} policies)`
+            `[distribution] Full snapshot v${snapshot.version} sent to kernel ${kernelId} (${snapshot.policies.length} policies)`,
           );
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
-          console.error(
-            `[distribution] Failed to send snapshot to kernel ${kernelId}: ${msg}`
-          );
+          console.error(`[distribution] Failed to send snapshot to kernel ${kernelId}: ${msg}`);
           kernelTracker.unregister(kernelId);
         }
       })
       .catch((err) => {
         console.error(
-          `[distribution] Failed to build snapshot for kernel ${kernelId}: ${err.message}`
+          `[distribution] Failed to build snapshot for kernel ${kernelId}: ${err.message}`,
         );
         kernelTracker.unregister(kernelId);
         call.destroy(err);
@@ -323,9 +312,7 @@ function createSubscribeHandler(db: AppDb) {
 
     // Handle client disconnect
     call.on("cancelled", () => {
-      console.log(
-        `[distribution] Kernel ${kernelId} cancelled subscription`
-      );
+      console.log(`[distribution] Kernel ${kernelId} cancelled subscription`);
       kernelTracker.unregister(kernelId);
     });
 
@@ -334,9 +321,7 @@ function createSubscribeHandler(db: AppDb) {
       if (err.message?.includes("CANCELLED")) {
         return; // Already handled by 'cancelled' event
       }
-      console.error(
-        `[distribution] Stream error for kernel ${kernelId}: ${err.message}`
-      );
+      console.error(`[distribution] Stream error for kernel ${kernelId}: ${err.message}`);
       kernelTracker.unregister(kernelId);
     });
 
@@ -352,7 +337,7 @@ function createSubscribeHandler(db: AppDb) {
 function createAcknowledgeHandler() {
   return (
     call: grpc.ServerUnaryCall<AckRequestMessage, AckResponseMessage>,
-    callback: grpc.sendUnaryData<AckResponseMessage>
+    callback: grpc.sendUnaryData<AckResponseMessage>,
   ) => {
     const request = call.request;
     const kernelId: string = request.kernel_id || "";
@@ -379,7 +364,7 @@ function createAcknowledgeHandler() {
 export function startDistributionServer(
   db: AppDb,
   grpcPort: number,
-  maxMessageSize: number
+  maxMessageSize: number,
 ): grpc.Server {
   const server = new grpc.Server({
     "grpc.max_receive_message_length": maxMessageSize,
@@ -404,7 +389,7 @@ export function startDistributionServer(
 
     if (!caCertPath || !certPath || !keyPath) {
       throw new Error(
-        "[distribution] MTLS_ENABLED=true but MTLS_CA_CERT_PATH, MTLS_CERT_PATH, or MTLS_KEY_PATH is missing"
+        "[distribution] MTLS_ENABLED=true but MTLS_CA_CERT_PATH, MTLS_CERT_PATH, or MTLS_KEY_PATH is missing",
       );
     }
 
@@ -415,35 +400,25 @@ export function startDistributionServer(
     credentials = grpc.ServerCredentials.createSsl(
       caCert,
       [{ cert_chain: serverCert, private_key: serverKey }],
-      true // checkClientCertificate
+      true, // checkClientCertificate
     );
 
     console.log("[distribution] mTLS enabled: requiring client certificates for gRPC connections");
   } else {
     if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        "[distribution] mTLS is required in production. Set MTLS_ENABLED=true."
-      );
+      throw new Error("[distribution] mTLS is required in production. Set MTLS_ENABLED=true.");
     }
     credentials = grpc.ServerCredentials.createInsecure();
     console.warn("[distribution] WARNING: insecure gRPC transport active — dev only");
   }
 
-  server.bindAsync(
-    bindAddress,
-    credentials,
-    (err, port) => {
-      if (err) {
-        console.error(
-          `[distribution] Failed to bind gRPC server on ${bindAddress}: ${err.message}`
-        );
-        throw err;
-      }
-      console.log(
-        `[distribution] gRPC distribution server bound to port ${port}`
-      );
+  server.bindAsync(bindAddress, credentials, (err, port) => {
+    if (err) {
+      console.error(`[distribution] Failed to bind gRPC server on ${bindAddress}: ${err.message}`);
+      throw err;
     }
-  );
+    console.log(`[distribution] gRPC distribution server bound to port ${port}`);
+  });
 
   return server;
 }
@@ -457,9 +432,7 @@ export function stopDistributionServer(server: grpc.Server): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     server.tryShutdown((err) => {
       if (err) {
-        console.error(
-          `[distribution] Error during gRPC server shutdown: ${err.message}`
-        );
+        console.error(`[distribution] Error during gRPC server shutdown: ${err.message}`);
         reject(err);
       } else {
         console.log("[distribution] gRPC distribution server stopped");

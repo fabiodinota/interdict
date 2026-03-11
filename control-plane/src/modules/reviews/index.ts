@@ -15,17 +15,13 @@
  */
 
 import { Elysia, t } from "elysia";
-import { ReviewService } from "./service";
-import { ReviewQueueParams, ResolveReviewBody } from "./model";
-import {
-  apiResponse,
-  ConflictError,
-  NotFoundError,
-} from "../../shared/utilities";
-import type { AppStore, RouteContext } from "../../shared/types";
-import { authPlugin } from "../auth/middleware";
-import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
+import { db as pgDb } from "../../db/postgres";
+import type { AppStore, RouteContext } from "../../shared/types";
+import { apiResponse, ConflictError, NotFoundError } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
+import { ResolveReviewBody, ReviewQueueParams } from "./model";
+import { ReviewService } from "./service";
 
 type ReviewRouteContext<
   TBody = unknown,
@@ -76,7 +72,7 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
 
       const { bundle_id, escalated_at, source } = routeCtx.body;
       const escalatedDate = new Date(escalated_at);
-      if (isNaN(escalatedDate.getTime())) {
+      if (Number.isNaN(escalatedDate.getTime())) {
         routeCtx.set.status = 400;
         return { success: false, error: "Invalid escalated_at timestamp" };
       }
@@ -84,7 +80,7 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
       const result = await routeCtx.reviewService.createReviewItem(
         bundle_id,
         escalatedDate,
-        source ?? "kernel_l3"
+        source ?? "kernel_l3",
       );
 
       routeCtx.set.status = result.created ? 201 : 200;
@@ -101,14 +97,9 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
       body: t.Object({
         bundle_id: t.String({ minLength: 1 }),
         escalated_at: t.String(),
-        source: t.Optional(
-          t.Union([
-            t.Literal("kernel_l3"),
-            t.Literal("session_pattern"),
-          ])
-        ),
+        source: t.Optional(t.Union([t.Literal("kernel_l3"), t.Literal("session_pattern")])),
       }),
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -129,7 +120,7 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
       const result = await routeCtx.reviewService.getQueue(
         statusFilter,
         routeCtx.query.cursor,
-        pageSize
+        pageSize,
       );
 
       return {
@@ -145,7 +136,7 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
     {
       auth: ["compliance_officer"],
       query: ReviewQueueParams,
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -154,7 +145,11 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
   .get(
     "/:id",
     async (ctx) => {
-      const routeCtx = ctx as unknown as ReviewRouteContext<unknown, Record<string, string | undefined>, { id: string }>;
+      const routeCtx = ctx as unknown as ReviewRouteContext<
+        unknown,
+        Record<string, string | undefined>,
+        { id: string }
+      >;
       const item = await routeCtx.reviewService.getReviewById(routeCtx.params.id);
       if (!item) {
         throw new NotFoundError("Review item not found");
@@ -163,7 +158,7 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
     },
     {
       auth: ["compliance_officer"],
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -172,23 +167,22 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
   .post(
     "/:id/claim",
     async (ctx) => {
-      const routeCtx = ctx as unknown as ReviewRouteContext<unknown, Record<string, string | undefined>, { id: string }>;
-      const item = await routeCtx.reviewService.claimReview(
-        routeCtx.params.id,
-        routeCtx.user.id
-      );
+      const routeCtx = ctx as unknown as ReviewRouteContext<
+        unknown,
+        Record<string, string | undefined>,
+        { id: string }
+      >;
+      const item = await routeCtx.reviewService.claimReview(routeCtx.params.id, routeCtx.user.id);
 
       if (!item) {
-        throw new ConflictError(
-          "Review item already claimed by another reviewer or not found"
-        );
+        throw new ConflictError("Review item already claimed by another reviewer or not found");
       }
 
       return apiResponse(item);
     },
     {
       auth: ["compliance_officer"],
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -206,13 +200,11 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
         routeCtx.params.id,
         routeCtx.user.id,
         routeCtx.body.resolution,
-        routeCtx.body.resolution_notes
+        routeCtx.body.resolution_notes,
       );
 
       if (!item) {
-        throw new NotFoundError(
-          "Review item not found or not claimed by you"
-        );
+        throw new NotFoundError("Review item not found or not claimed by you");
       }
 
       return apiResponse(item);
@@ -220,5 +212,5 @@ export const reviewsModule = new Elysia({ prefix: "/api/v1/reviews" })
     {
       auth: ["compliance_officer"],
       body: ResolveReviewBody,
-    }
+    },
   );

@@ -56,7 +56,7 @@ export interface TopicDriftRow {
  */
 export async function queryVolumeAnomalies(
   client: ClickHouseClient,
-  thresholdRatio: number = 1.2
+  thresholdRatio: number = 1.2,
 ): Promise<VolumeAnomalyRow[]> {
   const query = `
     WITH baseline AS (
@@ -118,7 +118,7 @@ export async function queryVolumeAnomalies(
 export async function queryOffHoursUsage(
   client: ClickHouseClient,
   businessStart: number = 6,
-  businessEnd: number = 22
+  businessEnd: number = 22,
 ): Promise<OffHoursRow[]> {
   const query = `
     WITH historical AS (
@@ -176,9 +176,7 @@ export async function queryOffHoursUsage(
  * Find users who switched to a different vendor than their dominant one.
  * Dominant vendor = the one handling >80% of requests over past 30 days.
  */
-export async function queryVendorSwitching(
-  client: ClickHouseClient
-): Promise<VendorSwitchRow[]> {
+export async function queryVendorSwitching(client: ClickHouseClient): Promise<VendorSwitchRow[]> {
   const query = `
     WITH vendor_counts AS (
       SELECT
@@ -241,9 +239,7 @@ export async function queryVendorSwitching(
  * IMPORTANT: Only returns counts of unique hashes, never the hash values
  * themselves (Invariant #6 compliance).
  */
-export async function queryTopicDrift(
-  client: ClickHouseClient
-): Promise<TopicDriftRow[]> {
+export async function queryTopicDrift(client: ClickHouseClient): Promise<TopicDriftRow[]> {
   const query = `
     WITH baseline AS (
       SELECT

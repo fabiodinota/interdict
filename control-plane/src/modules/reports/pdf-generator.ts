@@ -126,7 +126,7 @@ function addFooter(doc: PDFKit.PDFDocument, data: ReportData, pageNum: number) {
       `Report period: ${formatDate(data.dateRange.from)} - ${formatDate(data.dateRange.to)}`,
       PAGE_MARGIN,
       y,
-      { width: CONTENT_WIDTH / 2 }
+      { width: CONTENT_WIDTH / 2 },
     )
     .text(`Page ${pageNum}`, PAGE_MARGIN + CONTENT_WIDTH / 2, y, {
       width: CONTENT_WIDTH / 2,
@@ -170,7 +170,7 @@ function tableRow(
   doc: PDFKit.PDFDocument,
   columns: Array<{ text: string; width: number; align?: "left" | "right" | "center" }>,
   y: number,
-  bold: boolean = false
+  bold: boolean = false,
 ) {
   let x = PAGE_MARGIN;
   for (const col of columns) {
@@ -217,10 +217,9 @@ function renderCoverPage(doc: PDFKit.PDFDocument, data: ReportData) {
   doc
     .fontSize(14)
     .fillColor(COLORS.muted)
-    .text(
-      `${formatDate(data.dateRange.from)} - ${formatDate(data.dateRange.to)}`,
-      { align: "center" }
-    )
+    .text(`${formatDate(data.dateRange.from)} - ${formatDate(data.dateRange.to)}`, {
+      align: "center",
+    })
     .moveDown(0.5);
 
   doc
@@ -237,10 +236,10 @@ function renderWarnings(doc: PDFKit.PDFDocument, data: ReportData) {
     .fillColor(COLORS.red)
     .text(
       "The following report sections could not be loaded. " +
-      "Data shown as unavailable may indicate a backend connectivity issue.",
+        "Data shown as unavailable may indicate a backend connectivity issue.",
       PAGE_MARGIN,
       doc.y,
-      { width: CONTENT_WIDTH }
+      { width: CONTENT_WIDTH },
     )
     .moveDown(1);
 
@@ -277,11 +276,7 @@ function renderExecutiveSummary(doc: PDFKit.PDFDocument, data: ReportData) {
   const startY = doc.y;
 
   for (const kpi of kpis) {
-    doc
-      .save()
-      .roundedRect(x, startY, boxWidth, 60, 4)
-      .fill(COLORS.light)
-      .restore();
+    doc.save().roundedRect(x, startY, boxWidth, 60, 4).fill(COLORS.light).restore();
 
     doc
       .fontSize(20)
@@ -300,11 +295,7 @@ function renderExecutiveSummary(doc: PDFKit.PDFDocument, data: ReportData) {
   doc.moveDown(1);
 
   // Key findings
-  doc
-    .fontSize(12)
-    .fillColor(COLORS.primary)
-    .text("Key Findings", PAGE_MARGIN)
-    .moveDown(0.3);
+  doc.fontSize(12).fillColor(COLORS.primary).text("Key Findings", PAGE_MARGIN).moveDown(0.3);
 
   const violationRate =
     data.summary.totalRequests > 0
@@ -359,7 +350,7 @@ function renderViolationsByType(doc: PDFKit.PDFDocument, data: ReportData) {
         { text: row.count.toLocaleString(), width: 150, align: "right" },
         { text: `${pct}%`, width: 145, align: "right" },
       ],
-      doc.y
+      doc.y,
     );
     doc.moveDown(0.5);
   }
@@ -384,7 +375,7 @@ function renderViolationsByDepartment(doc: PDFKit.PDFDocument, data: ReportData)
       { text: "Violations", width: 195, align: "right" },
     ],
     doc.y,
-    true
+    true,
   );
   doc.moveDown(0.6);
 
@@ -396,7 +387,7 @@ function renderViolationsByDepartment(doc: PDFKit.PDFDocument, data: ReportData)
         { text: row.department || "Unknown", width: 300 },
         { text: row.count.toLocaleString(), width: 195, align: "right" },
       ],
-      doc.y
+      doc.y,
     );
     doc.moveDown(0.5);
   }
@@ -421,7 +412,7 @@ function renderViolationsByVendor(doc: PDFKit.PDFDocument, data: ReportData) {
       { text: "Violations", width: 195, align: "right" },
     ],
     doc.y,
-    true
+    true,
   );
   doc.moveDown(0.6);
 
@@ -433,7 +424,7 @@ function renderViolationsByVendor(doc: PDFKit.PDFDocument, data: ReportData) {
         { text: row.vendor, width: 300 },
         { text: row.count.toLocaleString(), width: 195, align: "right" },
       ],
-      doc.y
+      doc.y,
     );
     doc.moveDown(0.5);
   }
@@ -470,7 +461,7 @@ function renderTopIncidents(doc: PDFKit.PDFDocument, data: ReportData) {
         { text: incident.action, width: 60 },
         { text: incident.tokenCount.toLocaleString(), width: 65, align: "right" },
       ],
-      doc.y
+      doc.y,
     );
     doc.moveDown(0.5);
   }
@@ -493,7 +484,7 @@ function renderActivePolicies(doc: PDFKit.PDFDocument, data: ReportData) {
       { text: "Compilation", width: 175, align: "center" },
     ],
     doc.y,
-    true
+    true,
   );
   doc.moveDown(0.6);
 
@@ -506,7 +497,7 @@ function renderActivePolicies(doc: PDFKit.PDFDocument, data: ReportData) {
         { text: p.enabled ? "Yes" : "No", width: 100, align: "center" },
         { text: p.compilationStatus ?? "N/A", width: 175, align: "center" },
       ],
-      doc.y
+      doc.y,
     );
     doc.moveDown(0.5);
   }
@@ -532,7 +523,7 @@ function renderVendorStatus(doc: PDFKit.PDFDocument, data: ReportData) {
       { text: "Models", width: 195, align: "right" },
     ],
     doc.y,
-    true
+    true,
   );
   doc.moveDown(0.6);
 
@@ -545,7 +536,7 @@ function renderVendorStatus(doc: PDFKit.PDFDocument, data: ReportData) {
         { text: v.status, width: 100, align: "center" },
         { text: v.modelCount.toString(), width: 195, align: "right" },
       ],
-      doc.y
+      doc.y,
     );
     doc.moveDown(0.5);
   }
@@ -570,7 +561,7 @@ function renderRegulatoryCompliance(doc: PDFKit.PDFDocument, data: ReportData) {
       { text: "Active Policies", width: 145, align: "right" },
     ],
     doc.y,
-    true
+    true,
   );
   doc.moveDown(0.6);
 
@@ -583,7 +574,7 @@ function renderRegulatoryCompliance(doc: PDFKit.PDFDocument, data: ReportData) {
         { text: fw.jurisdiction ?? "Global", width: 150 },
         { text: fw.activePolicyCount.toString(), width: 145, align: "right" },
       ],
-      doc.y
+      doc.y,
     );
     doc.moveDown(0.5);
   }

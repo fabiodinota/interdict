@@ -5,32 +5,34 @@
  * This is the single import point for Drizzle ORM schema access.
  */
 
+// Auth (API keys, sessions, user-department membership, role permissions, SAML handoff codes)
+export {
+  apiKeys,
+  rolePermissions,
+  samlHandoffCodes,
+  sessions,
+  signingKeys,
+  userDepartments,
+} from "./auth";
+// Department policy overrides
+export { departmentPolicyOverrides } from "./department-overrides";
+// Organization
+export { departments, teams, users } from "./organization";
 // Policies
 export {
   compilationStatusEnum,
   policies,
-  policyVersions,
   policyScopeAssignments,
+  policyVersions,
 } from "./policies";
-
-// Vendors
-export { vendors, vendorModels } from "./vendors";
-
 // Regulatory frameworks
 export {
-  frameworks,
-  frameworkPolicies,
   frameworkActivations,
+  frameworkPolicies,
+  frameworks,
 } from "./regulatory";
-
-// Organization
-export { departments, teams, users } from "./organization";
-
-// Auth (API keys, sessions, user-department membership, role permissions, SAML handoff codes)
-export { apiKeys, userDepartments, rolePermissions, sessions, signingKeys, samlHandoffCodes } from "./auth";
 
 // Reviews (human review queue for Layer 3 escalations)
 export { reviewItems } from "./reviews";
-
-// Department policy overrides
-export { departmentPolicyOverrides } from "./department-overrides";
+// Vendors
+export { vendorModels, vendors } from "./vendors";

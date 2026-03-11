@@ -7,26 +7,23 @@
 
 import { Elysia } from "elysia";
 import { getConfig } from "./config";
-import { db } from "./db/postgres";
 import { clickhouse } from "./db/clickhouse";
-import { authPlugin } from "./modules/auth/middleware";
+import { db } from "./db/postgres";
+import { anomaliesModule } from "./modules/anomalies";
+import { auditModule } from "./modules/audit";
 import { authModule } from "./modules/auth";
-import { policiesModule } from "./modules/policies";
+import { authPlugin } from "./modules/auth/middleware";
 import { compilerModule } from "./modules/compiler";
 import { startCompilationWorker } from "./modules/compiler/worker";
-import { vendorsModule } from "./modules/vendors";
-import { regulatoryModule } from "./modules/regulatory";
-import { auditModule } from "./modules/audit";
-import { reportsModule } from "./modules/reports";
-import { signingKeysModule } from "./modules/signing-keys";
-import { evidenceModule } from "./modules/evidence";
-import { reviewsModule } from "./modules/reviews";
 import { departmentOverridesModule } from "./modules/department-overrides";
-import { anomaliesModule } from "./modules/anomalies";
-import {
-  startDistributionServer,
-  stopDistributionServer,
-} from "./modules/distribution";
+import { startDistributionServer, stopDistributionServer } from "./modules/distribution";
+import { evidenceModule } from "./modules/evidence";
+import { policiesModule } from "./modules/policies";
+import { regulatoryModule } from "./modules/regulatory";
+import { reportsModule } from "./modules/reports";
+import { reviewsModule } from "./modules/reviews";
+import { signingKeysModule } from "./modules/signing-keys";
+import { vendorsModule } from "./modules/vendors";
 
 const config = getConfig();
 
@@ -121,21 +118,13 @@ const app = new Elysia()
   .listen(config.port);
 
 // Start gRPC distribution server for pushing policy updates to kernels
-const grpcServer = startDistributionServer(
-  db,
-  config.grpcPort,
-  config.grpcMaxMessageSize
-);
-console.log(
-  `[control-plane] gRPC distribution server running on port ${config.grpcPort}`
-);
+const grpcServer = startDistributionServer(db, config.grpcPort, config.grpcMaxMessageSize);
+console.log(`[control-plane] gRPC distribution server running on port ${config.grpcPort}`);
 
 // Start the background compilation worker
 startCompilationWorker(db, config.wasmStorageDir);
 
-console.log(
-  `[control-plane] Interdict Control Plane running on port ${config.port}`
-);
+console.log(`[control-plane] Interdict Control Plane running on port ${config.port}`);
 console.log(`[control-plane] Modules loaded: ${MODULES.join(", ")}`);
 
 // Graceful shutdown: stop gRPC server on process exit
@@ -145,9 +134,7 @@ const shutdown = async (signal: string) => {
     await stopDistributionServer(grpcServer);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(
-      `[control-plane] Error stopping gRPC server: ${msg}`
-    );
+    console.error(`[control-plane] Error stopping gRPC server: ${msg}`);
   }
   process.exit(0);
 };

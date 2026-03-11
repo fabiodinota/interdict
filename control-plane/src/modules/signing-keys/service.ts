@@ -9,15 +9,13 @@
  * NEVER returned over the network or stored in the database.
  */
 
-import { createHash } from "crypto";
-import { writeFileSync, mkdirSync } from "fs";
-import { dirname } from "path";
-import { eq, desc } from "drizzle-orm";
+// ed25519 keypair generation via Node/Bun crypto
+import { createHash, generateKeyPairSync } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { desc, eq } from "drizzle-orm";
 import { signingKeys } from "../../db/schema/auth";
 import type { AppDb, AppTx } from "../../shared/types";
-
-// ed25519 keypair generation via Node/Bun crypto
-import { generateKeyPairSync } from "crypto";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -75,10 +73,7 @@ export function createSigningKeysService(db: AppDb): SigningKeysService {
      * List all signing keys ordered by creation date (newest first).
      */
     async listKeys(): Promise<SigningKeyInfo[]> {
-      const rows = await db
-        .select()
-        .from(signingKeys)
-        .orderBy(desc(signingKeys.createdAt));
+      const rows = await db.select().from(signingKeys).orderBy(desc(signingKeys.createdAt));
       return rows.map(serializeKey);
     },
 
@@ -86,10 +81,7 @@ export function createSigningKeysService(db: AppDb): SigningKeysService {
      * Get the currently active signing key, or null if none.
      */
     async getActiveKey(): Promise<SigningKeyInfo | null> {
-      const [row] = await db
-        .select()
-        .from(signingKeys)
-        .where(eq(signingKeys.isActive, true));
+      const [row] = await db.select().from(signingKeys).where(eq(signingKeys.isActive, true));
       return row ? serializeKey(row) : null;
     },
 
@@ -162,9 +154,7 @@ export function createSigningKeysService(db: AppDb): SigningKeysService {
           privateKeyWrittenTo = outputPath;
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
-          console.error(
-            `[signing-keys] Failed to write private key to ${outputPath}: ${message}`
-          );
+          console.error(`[signing-keys] Failed to write private key to ${outputPath}: ${message}`);
           // Key is still registered in DB; operator can manually extract
         }
       }
@@ -180,10 +170,7 @@ export function createSigningKeysService(db: AppDb): SigningKeysService {
      * Register an externally generated key (e.g., dev-mode ephemeral key).
      * Only stores public key material.
      */
-    async registerExistingKey(
-      keyId: string,
-      publicKeyHex: string
-    ): Promise<SigningKeyInfo> {
+    async registerExistingKey(keyId: string, publicKeyHex: string): Promise<SigningKeyInfo> {
       const now = new Date();
 
       const [row] = await db
@@ -199,10 +186,7 @@ export function createSigningKeysService(db: AppDb): SigningKeysService {
 
       // If key already exists (conflict), fetch it
       if (!row) {
-        const [existing] = await db
-          .select()
-          .from(signingKeys)
-          .where(eq(signingKeys.keyId, keyId));
+        const [existing] = await db.select().from(signingKeys).where(eq(signingKeys.keyId, keyId));
         return serializeKey(existing);
       }
 

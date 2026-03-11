@@ -5,7 +5,7 @@
  * Uses mock database layer to avoid PostgreSQL dependency in unit tests.
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 
 // Mock database layer for vendor testing
 function createMockVendorDb() {
@@ -54,7 +54,7 @@ function createMockVendorDb() {
 
     updateVendor(
       id: string,
-      data: { displayName?: string; status?: string; baseUrl?: string; description?: string }
+      data: { displayName?: string; status?: string; baseUrl?: string; description?: string },
     ) {
       const vendor = vendors.get(id);
       if (!vendor) return null;
@@ -171,8 +171,8 @@ describe("VendorService", () => {
     const models = mockDb.listModels(vendor.id);
     const gpt4 = models.find((m: any) => m.modelName === "gpt-4");
     const gpt35 = models.find((m: any) => m.modelName === "gpt-3.5");
-    expect(gpt4!.status).toBe("blocked");
-    expect(gpt35!.status).toBe("approved");
+    expect(gpt4?.status).toBe("blocked");
+    expect(gpt35?.status).toBe("approved");
   });
 
   test("listing vendors includes their models with status", () => {
@@ -222,9 +222,9 @@ describe("VendorService", () => {
     const mockDb = createMockVendorDb();
     mockDb.insertVendor({ name: "openai", displayName: "OpenAI" });
 
-    expect(() =>
-      mockDb.insertVendor({ name: "openai", displayName: "OpenAI 2" })
-    ).toThrow("CONFLICT");
+    expect(() => mockDb.insertVendor({ name: "openai", displayName: "OpenAI 2" })).toThrow(
+      "CONFLICT",
+    );
   });
 
   test("duplicate model name within same vendor returns conflict error", () => {
@@ -235,9 +235,7 @@ describe("VendorService", () => {
     });
     mockDb.addModel(vendor.id, { modelName: "gpt-4" });
 
-    expect(() =>
-      mockDb.addModel(vendor.id, { modelName: "gpt-4" })
-    ).toThrow("CONFLICT");
+    expect(() => mockDb.addModel(vendor.id, { modelName: "gpt-4" })).toThrow("CONFLICT");
   });
 });
 

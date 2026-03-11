@@ -84,11 +84,7 @@ export function apiResponse<T>(data: T, meta?: Record<string, unknown>) {
 }
 
 /** Paginated success response with cursor */
-export function paginatedResponse<T>(
-  items: T[],
-  nextCursor: string | null,
-  total?: number
-) {
+export function paginatedResponse<T>(items: T[], nextCursor: string | null, total?: number) {
   return {
     success: true as const,
     data: {
@@ -100,11 +96,7 @@ export function paginatedResponse<T>(
 }
 
 /** Standard error response */
-export function apiError(
-  code: string,
-  message: string,
-  details?: unknown
-) {
+export function apiError(code: string, message: string, details?: unknown) {
   return {
     success: false as const,
     error: {
@@ -149,7 +141,7 @@ export function decodeCursor(cursor: string): {
     }
     const timestamp = parseInt(decoded.substring(0, separatorIndex), 10);
     const id = decoded.substring(separatorIndex + 1);
-    if (isNaN(timestamp) || !id) {
+    if (Number.isNaN(timestamp) || !id) {
       throw new Error("Invalid cursor components");
     }
     return { timestamp, id };

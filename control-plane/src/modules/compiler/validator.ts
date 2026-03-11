@@ -25,9 +25,7 @@ export interface ValidationResult {
  * Writes Rego to a temp file, runs `opa check --strict --format json`,
  * and parses the output into structured errors.
  */
-export async function validateRego(
-  regoSource: string
-): Promise<ValidationResult> {
+export async function validateRego(regoSource: string): Promise<ValidationResult> {
   // Empty source is always invalid
   if (!regoSource || regoSource.trim().length === 0) {
     return {
@@ -41,9 +39,7 @@ export async function validateRego(
   try {
     await Bun.write(tmpFile, regoSource);
 
-    const result = await $`opa check --strict --format json ${tmpFile}`
-      .quiet()
-      .nothrow();
+    const result = await $`opa check --strict --format json ${tmpFile}`.quiet().nothrow();
 
     if (result.exitCode === 0) {
       return { valid: true };
@@ -59,9 +55,7 @@ export async function validateRego(
     if (!output) {
       return {
         valid: false,
-        errors: [
-          { message: "OPA check failed with no output (exit code: " + result.exitCode + ")" },
-        ],
+        errors: [{ message: `OPA check failed with no output (exit code: ${result.exitCode})` }],
       };
     }
 
@@ -81,18 +75,9 @@ export async function validateRego(
                 : {};
 
             return {
-              message:
-                typeof record.message === "string"
-                  ? record.message
-                  : String(error),
-              line:
-                typeof record.location?.row === "number"
-                  ? record.location.row
-                  : undefined,
-              column:
-                typeof record.location?.col === "number"
-                  ? record.location.col
-                  : undefined,
+              message: typeof record.message === "string" ? record.message : String(error),
+              line: typeof record.location?.row === "number" ? record.location.row : undefined,
+              column: typeof record.location?.col === "number" ? record.location.col : undefined,
             };
           }),
         };
@@ -109,7 +94,7 @@ export async function validateRego(
       // Strip temp file paths from error messages for cleaner output
       const cleanedOutput = output.replace(
         new RegExp(tmpFile.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
-        "<input>"
+        "<input>",
       );
       return {
         valid: false,

@@ -8,15 +8,15 @@
  * and result handling without requiring a running ClickHouse instance.
  */
 
-import { describe, test, expect, beforeEach, mock } from "bun:test";
-import {
-  queryAuditTrail,
-  queryHourlyViolations,
-  queryVendorUsage,
-  queryDepartmentSummary,
-} from "./queries";
+import { describe, expect, mock, test } from "bun:test";
 import { encodeCursor } from "../../shared/utilities";
 import type { ClickHouseAuditRow } from "./model";
+import {
+  queryAuditTrail,
+  queryDepartmentSummary,
+  queryHourlyViolations,
+  queryVendorUsage,
+} from "./queries";
 
 // ---------------------------------------------------------------------------
 // Mock ClickHouse client
@@ -53,12 +53,14 @@ function createMockClient(rows: ClickHouseAuditRow[] = []) {
   const queryCalls: Array<{ query: string; query_params: Record<string, unknown> }> = [];
 
   const client = {
-    query: mock(async (opts: { query: string; format: string; query_params: Record<string, unknown> }) => {
-      queryCalls.push({ query: opts.query, query_params: opts.query_params });
-      return {
-        json: async () => rows,
-      };
-    }),
+    query: mock(
+      async (opts: { query: string; format: string; query_params: Record<string, unknown> }) => {
+        queryCalls.push({ query: opts.query, query_params: opts.query_params });
+        return {
+          json: async () => rows,
+        };
+      },
+    ),
   };
 
   return { client: client as any, queryCalls };
@@ -74,7 +76,7 @@ describe("queryAuditTrail", () => {
       makeRow({
         bundle_id: `bundle-${String(i).padStart(3, "0")}`,
         timestamp: new Date(2026, 1, 28, 12, 0, i).toISOString(),
-      })
+      }),
     );
     const { client, queryCalls } = createMockClient(rows);
 
@@ -172,15 +174,27 @@ describe("queryAuditTrail", () => {
 describe("queryHourlyViolations", () => {
   test("returns aggregated hourly data from materialized view", async () => {
     const mockRows = [
-      { hour: "2026-02-28T12:00:00Z", policy_action: "block", violation_count: 5, unique_actors: 3, unique_vendors: 2 },
-      { hour: "2026-02-28T13:00:00Z", policy_action: "block", violation_count: 2, unique_actors: 1, unique_vendors: 1 },
+      {
+        hour: "2026-02-28T12:00:00Z",
+        policy_action: "block",
+        violation_count: 5,
+        unique_actors: 3,
+        unique_vendors: 2,
+      },
+      {
+        hour: "2026-02-28T13:00:00Z",
+        policy_action: "block",
+        violation_count: 2,
+        unique_actors: 1,
+        unique_vendors: 1,
+      },
     ];
     const { client, queryCalls } = createMockClient(mockRows as any);
 
     const result = await queryHourlyViolations(
       client,
       "2026-02-28T00:00:00Z",
-      "2026-02-28T23:59:59Z"
+      "2026-02-28T23:59:59Z",
     );
 
     expect(result).toHaveLength(2);
@@ -194,15 +208,18 @@ describe("queryHourlyViolations", () => {
 describe("queryVendorUsage", () => {
   test("returns per-vendor per-model usage stats", async () => {
     const mockRows = [
-      { hour: "2026-02-28T12:00:00Z", vendor: "openai", model: "gpt-4", request_count: 100, total_tokens: 50000, avg_latency_us: 450 },
+      {
+        hour: "2026-02-28T12:00:00Z",
+        vendor: "openai",
+        model: "gpt-4",
+        request_count: 100,
+        total_tokens: 50000,
+        avg_latency_us: 450,
+      },
     ];
     const { client, queryCalls } = createMockClient(mockRows as any);
 
-    const result = await queryVendorUsage(
-      client,
-      "2026-02-28T00:00:00Z",
-      "2026-02-28T23:59:59Z"
-    );
+    const result = await queryVendorUsage(client, "2026-02-28T00:00:00Z", "2026-02-28T23:59:59Z");
 
     expect(result).toHaveLength(1);
     expect(queryCalls[0].query).toContain("mv_vendor_usage");
@@ -212,12 +229,7 @@ describe("queryVendorUsage", () => {
   test("with vendor filter includes vendor param", async () => {
     const { client, queryCalls } = createMockClient([]);
 
-    await queryVendorUsage(
-      client,
-      "2026-02-28T00:00:00Z",
-      "2026-02-28T23:59:59Z",
-      "openai"
-    );
+    await queryVendorUsage(client, "2026-02-28T00:00:00Z", "2026-02-28T23:59:59Z", "openai");
 
     expect(queryCalls[0].query).toContain("{vendor:String}");
     expect(queryCalls[0].query_params.vendor).toBe("openai");
@@ -227,14 +239,20 @@ describe("queryVendorUsage", () => {
 describe("queryDepartmentSummary", () => {
   test("returns per-department per-action counts", async () => {
     const mockRows = [
-      { hour: "2026-02-28T12:00:00Z", department: "engineering", policy_action: "allow", action_count: 50, unique_actors: 10 },
+      {
+        hour: "2026-02-28T12:00:00Z",
+        department: "engineering",
+        policy_action: "allow",
+        action_count: 50,
+        unique_actors: 10,
+      },
     ];
     const { client, queryCalls } = createMockClient(mockRows as any);
 
     const result = await queryDepartmentSummary(
       client,
       "2026-02-28T00:00:00Z",
-      "2026-02-28T23:59:59Z"
+      "2026-02-28T23:59:59Z",
     );
 
     expect(result).toHaveLength(1);
@@ -249,7 +267,7 @@ describe("queryDepartmentSummary", () => {
       client,
       "2026-02-28T00:00:00Z",
       "2026-02-28T23:59:59Z",
-      "engineering"
+      "engineering",
     );
 
     expect(queryCalls[0].query).toContain("{department:String}");

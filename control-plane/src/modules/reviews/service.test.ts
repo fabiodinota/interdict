@@ -11,9 +11,9 @@
  * - Queue stats aggregation
  */
 
-import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { ReviewService } from "./service";
+import { beforeEach, describe, expect, test } from "bun:test";
 import type { AppDb } from "../../shared/types";
+import { ReviewService } from "./service";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -33,13 +33,16 @@ function createMockDb() {
       where: () => chain,
       orderBy: () => chain,
       limit: () => Promise.resolve(selectResult),
-      set: (data: any) => { updatedRows.push(data); return chain; },
+      set: (data: any) => {
+        updatedRows.push(data);
+        return chain;
+      },
       values: (rows: any) => {
         if (Array.isArray(rows)) insertedRows.push(...rows);
         else insertedRows.push(rows);
         return chain;
       },
-      returning: (cols?: any) => {
+      returning: (_cols?: any) => {
         if (conflictBehavior === "skip" && returningResult.length === 0) {
           return Promise.resolve([]);
         }
@@ -57,9 +60,15 @@ function createMockDb() {
     select: () => chainable(),
     insert: () => chainable(),
     update: () => chainable(),
-    _setSelectResult: (rows: any[]) => { selectResult = rows; },
-    _setReturningResult: (rows: any[]) => { returningResult = rows; },
-    _setConflictBehavior: (b: "insert" | "skip") => { conflictBehavior = b; },
+    _setSelectResult: (rows: any[]) => {
+      selectResult = rows;
+    },
+    _setReturningResult: (rows: any[]) => {
+      returningResult = rows;
+    },
+    _setConflictBehavior: (b: "insert" | "skip") => {
+      conflictBehavior = b;
+    },
     _insertedRows: insertedRows,
     _updatedRows: updatedRows,
   };
@@ -100,11 +109,7 @@ describe("ReviewService", () => {
 
       db._setReturningResult([{ id: "review-uuid-1" }]);
 
-      const result = await service.createReviewItem(
-        "bundle-001",
-        escalatedAt,
-        "kernel_l3"
-      );
+      const result = await service.createReviewItem("bundle-001", escalatedAt, "kernel_l3");
 
       expect(result.created).toBe(true);
       expect(result.id).toBe("review-uuid-1");
@@ -122,11 +127,7 @@ describe("ReviewService", () => {
       db._setConflictBehavior("skip");
       db._setSelectResult([{ id: "existing-review-uuid" }]);
 
-      const result = await service.createReviewItem(
-        "bundle-duplicate",
-        new Date(),
-        "kernel_l3"
-      );
+      const result = await service.createReviewItem("bundle-duplicate", new Date(), "kernel_l3");
 
       expect(result.created).toBe(false);
       expect(result.id).toBe("existing-review-uuid");
@@ -138,7 +139,7 @@ describe("ReviewService", () => {
       const result = await service.createReviewItem(
         "bundle-session-001",
         new Date(),
-        "session_pattern"
+        "session_pattern",
       );
 
       expect(result.created).toBe(true);
@@ -154,30 +155,37 @@ describe("ReviewService", () => {
   describe("resolveReview", () => {
     test("rejects invalid resolution category", async () => {
       await expect(
-        service.resolveReview("review-1", "user-1", "invalid_category", "This is a valid note for the resolution.")
+        service.resolveReview(
+          "review-1",
+          "user-1",
+          "invalid_category",
+          "This is a valid note for the resolution.",
+        ),
       ).rejects.toThrow("Invalid resolution");
     });
 
     test("rejects resolution notes shorter than 10 characters", async () => {
       await expect(
-        service.resolveReview("review-1", "user-1", "false_positive", "short")
+        service.resolveReview("review-1", "user-1", "false_positive", "short"),
       ).rejects.toThrow("Resolution notes are required");
     });
 
     test("violation_confirmed maps to rejected status", async () => {
-      db._setReturningResult([{
-        id: "review-1",
-        bundleId: "b-1",
-        status: "rejected",
-        escalatedAt: new Date(),
-        slaDeadline: new Date(),
-      }]);
+      db._setReturningResult([
+        {
+          id: "review-1",
+          bundleId: "b-1",
+          status: "rejected",
+          escalatedAt: new Date(),
+          slaDeadline: new Date(),
+        },
+      ]);
 
       const result = await service.resolveReview(
         "review-1",
         "user-1",
         "violation_confirmed",
-        "The user violated the data policy by exfiltrating PII."
+        "The user violated the data policy by exfiltrating PII.",
       );
 
       expect(result).not.toBeNull();
@@ -188,19 +196,21 @@ describe("ReviewService", () => {
     });
 
     test("false_positive maps to approved status", async () => {
-      db._setReturningResult([{
-        id: "review-2",
-        bundleId: "b-2",
-        status: "approved",
-        escalatedAt: new Date(),
-        slaDeadline: new Date(),
-      }]);
+      db._setReturningResult([
+        {
+          id: "review-2",
+          bundleId: "b-2",
+          status: "approved",
+          escalatedAt: new Date(),
+          slaDeadline: new Date(),
+        },
+      ]);
 
       const result = await service.resolveReview(
         "review-2",
         "user-1",
         "false_positive",
-        "The content was not actually sensitive, just a test scenario."
+        "The content was not actually sensitive, just a test scenario.",
       );
 
       expect(result).not.toBeNull();
@@ -245,18 +255,20 @@ describe("ReviewService", () => {
     });
 
     test("returns enriched item on successful claim", async () => {
-      db._setReturningResult([{
-        id: "review-1",
-        bundleId: "b-1",
-        status: "claimed",
-        claimedBy: "user-1",
-        escalatedAt: new Date(),
-        slaDeadline: new Date(),
-      }]);
+      db._setReturningResult([
+        {
+          id: "review-1",
+          bundleId: "b-1",
+          status: "claimed",
+          claimedBy: "user-1",
+          escalatedAt: new Date(),
+          slaDeadline: new Date(),
+        },
+      ]);
 
       const result = await service.claimReview("review-1", "user-1");
       expect(result).not.toBeNull();
-      expect(result!.status).toBe("claimed");
+      expect(result?.status).toBe("claimed");
     });
   });
 });

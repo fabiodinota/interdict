@@ -12,11 +12,8 @@
  */
 
 import type { ClickHouseClient } from "@clickhouse/client";
-import { eq, and, count, sql } from "drizzle-orm";
-import {
-  policies,
-  policyVersions,
-} from "../../db/schema/index";
+import { count, eq } from "drizzle-orm";
+import { policies, policyVersions } from "../../db/schema/index";
 import type { AppDb } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
@@ -358,10 +355,7 @@ export class ReportService {
         compilationStatus: policyVersions.compilationStatus,
       })
       .from(policies)
-      .leftJoin(
-        policyVersions,
-        eq(policyVersions.id, policies.currentVersionId)
-      )
+      .leftJoin(policyVersions, eq(policyVersions.id, policies.currentVersionId))
       .orderBy(policies.name);
 
     return rows.map((policy) => ({
@@ -403,11 +397,9 @@ export class ReportService {
    * Phase 18: bulk queries (3 round-trips) replace N+1 per-framework lookup.
    */
   private async getActiveFrameworks() {
-    const {
-      frameworks,
-      frameworkActivations,
-      frameworkPolicies,
-    } = await import("../../db/schema/index");
+    const { frameworks, frameworkActivations, frameworkPolicies } = await import(
+      "../../db/schema/index"
+    );
 
     // 3 bulk queries — no N+1
     const [allFrameworks, activeActivations, policyCounts] = await Promise.all([
@@ -426,9 +418,11 @@ export class ReportService {
         .groupBy(frameworkPolicies.frameworkId),
     ]);
 
-    const activeFrameworkIds = new Set(activeActivations.map((activation) => activation.frameworkId));
+    const activeFrameworkIds = new Set(
+      activeActivations.map((activation) => activation.frameworkId),
+    );
     const countMap = new Map<string, number>(
-      policyCounts.map((row) => [row.frameworkId, Number(row.activePolicyCount)])
+      policyCounts.map((row) => [row.frameworkId, Number(row.activePolicyCount)]),
     );
 
     return allFrameworks

@@ -7,9 +7,9 @@
  * Uses mock database layer to test business logic in isolation.
  */
 
-import { describe, expect, it, beforeEach } from "bun:test";
-import { RegulatoryService } from "./service";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { NotFoundError } from "../../shared/utilities";
+import { RegulatoryService } from "./service";
 
 /**
  * In-memory mock database for regulatory service testing.
@@ -122,7 +122,7 @@ function createMockDb() {
         requirementDescription?: string;
         isRequired?: boolean;
         sortOrder?: number;
-      }
+      },
     ) {
       const id = nextId();
       frameworkPoliciesData.push({
@@ -228,9 +228,7 @@ describe("RegulatoryService", () => {
 
       service.activate(fwId);
 
-      const activations = mockDb.data.frameworkActivations.filter(
-        (a) => a.frameworkId === fwId
-      );
+      const activations = mockDb.data.frameworkActivations.filter((a) => a.frameworkId === fwId);
       expect(activations).toHaveLength(1);
       expect(activations[0].isActive).toBe(true);
     });
@@ -242,9 +240,7 @@ describe("RegulatoryService", () => {
       service.activate(fwId);
 
       // Should not add another activation record
-      const activations = mockDb.data.frameworkActivations.filter(
-        (a) => a.frameworkId === fwId
-      );
+      const activations = mockDb.data.frameworkActivations.filter((a) => a.frameworkId === fwId);
       expect(activations).toHaveLength(1);
     });
 
@@ -273,9 +269,7 @@ describe("RegulatoryService", () => {
 
       service.deactivate(fwId);
 
-      const activation = mockDb.data.frameworkActivations.find(
-        (a) => a.frameworkId === fwId
-      );
+      const activation = mockDb.data.frameworkActivations.find((a) => a.frameworkId === fwId);
       expect(activation?.isActive).toBe(false);
       expect(activation?.deactivatedAt).not.toBeNull();
     });
@@ -321,7 +315,7 @@ describe("RegulatoryService", () => {
       service.activate(fwId);
 
       const activeActivations = mockDb.data.frameworkActivations.filter(
-        (a) => a.frameworkId === fwId && a.isActive
+        (a) => a.frameworkId === fwId && a.isActive,
       );
       expect(activeActivations.length).toBeGreaterThanOrEqual(1);
     });
@@ -330,7 +324,7 @@ describe("RegulatoryService", () => {
   describe("getActiveFrameworks()", () => {
     it("returns only currently active frameworks", () => {
       const fwId1 = mockDb.addFramework("eu-ai-act", "EU AI Act");
-      const fwId2 = mockDb.addFramework("gdpr", "GDPR");
+      const _fwId2 = mockDb.addFramework("gdpr", "GDPR");
       mockDb.addActivation(fwId1, true);
       // fwId2 not activated
 

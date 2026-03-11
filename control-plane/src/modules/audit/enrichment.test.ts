@@ -5,7 +5,7 @@
  * PostgreSQL metadata (user display names, vendor display names, policy names).
  */
 
-import { describe, test, expect, mock } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { enrichAuditRecords } from "./enrichment";
 import type { ClickHouseAuditRow } from "./model";
 
@@ -44,11 +44,13 @@ function makeRow(overrides: Partial<ClickHouseAuditRow> = {}): ClickHouseAuditRo
  * Create a mock Drizzle-like db that can answer batch queries.
  * The mock intercepts select().from().where() chains.
  */
-function createMockDb(options: {
-  users?: Array<{ email: string; displayName: string }>;
-  vendors?: Array<{ name: string; displayName: string }>;
-  policies?: Array<{ id: string; name: string }>;
-} = {}) {
+function createMockDb(
+  options: {
+    users?: Array<{ email: string; displayName: string }>;
+    vendors?: Array<{ name: string; displayName: string }>;
+    policies?: Array<{ id: string; name: string }>;
+  } = {},
+) {
   const { users = [], vendors = [], policies = [] } = options;
 
   // Build a simple mock that handles the chaining pattern:
@@ -56,18 +58,18 @@ function createMockDb(options: {
   const mockDb = {
     select: mock((fields: Record<string, unknown>) => {
       return {
-        from: (table: unknown) => {
+        from: (_table: unknown) => {
           return {
             where: async (_condition: unknown) => {
               // Determine which table by inspecting the fields
               if ("email" in fields && "displayName" in fields) {
-                return users.map(u => ({ email: u.email, displayName: u.displayName }));
+                return users.map((u) => ({ email: u.email, displayName: u.displayName }));
               }
               if ("name" in fields && "displayName" in fields) {
-                return vendors.map(v => ({ name: v.name, displayName: v.displayName }));
+                return vendors.map((v) => ({ name: v.name, displayName: v.displayName }));
               }
               if ("id" in fields && "name" in fields) {
-                return policies.map(p => ({ id: p.id, name: p.name }));
+                return policies.map((p) => ({ id: p.id, name: p.name }));
               }
               return [];
             },

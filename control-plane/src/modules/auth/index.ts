@@ -16,24 +16,15 @@
  *   GET  /api/v1/auth/saml/metadata   -- SP metadata XML
  */
 
-import { Elysia } from "elysia";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import * as schema from "../../db/schema";
-import { authPlugin } from "./middleware";
-import { createAuthService, type AuthenticatedUser, type AuthService } from "./service";
+import { Elysia } from "elysia";
 import { db as pgDb } from "../../db/postgres";
-import {
-  CreateApiKeyBody,
-  ApiKeyListQuery,
-  RevokeApiKeyParams,
-  ExchangeCodeBody,
-} from "./model";
-import {
-  apiResponse,
-  paginatedResponse,
-} from "../../shared/utilities";
-import { samlEnabled } from "./saml/config";
+import type * as schema from "../../db/schema";
+import { apiResponse, paginatedResponse } from "../../shared/utilities";
+import { authPlugin } from "./middleware";
+import { ApiKeyListQuery, CreateApiKeyBody, ExchangeCodeBody, RevokeApiKeyParams } from "./model";
 import { createSamlRoutes } from "./saml/handlers";
+import { type AuthenticatedUser, type AuthService, createAuthService } from "./service";
 
 /**
  * Auth route handler context.
@@ -71,7 +62,7 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
       const profile = await ctx.authService.whoAmI(ctx.user.id);
       return apiResponse(profile);
     },
-    { auth: true }
+    { auth: true },
   )
 
   // -------------------------------------------------------------------------
@@ -83,7 +74,7 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
       const ctx = rawCtx as unknown as AuthCtx;
       const result = await ctx.authService.createApiKey(
         ctx.user.id,
-        ctx.body.label as string | undefined
+        ctx.body.label as string | undefined,
       );
       ctx.set.status = 201;
       return apiResponse({
@@ -97,7 +88,7 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
     {
       auth: true,
       body: CreateApiKeyBody,
-    }
+    },
   )
 
   // -------------------------------------------------------------------------
@@ -107,23 +98,21 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
     "/keys",
     async (rawCtx) => {
       const ctx = rawCtx as unknown as AuthCtx;
-      const pageSize = ctx.query.page_size
-        ? Number(ctx.query.page_size)
-        : undefined;
+      const pageSize = ctx.query.page_size ? Number(ctx.query.page_size) : undefined;
       const showAll = ctx.query.all === "true";
       const result = await ctx.authService.listApiKeys(
         ctx.user.id,
         ctx.user.role,
         showAll,
         ctx.query.cursor,
-        pageSize
+        pageSize,
       );
       return paginatedResponse(result.items, result.nextCursor);
     },
     {
       auth: true,
       query: ApiKeyListQuery,
-    }
+    },
   )
 
   // -------------------------------------------------------------------------
@@ -133,18 +122,14 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
     "/keys/:keyId",
     async (rawCtx) => {
       const ctx = rawCtx as unknown as AuthCtx;
-      await ctx.authService.revokeApiKey(
-        ctx.params.keyId,
-        ctx.user.id,
-        ctx.user.role
-      );
+      await ctx.authService.revokeApiKey(ctx.params.keyId, ctx.user.id, ctx.user.role);
       ctx.set.status = 204;
       return;
     },
     {
       auth: true,
       params: RevokeApiKeyParams,
-    }
+    },
   )
 
   // -------------------------------------------------------------------------
@@ -154,17 +139,15 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
     "/logout",
     async (rawCtx) => {
       const ctx = rawCtx as unknown as AuthCtx;
-      const authHeader = ctx.headers["authorization"];
-      const rawToken = authHeader?.startsWith("Bearer ")
-        ? authHeader.slice(7)
-        : null;
+      const authHeader = ctx.headers.authorization;
+      const rawToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
       if (rawToken) {
         await ctx.authService.revokeSession(rawToken);
       }
       ctx.set.status = 204;
       return;
     },
-    { auth: true }
+    { auth: true },
   )
 
   // -------------------------------------------------------------------------
@@ -179,11 +162,14 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
       const sessionToken = await ctx.authService.exchangeSamlHandoffCode(code);
       if (!sessionToken) {
         ctx.set.status = 410;
-        return { success: false, error: { code: "CODE_EXPIRED", message: "Code is invalid, expired, or already used." } };
+        return {
+          success: false,
+          error: { code: "CODE_EXPIRED", message: "Code is invalid, expired, or already used." },
+        };
       }
       return { success: true, data: { token: sessionToken } };
     },
-    { body: ExchangeCodeBody }
+    { body: ExchangeCodeBody },
   )
 
   // -------------------------------------------------------------------------

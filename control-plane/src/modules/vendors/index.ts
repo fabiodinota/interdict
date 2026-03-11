@@ -7,23 +7,23 @@
  */
 
 import { Elysia, t } from "elysia";
+import { db as pgDb } from "../../db/postgres";
+import type { AppStore, RouteContext } from "../../shared/types";
+import { apiResponse, paginatedResponse } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
 import {
-  CreateVendorBody,
-  UpdateVendorBody,
   CreateModelBody,
-  UpdateModelBody,
-  VendorListQuery,
-  type CreateVendorBodyType,
-  type UpdateVendorBodyType,
   type CreateModelBodyType,
+  CreateVendorBody,
+  type CreateVendorBodyType,
+  UpdateModelBody,
   type UpdateModelBodyType,
+  UpdateVendorBody,
+  type UpdateVendorBodyType,
+  VendorListQuery,
   type VendorListQueryType,
 } from "./model";
 import { createVendorService, type VendorService } from "./service";
-import { apiResponse, paginatedResponse } from "../../shared/utilities";
-import { authPlugin } from "../auth/middleware";
-import { db as pgDb } from "../../db/postgres";
-import type { AppStore, RouteContext } from "../../shared/types";
 
 type VendorRouteContext<
   TBody = unknown,
@@ -47,7 +47,7 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
       routeCtx.set.status = 201;
       return apiResponse(result);
     },
-    { auth: ["policy_admin"], body: CreateVendorBody }
+    { auth: ["policy_admin"], body: CreateVendorBody },
   )
 
   // GET / -- List vendors with optional status filter (Read-Only Auditor+)
@@ -55,28 +55,30 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
     "/",
     async (ctx) => {
       const routeCtx = ctx as unknown as VendorRouteContext<unknown, VendorListQueryType>;
-      const pageSize = routeCtx.query.page_size
-        ? Number(routeCtx.query.page_size)
-        : undefined;
+      const pageSize = routeCtx.query.page_size ? Number(routeCtx.query.page_size) : undefined;
       const { items, nextCursor } = await routeCtx.vendorService.list(
         routeCtx.query.cursor,
         pageSize,
-        routeCtx.query.status
+        routeCtx.query.status,
       );
       return paginatedResponse(items, nextCursor);
     },
-    { auth: ["read_only_auditor"], query: VendorListQuery }
+    { auth: ["read_only_auditor"], query: VendorListQuery },
   )
 
   // GET /:id -- Get vendor with models (Read-Only Auditor+)
   .get(
     "/:id",
     async (ctx) => {
-      const routeCtx = ctx as unknown as VendorRouteContext<unknown, Record<string, string | undefined>, { id: string }>;
+      const routeCtx = ctx as unknown as VendorRouteContext<
+        unknown,
+        Record<string, string | undefined>,
+        { id: string }
+      >;
       const result = await routeCtx.vendorService.getById(routeCtx.params.id);
       return apiResponse(result);
     },
-    { auth: ["read_only_auditor"], params: t.Object({ id: t.String() }) }
+    { auth: ["read_only_auditor"], params: t.Object({ id: t.String() }) },
   )
 
   // PUT /:id -- Update vendor (Policy Admin+)
@@ -95,19 +97,23 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
       auth: ["policy_admin"],
       params: t.Object({ id: t.String() }),
       body: UpdateVendorBody,
-    }
+    },
   )
 
   // DELETE /:id -- Delete vendor (Policy Admin+)
   .delete(
     "/:id",
     async (ctx) => {
-      const routeCtx = ctx as unknown as VendorRouteContext<unknown, Record<string, string | undefined>, { id: string }>;
+      const routeCtx = ctx as unknown as VendorRouteContext<
+        unknown,
+        Record<string, string | undefined>,
+        { id: string }
+      >;
       await routeCtx.vendorService.delete(routeCtx.params.id);
       routeCtx.set.status = 204;
       return;
     },
-    { auth: ["policy_admin"], params: t.Object({ id: t.String() }) }
+    { auth: ["policy_admin"], params: t.Object({ id: t.String() }) },
   )
 
   // POST /:id/models -- Add model to vendor (Policy Admin+)
@@ -127,7 +133,7 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
       auth: ["policy_admin"],
       params: t.Object({ id: t.String() }),
       body: CreateModelBody,
-    }
+    },
   )
 
   // PUT /:id/models/:modelId -- Update model status (Policy Admin+)
@@ -142,7 +148,7 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
       const result = await routeCtx.vendorService.updateModel(
         routeCtx.params.id,
         routeCtx.params.modelId,
-        routeCtx.body
+        routeCtx.body,
       );
       return apiResponse(result);
     },
@@ -150,7 +156,7 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
       auth: ["policy_admin"],
       params: t.Object({ id: t.String(), modelId: t.String() }),
       body: UpdateModelBody,
-    }
+    },
   )
 
   // DELETE /:id/models/:modelId -- Remove model (Policy Admin+)
@@ -169,5 +175,5 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
     {
       auth: ["policy_admin"],
       params: t.Object({ id: t.String(), modelId: t.String() }),
-    }
+    },
   );

@@ -7,16 +7,16 @@
  */
 
 import {
+  boolean,
+  index,
   pgTable,
+  primaryKey,
+  timestamp,
+  uniqueIndex,
   uuid,
   varchar,
-  boolean,
-  timestamp,
-  index,
-  primaryKey,
-  uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { users, departments } from "./organization";
+import { departments, users } from "./organization";
 
 // ---------------------------------------------------------------------------
 // API Keys
@@ -68,9 +68,7 @@ export const userDepartments = pgTable(
       .references(() => departments.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [
-    primaryKey({ columns: [table.userId, table.departmentId] }),
-  ],
+  (table) => [primaryKey({ columns: [table.userId, table.departmentId] })],
 );
 
 // ---------------------------------------------------------------------------
@@ -124,9 +122,7 @@ export const samlHandoffCodes = pgTable(
     used: boolean("used").notNull().default(false),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [
-    index("saml_handoff_codes_expires_idx").on(table.expiresAt),
-  ],
+  (table) => [index("saml_handoff_codes_expires_idx").on(table.expiresAt)],
 );
 
 // ---------------------------------------------------------------------------
@@ -149,9 +145,7 @@ export const signingKeys = pgTable(
     retiredAt: timestamp("retired_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [
-    index("signing_keys_active_idx").on(table.isActive),
-  ],
+  (table) => [index("signing_keys_active_idx").on(table.isActive)],
 );
 
 // ---------------------------------------------------------------------------
@@ -167,7 +161,5 @@ export const rolePermissions = pgTable(
     isGranted: boolean("is_granted").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [
-    uniqueIndex("role_permissions_role_perm_idx").on(table.role, table.permission),
-  ],
+  (table) => [uniqueIndex("role_permissions_role_perm_idx").on(table.role, table.permission)],
 );

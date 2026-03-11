@@ -5,14 +5,13 @@
  * Uses mock database layer to avoid PostgreSQL dependency in unit tests.
  */
 
-import { describe, test, expect, beforeEach, mock } from "bun:test";
-import type { PolicyService } from "./service";
+import { describe, expect, test } from "bun:test";
 
 // Mock database layer for testing
 function createMockDb() {
   const policies = new Map<string, any>();
   const versions = new Map<string, any[]>();
-  let compileQueue: any[] = [];
+  const compileQueue: any[] = [];
 
   return {
     policies,
@@ -20,10 +19,14 @@ function createMockDb() {
     compileQueue,
 
     // Simulated policy insert
-    insertPolicy(data: {
+    insertPolicy(data: { name: string; description?: string }): {
+      id: string;
       name: string;
-      description?: string;
-    }): { id: string; name: string; description: string | null; isActive: boolean; createdAt: Date; updatedAt: Date } {
+      description: string | null;
+      isActive: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+    } {
       const id = crypto.randomUUID();
       const policy = {
         id,
@@ -46,7 +49,7 @@ function createMockDb() {
         regoSource: string;
         entrypoint: string;
         changeDescription?: string;
-      }
+      },
     ) {
       const policyVersions = versions.get(policyId) || [];
       const versionNum = policyVersions.length + 1;
@@ -74,7 +77,11 @@ function createMockDb() {
         policy.currentVersionId = versionId;
       }
 
-      compileQueue.push({ policyVersionId: versionId, regoSource: data.regoSource, entrypoint: data.entrypoint });
+      compileQueue.push({
+        policyVersionId: versionId,
+        regoSource: data.regoSource,
+        entrypoint: data.entrypoint,
+      });
 
       return version;
     },
@@ -83,9 +90,7 @@ function createMockDb() {
       const policy = policies.get(id);
       if (!policy || !policy.isActive) return null;
       const policyVersions = versions.get(id) || [];
-      const currentVersion = policyVersions.find(
-        (v: any) => v.id === policy.currentVersionId
-      );
+      const currentVersion = policyVersions.find((v: any) => v.id === policy.currentVersionId);
       return { ...policy, currentVersion };
     },
 

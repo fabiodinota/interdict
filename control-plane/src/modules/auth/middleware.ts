@@ -21,10 +21,10 @@
  */
 
 import { Elysia } from "elysia";
-import { createAuthService, type AuthenticatedUser } from "./service";
-import { roleHierarchyLevel } from "./permissions";
 import { db } from "../../db/postgres";
 import type { AppDb, AppStore } from "../../shared/types";
+import { roleHierarchyLevel } from "./permissions";
+import { type AuthenticatedUser, createAuthService } from "./service";
 
 /** API key prefix used to distinguish API keys from session tokens */
 const API_KEY_PREFIX = "ik_live_";
@@ -56,14 +56,15 @@ type AuthResolveResult = Record<string, unknown>;
  * 1. API key tokens (prefixed with ik_live_) -- existing flow
  * 2. Session tokens (opaque hex strings) -- SAML SSO flow
  */
-export const authPlugin = new Elysia({ name: "auth" })
-  .macro("auth", (options?: string[] | boolean) => ({
+export const authPlugin = new Elysia({ name: "auth" }).macro(
+  "auth",
+  (options?: string[] | boolean) => ({
     async resolve(ctx): Promise<AuthResolveResult> {
       const authCtx = ctx as unknown as AuthResolveContext;
       const { headers, store, status } = authCtx;
 
       // 1. Extract Bearer token from Authorization header
-      const authHeader = headers["authorization"];
+      const authHeader = headers.authorization;
       if (!authHeader?.startsWith("Bearer ")) {
         return status(401, {
           success: false,
@@ -101,9 +102,7 @@ export const authPlugin = new Elysia({ name: "auth" })
 
       // 3. Role check if required roles specified
       if (Array.isArray(options) && options.length > 0) {
-        const minRequiredLevel = Math.min(
-          ...options.map(roleHierarchyLevel)
-        );
+        const minRequiredLevel = Math.min(...options.map(roleHierarchyLevel));
         if (roleHierarchyLevel(user.role) < minRequiredLevel) {
           return status(403, {
             success: false,
@@ -118,4 +117,5 @@ export const authPlugin = new Elysia({ name: "auth" })
       // 4. Return user to context -- available as `user` in route handlers
       return { user };
     },
-  }));
+  }),
+);

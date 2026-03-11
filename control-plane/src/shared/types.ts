@@ -5,8 +5,8 @@
  * control plane (Phase 21 / Phase 26).
  */
 
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { ClickHouseClient } from "@clickhouse/client";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type * as schema from "../db/schema/index";
 
 // ---------------------------------------------------------------------------

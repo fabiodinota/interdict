@@ -6,15 +6,7 @@
  * mandatory category and reasoning. Optimistic locking on claim.
  */
 
-import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  timestamp,
-  index,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { index, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { users } from "./organization";
 
 // ---------------------------------------------------------------------------
@@ -49,5 +41,5 @@ export const reviewItems = pgTable(
     // UNIQUE on bundle_id enforces idempotent review creation.
     // The same evidence bundle can only produce one review item.
     uniqueIndex("review_items_bundle_id_uniq").on(table.bundleId),
-  ]
+  ],
 );

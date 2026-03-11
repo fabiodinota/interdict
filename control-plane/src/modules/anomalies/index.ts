@@ -9,13 +9,13 @@
  */
 
 import { Elysia } from "elysia";
-import { AnomalyService } from "./service";
-import { AnomalyQueryParams } from "./model";
-import { apiResponse } from "../../shared/utilities";
-import { authPlugin } from "../auth/middleware";
 import { clickhouse as chClient } from "../../db/clickhouse";
 import type { AppStore, RouteContext } from "../../shared/types";
+import { apiResponse } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
 import type { AnomalyAlert } from "./model";
+import { AnomalyQueryParams } from "./model";
+import { AnomalyService } from "./service";
 
 type AnomalyRouteContext<
   TBody = unknown,
@@ -54,13 +54,13 @@ export const anomaliesModule = new Elysia({ prefix: "/api/v1/anomalies" })
 
       return apiResponse(
         filtered,
-        result.warnings.length > 0 ? { warnings: result.warnings } : undefined
+        result.warnings.length > 0 ? { warnings: result.warnings } : undefined,
       );
     },
     {
       auth: ["compliance_officer"],
       query: AnomalyQueryParams,
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -75,5 +75,5 @@ export const anomaliesModule = new Elysia({ prefix: "/api/v1/anomalies" })
     },
     {
       auth: ["compliance_officer"],
-    }
+    },
   );

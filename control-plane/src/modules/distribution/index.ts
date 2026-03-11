@@ -8,10 +8,10 @@
 
 export { startDistributionServer, stopDistributionServer } from "./server";
 export {
-  kernelTracker,
   broadcastUpdate,
-  KernelTracker,
   type KernelConnection,
-  type PolicyUpdateMessage,
+  KernelTracker,
+  kernelTracker,
   type PolicyEntryMessage,
+  type PolicyUpdateMessage,
 } from "./tracker";

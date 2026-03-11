@@ -14,10 +14,10 @@
  */
 
 import { Elysia } from "elysia";
-import { sp, idp, samlEnabled } from "./config";
-import { getSpMetadata } from "./metadata";
-import { createAuthService, type AuthService } from "../service";
 import { db as pgDb } from "../../../db/postgres";
+import { type AuthService, createAuthService } from "../service";
+import { idp, samlEnabled, sp } from "./config";
+import { getSpMetadata } from "./metadata";
 
 const DASHBOARD_URL =
   process.env.DASHBOARD_URL ??
@@ -26,7 +26,7 @@ if (!DASHBOARD_URL) {
   throw new Error("[saml] DASHBOARD_URL env var is required in production");
 }
 const SESSION_COOKIE_NAME = "interdict_session";
-const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60; // 8 hours
+const _SESSION_MAX_AGE_SECONDS = 8 * 60 * 60; // 8 hours
 
 /** Shape returned by samlify's parseLoginResponse */
 interface SamlExtract {
@@ -56,23 +56,23 @@ function extractAttributes(extract: SamlExtract): {
   const email =
     nameID ||
     first(attrs["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"]) ||
-    first(attrs["email"]) ||
-    first(attrs["Email"]) ||
+    first(attrs.email) ||
+    first(attrs.Email) ||
     "";
 
   const displayName =
     first(attrs["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"]) ||
-    first(attrs["displayName"]) ||
-    first(attrs["DisplayName"]) ||
-    first(attrs["name"]) ||
+    first(attrs.displayName) ||
+    first(attrs.DisplayName) ||
+    first(attrs.name) ||
     email.split("@")[0] ||
     "SAML User";
 
   // roleHint is accepted but IGNORED for role assignment (CRIT-001)
   const roleHint =
     first(attrs["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]) ||
-    first(attrs["role"]) ||
-    first(attrs["Role"]) ||
+    first(attrs.role) ||
+    first(attrs.Role) ||
     undefined;
 
   return { email, displayName, roleHint };
@@ -92,106 +92,106 @@ export function createSamlRoutes() {
   const spRef = sp;
   const idpRef = idp;
 
-  return new Elysia({ prefix: "/saml" })
+  return (
+    new Elysia({ prefix: "/saml" })
 
-    // -----------------------------------------------------------------------
-    // GET /sso -- Initiate SAML SSO Login
-    // -----------------------------------------------------------------------
-    .get("/sso", async ({ redirect }) => {
-      const { context: loginRequestUrl } = spRef.createLoginRequest(idpRef, "redirect");
-      return redirect(loginRequestUrl);
-    })
+      // -----------------------------------------------------------------------
+      // GET /sso -- Initiate SAML SSO Login
+      // -----------------------------------------------------------------------
+      .get("/sso", async ({ redirect }) => {
+        const { context: loginRequestUrl } = spRef.createLoginRequest(idpRef, "redirect");
+        return redirect(loginRequestUrl);
+      })
 
-    // -----------------------------------------------------------------------
-    // POST /acs -- Assertion Consumer Service
-    // -----------------------------------------------------------------------
-    .post("/acs", async (rawCtx) => {
-      const { body, store, redirect } = rawCtx as {
-        body: Record<string, unknown>;
-        store: { db?: typeof pgDb };
-        redirect: (url: string) => Response;
-      };
-      try {
-        // Parse and validate the SAML response
-        const parseResult = await spRef.parseLoginResponse(idpRef, "post", {
-          body,
+      // -----------------------------------------------------------------------
+      // POST /acs -- Assertion Consumer Service
+      // -----------------------------------------------------------------------
+      .post("/acs", async (rawCtx) => {
+        const { body, store, redirect } = rawCtx as {
+          body: Record<string, unknown>;
+          store: { db?: typeof pgDb };
+          redirect: (url: string) => Response;
+        };
+        try {
+          // Parse and validate the SAML response
+          const parseResult = await spRef.parseLoginResponse(idpRef, "post", {
+            body,
+          });
+
+          const { email, displayName, roleHint } = extractAttributes(
+            parseResult.extract as SamlExtract,
+          );
+
+          if (!email) {
+            return new Response("SAML assertion missing email/nameID", {
+              status: 400,
+            });
+          }
+
+          // JIT provision user and create session
+          const authService: AuthService = createAuthService(store.db ?? pgDb);
+          const user = await authService.findOrCreateSamlUser(
+            email,
+            displayName,
+            (parseResult.extract as SamlExtract).nameID || email,
+            roleHint,
+          );
+
+          // CRIT-002 + Phase 17: issue a short-lived (60s) one-time code.
+          // No session is created here — it is minted on-the-fly during the
+          // backchannel code exchange so no raw token ever sits in Postgres.
+          const code = await authService.createSamlHandoffCode(user.id);
+          const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?code=${code}`;
+          return redirect(callbackUrl);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error("[SAML] ACS error:", msg);
+          return new Response("SAML authentication failed", { status: 401 });
+        }
+      })
+
+      // -----------------------------------------------------------------------
+      // GET /slo -- Single Logout
+      // -----------------------------------------------------------------------
+      .get("/slo", async (rawCtx) => {
+        const { cookie, redirect } = rawCtx as {
+          cookie: Record<string, { set: (opts: Record<string, unknown>) => void }>;
+          redirect: (url: string) => Response;
+        };
+
+        // Clear session cookie
+        cookie[SESSION_COOKIE_NAME].set({
+          value: "",
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 0,
         });
 
-        const { email, displayName, roleHint } = extractAttributes(
-          parseResult.extract as SamlExtract
-        );
+        // If IdP has SLO endpoint configured, redirect there
+        const idpMeta = idpRef.entityMeta;
+        const sloUrl = idpMeta?.getSingleLogoutService?.("redirect") || null;
 
-        if (!email) {
-          return new Response("SAML assertion missing email/nameID", {
-            status: 400,
-          });
+        if (sloUrl && typeof sloUrl === "string") {
+          return redirect(sloUrl);
         }
 
-        // JIT provision user and create session
-        const authService: AuthService = createAuthService(store.db ?? pgDb);
-        const user = await authService.findOrCreateSamlUser(
-          email,
-          displayName,
-          (parseResult.extract as SamlExtract).nameID || email,
-          roleHint
-        );
+        // Otherwise redirect to dashboard login
+        return redirect(`${DASHBOARD_URL}/login`);
+      })
 
-        // CRIT-002 + Phase 17: issue a short-lived (60s) one-time code.
-        // No session is created here — it is minted on-the-fly during the
-        // backchannel code exchange so no raw token ever sits in Postgres.
-        const code = await authService.createSamlHandoffCode(user.id);
-        const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?code=${code}`;
-        return redirect(callbackUrl);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[SAML] ACS error:", msg);
-        return new Response("SAML authentication failed", { status: 401 });
-      }
-    })
-
-    // -----------------------------------------------------------------------
-    // GET /slo -- Single Logout
-    // -----------------------------------------------------------------------
-    .get("/slo", async (rawCtx) => {
-      const { cookie, redirect } = rawCtx as {
-        cookie: Record<string, { set: (opts: Record<string, unknown>) => void }>;
-        redirect: (url: string) => Response;
-      };
-
-      // Clear session cookie
-      cookie[SESSION_COOKIE_NAME].set({
-        value: "",
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 0,
-      });
-
-      // If IdP has SLO endpoint configured, redirect there
-      const idpMeta = idpRef.entityMeta;
-      const sloUrl =
-        idpMeta?.getSingleLogoutService?.("redirect") ||
-        null;
-
-      if (sloUrl && typeof sloUrl === "string") {
-        return redirect(sloUrl);
-      }
-
-      // Otherwise redirect to dashboard login
-      return redirect(`${DASHBOARD_URL}/login`);
-    })
-
-    // -----------------------------------------------------------------------
-    // GET /metadata -- SP Metadata XML
-    // -----------------------------------------------------------------------
-    .get("/metadata", () => {
-      const metadata = getSpMetadata();
-      if (!metadata) {
-        return new Response("SAML not configured", { status: 503 });
-      }
-      return new Response(metadata, {
-        headers: { "Content-Type": "application/xml" },
-      });
-    });
+      // -----------------------------------------------------------------------
+      // GET /metadata -- SP Metadata XML
+      // -----------------------------------------------------------------------
+      .get("/metadata", () => {
+        const metadata = getSpMetadata();
+        if (!metadata) {
+          return new Response("SAML not configured", { status: 503 });
+        }
+        return new Response(metadata, {
+          headers: { "Content-Type": "application/xml" },
+        });
+      })
+  );
 }

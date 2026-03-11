@@ -12,13 +12,13 @@
  */
 
 import type { ClickHouseClient } from "@clickhouse/client";
-import {
-  queryVolumeAnomalies,
-  queryOffHoursUsage,
-  queryVendorSwitching,
-  queryTopicDrift,
-} from "./queries";
 import type { AnomalyAlert, AnomalySummary } from "./model";
+import {
+  queryOffHoursUsage,
+  queryTopicDrift,
+  queryVendorSwitching,
+  queryVolumeAnomalies,
+} from "./queries";
 
 // ---------------------------------------------------------------------------
 // Severity computation
@@ -32,7 +32,7 @@ function computeSeverity(ratio: number): AnomalyAlert["severity"] {
 
 function computeOffHoursSeverity(
   currentPct: number,
-  historicalPct: number
+  historicalPct: number,
 ): AnomalyAlert["severity"] {
   const diff = currentPct - historicalPct;
   if (diff >= 50 || currentPct >= 80) return "critical";
@@ -79,21 +79,20 @@ export class AnomalyService {
     };
 
     // Run all four queries in parallel
-    const [volumeRows, offHoursRows, vendorRows, topicRows] =
-      await Promise.all([
-        queryVolumeAnomalies(this.clickhouse).catch((error: unknown) =>
-          handleQueryFailure("volume", error)
-        ),
-        queryOffHoursUsage(this.clickhouse).catch((error: unknown) =>
-          handleQueryFailure("off-hours", error)
-        ),
-        queryVendorSwitching(this.clickhouse).catch((error: unknown) =>
-          handleQueryFailure("vendor-switch", error)
-        ),
-        queryTopicDrift(this.clickhouse).catch((error: unknown) =>
-          handleQueryFailure("topic-drift", error)
-        ),
-      ]);
+    const [volumeRows, offHoursRows, vendorRows, topicRows] = await Promise.all([
+      queryVolumeAnomalies(this.clickhouse).catch((error: unknown) =>
+        handleQueryFailure("volume", error),
+      ),
+      queryOffHoursUsage(this.clickhouse).catch((error: unknown) =>
+        handleQueryFailure("off-hours", error),
+      ),
+      queryVendorSwitching(this.clickhouse).catch((error: unknown) =>
+        handleQueryFailure("vendor-switch", error),
+      ),
+      queryTopicDrift(this.clickhouse).catch((error: unknown) =>
+        handleQueryFailure("topic-drift", error),
+      ),
+    ]);
 
     // --- Volume Spikes ---
     for (const row of volumeRows) {
@@ -125,7 +124,7 @@ export class AnomalyService {
     for (const row of offHoursRows) {
       const severity = computeOffHoursSeverity(
         row.current_off_hours_pct,
-        row.historical_off_hours_pct
+        row.historical_off_hours_pct,
       );
       alerts.push({
         type: "off_hours",

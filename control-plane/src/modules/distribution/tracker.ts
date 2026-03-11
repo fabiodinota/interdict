@@ -87,13 +87,11 @@ export class KernelTracker {
     orgId: string,
     deptId: string,
     teamId: string,
-    stream: grpc.ServerWritableStream<SubscribeRequestMessage, PolicyUpdateMessage>
+    stream: grpc.ServerWritableStream<SubscribeRequestMessage, PolicyUpdateMessage>,
   ): void {
     // If kernel is already connected, unregister the old connection
     if (this.connections.has(kernelId)) {
-      console.log(
-        `[distribution] Kernel ${kernelId} reconnected, replacing existing connection`
-      );
+      console.log(`[distribution] Kernel ${kernelId} reconnected, replacing existing connection`);
       this.connections.delete(kernelId);
     }
 
@@ -109,7 +107,7 @@ export class KernelTracker {
     });
 
     console.log(
-      `[distribution] Kernel ${kernelId} connected (org=${orgId}, dept=${deptId || "all"}, team=${teamId || "all"}). Active connections: ${this.connections.size}`
+      `[distribution] Kernel ${kernelId} connected (org=${orgId}, dept=${deptId || "all"}, team=${teamId || "all"}). Active connections: ${this.connections.size}`,
     );
   }
 
@@ -120,7 +118,7 @@ export class KernelTracker {
     const existed = this.connections.delete(kernelId);
     if (existed) {
       console.log(
-        `[distribution] Kernel ${kernelId} disconnected. Active connections: ${this.connections.size}`
+        `[distribution] Kernel ${kernelId} disconnected. Active connections: ${this.connections.size}`,
       );
     }
   }
@@ -129,16 +127,11 @@ export class KernelTracker {
    * Process an ACK/NACK from a kernel.
    * Updates the kernel's currentVersion on ACK, logs error on NACK.
    */
-  acknowledge(
-    kernelId: string,
-    version: number,
-    accepted: boolean,
-    errorMessage: string
-  ): void {
+  acknowledge(kernelId: string, version: number, accepted: boolean, errorMessage: string): void {
     const conn = this.connections.get(kernelId);
     if (!conn) {
       console.warn(
-        `[distribution] ACK from unknown kernel ${kernelId} (version=${version}, accepted=${accepted})`
+        `[distribution] ACK from unknown kernel ${kernelId} (version=${version}, accepted=${accepted})`,
       );
       return;
     }
@@ -146,13 +139,9 @@ export class KernelTracker {
     if (accepted) {
       conn.currentVersion = version;
       conn.lastAckAt = new Date();
-      console.log(
-        `[distribution] Kernel ${kernelId} ACK version ${version}`
-      );
+      console.log(`[distribution] Kernel ${kernelId} ACK version ${version}`);
     } else {
-      console.warn(
-        `[distribution] Kernel ${kernelId} NACK version ${version}: ${errorMessage}`
-      );
+      console.warn(`[distribution] Kernel ${kernelId} NACK version ${version}: ${errorMessage}`);
     }
   }
 
@@ -208,9 +197,7 @@ export function broadcastUpdate(update: PolicyUpdateMessage): void {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(
-        `[distribution] Failed to write to kernel ${conn.kernelId}: ${msg}`
-      );
+      console.error(`[distribution] Failed to write to kernel ${conn.kernelId}: ${msg}`);
       failedKernels.push(conn.kernelId);
     }
   }
@@ -224,6 +211,6 @@ export function broadcastUpdate(update: PolicyUpdateMessage): void {
     `[distribution] Policy update v${update.version} broadcast to ${successCount} kernels` +
       (failedKernels.length > 0
         ? ` (${failedKernels.length} failed: ${failedKernels.join(", ")})`
-        : "")
+        : ""),
   );
 }

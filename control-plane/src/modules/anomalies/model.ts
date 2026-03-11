@@ -26,11 +26,7 @@ export const AnomalyAlertSchema = t.Object({
     t.Literal("vendor_switch"),
     t.Literal("topic_drift"),
   ]),
-  severity: t.Union([
-    t.Literal("info"),
-    t.Literal("warning"),
-    t.Literal("critical"),
-  ]),
+  severity: t.Union([t.Literal("info"), t.Literal("warning"), t.Literal("critical")]),
   actorIdentity: t.String(),
   summary: t.String(),
   baseline: t.Record(t.String(), t.Union([t.Number(), t.String()])),
@@ -54,13 +50,7 @@ export const AnomalySummarySchema = t.Object({
 
 /** Query parameters for GET /anomalies */
 export const AnomalyQueryParams = t.Object({
-  severity: t.Optional(
-    t.Union([
-      t.Literal("info"),
-      t.Literal("warning"),
-      t.Literal("critical"),
-    ])
-  ),
+  severity: t.Optional(t.Union([t.Literal("info"), t.Literal("warning"), t.Literal("critical")])),
 });
 
 // ---------------------------------------------------------------------------

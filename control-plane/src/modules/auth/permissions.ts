@@ -59,10 +59,7 @@ export const PERMISSIONS = {
  * inherit automatically via this map.
  */
 export const DEFAULT_PERMISSIONS: Record<string, string[]> = {
-  read_only_auditor: [
-    PERMISSIONS.AUDIT_READ,
-    PERMISSIONS.STATS_READ,
-  ],
+  read_only_auditor: [PERMISSIONS.AUDIT_READ, PERMISSIONS.STATS_READ],
   department_manager: [
     PERMISSIONS.AUDIT_READ,
     PERMISSIONS.STATS_READ,

@@ -7,14 +7,7 @@
  * RBAC enforcement deferred to Phase 7; role column for forward compatibility.
  */
 
-import {
-  pgTable,
-  uuid,
-  varchar,
-  boolean,
-  timestamp,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { boolean, pgTable, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 
 /** Department hierarchy (self-referencing for parent/child) */
 export const departments = pgTable("departments", {
@@ -38,9 +31,7 @@ export const teams = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [
-    uniqueIndex("team_department_unique").on(table.departmentId, table.name),
-  ]
+  (table) => [uniqueIndex("team_department_unique").on(table.departmentId, table.name)],
 );
 
 /** Users with RBAC role assignment and service account distinction */

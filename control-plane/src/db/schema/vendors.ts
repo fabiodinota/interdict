@@ -5,14 +5,7 @@
  * Granular per-model status (approved/blocked) per CONTEXT.md decisions.
  */
 
-import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  timestamp,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 
 /** AI vendor registry */
 export const vendors = pgTable("vendors", {
@@ -39,7 +32,5 @@ export const vendorModels = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [
-    uniqueIndex("vendor_model_unique").on(table.vendorId, table.modelName),
-  ]
+  (table) => [uniqueIndex("vendor_model_unique").on(table.vendorId, table.modelName)],
 );

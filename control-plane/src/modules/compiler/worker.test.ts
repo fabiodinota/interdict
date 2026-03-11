@@ -5,8 +5,8 @@
  * Tests verify the interface contract and error handling.
  */
 
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm, readdir, stat } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 

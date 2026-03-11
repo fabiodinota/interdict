@@ -10,15 +10,11 @@
  * All department-scoped operations verify user membership server-side.
  */
 
-import { eq, and, sql } from "drizzle-orm";
-import {
-  policies,
-  departmentPolicyOverrides,
-  userDepartments,
-} from "../../db/schema";
-import type { EffectivePolicyRow } from "./model";
-import { ForbiddenError, ValidationError, NotFoundError } from "../../shared/utilities";
+import { and, eq, sql } from "drizzle-orm";
+import { departmentPolicyOverrides, policies, userDepartments } from "../../db/schema";
 import type { AppDb } from "../../shared/types";
+import { ForbiddenError, NotFoundError, ValidationError } from "../../shared/utilities";
+import type { EffectivePolicyRow } from "./model";
 
 export class DepartmentOverrideService {
   private db: AppDb;
@@ -31,25 +27,17 @@ export class DepartmentOverrideService {
   // Department membership check (server-side enforcement)
   // -------------------------------------------------------------------------
 
-  private async verifyMembership(
-    userId: string,
-    departmentId: string
-  ): Promise<void> {
+  private async verifyMembership(userId: string, departmentId: string): Promise<void> {
     const rows = await this.db
       .select({ userId: userDepartments.userId })
       .from(userDepartments)
       .where(
-        and(
-          eq(userDepartments.userId, userId),
-          eq(userDepartments.departmentId, departmentId)
-        )
+        and(eq(userDepartments.userId, userId), eq(userDepartments.departmentId, departmentId)),
       )
       .limit(1);
 
     if (rows.length === 0) {
-      throw new ForbiddenError(
-        "You do not belong to this department"
-      );
+      throw new ForbiddenError("You do not belong to this department");
     }
   }
 
@@ -60,7 +48,7 @@ export class DepartmentOverrideService {
   async getEffectivePolicies(
     departmentId: string,
     userId: string,
-    userRole: string
+    userRole: string,
   ): Promise<EffectivePolicyRow[]> {
     // Super admins and compliance officers bypass department membership check
     const bypassRoles = ["super_admin", "compliance_officer"];
@@ -84,8 +72,8 @@ export class DepartmentOverrideService {
         departmentPolicyOverrides,
         and(
           eq(departmentPolicyOverrides.policyId, policies.id),
-          eq(departmentPolicyOverrides.departmentId, sql`${departmentId}::uuid`)
-        )
+          eq(departmentPolicyOverrides.departmentId, sql`${departmentId}::uuid`),
+        ),
       )
       .orderBy(policies.name);
 
@@ -94,13 +82,9 @@ export class DepartmentOverrideService {
       name: row.name,
       description: row.description ?? "",
       globalEnabled: row.globalEnabled,
-      effectiveEnabled:
-        row.overrideEnabled !== null ? row.overrideEnabled : row.globalEnabled,
+      effectiveEnabled: row.overrideEnabled !== null ? row.overrideEnabled : row.globalEnabled,
       isMandatory: row.isMandatory,
-      source:
-        row.overrideId !== null
-          ? ("Department override" as const)
-          : ("Global" as const),
+      source: row.overrideId !== null ? ("Department override" as const) : ("Global" as const),
       overrideId: row.overrideId,
     }));
   }
@@ -114,7 +98,7 @@ export class DepartmentOverrideService {
     policyId: string,
     enabled: boolean,
     userId: string,
-    userRole: string
+    userRole: string,
   ): Promise<{ id: string }> {
     const bypassRoles = ["super_admin", "compliance_officer"];
     if (!bypassRoles.includes(userRole)) {
@@ -136,9 +120,7 @@ export class DepartmentOverrideService {
     }
 
     if (policy.isMandatory && !enabled) {
-      throw new ValidationError(
-        "Cannot disable mandatory policy"
-      );
+      throw new ValidationError("Cannot disable mandatory policy");
     }
 
     // Upsert: INSERT ON CONFLICT UPDATE
@@ -151,10 +133,7 @@ export class DepartmentOverrideService {
         createdBy: userId,
       })
       .onConflictDoUpdate({
-        target: [
-          departmentPolicyOverrides.departmentId,
-          departmentPolicyOverrides.policyId,
-        ],
+        target: [departmentPolicyOverrides.departmentId, departmentPolicyOverrides.policyId],
         set: {
           enabled,
           updatedAt: new Date(),
@@ -169,11 +148,7 @@ export class DepartmentOverrideService {
   // 3. Remove an override (revert to global default)
   // -------------------------------------------------------------------------
 
-  async removeOverride(
-    overrideId: string,
-    userId: string,
-    userRole: string
-  ): Promise<void> {
+  async removeOverride(overrideId: string, userId: string, userRole: string): Promise<void> {
     // Fetch the override to verify department ownership
     const [override] = await this.db
       .select({
@@ -202,10 +177,7 @@ export class DepartmentOverrideService {
   // 4. Set mandatory flag (compliance_officer+ only)
   // -------------------------------------------------------------------------
 
-  async setMandatory(
-    policyId: string,
-    isMandatory: boolean
-  ): Promise<void> {
+  async setMandatory(policyId: string, isMandatory: boolean): Promise<void> {
     // Verify policy exists
     const [policy] = await this.db
       .select({ id: policies.id })
@@ -233,8 +205,8 @@ export class DepartmentOverrideService {
         .where(
           and(
             eq(departmentPolicyOverrides.policyId, policyId),
-            eq(departmentPolicyOverrides.enabled, false)
-          )
+            eq(departmentPolicyOverrides.enabled, false),
+          ),
         );
     }
   }

@@ -20,9 +20,7 @@ export const VerifyBundlesBody = t.Object({
 
 export const BundlesQueryParams = t.Object({
   cursor: t.Optional(t.String()),
-  page_size: t.Optional(
-    t.Number({ minimum: 1, maximum: 200, default: 50 })
-  ),
+  page_size: t.Optional(t.Number({ minimum: 1, maximum: 200, default: 50 })),
   from_date: t.Optional(t.String()),
   to_date: t.Optional(t.String()),
 });

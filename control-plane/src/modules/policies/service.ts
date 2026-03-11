@@ -11,17 +11,17 @@
  * - Soft delete preserves versions
  */
 
-import { eq, desc, and, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 import { policies, policyVersions } from "../../db/schema/policies";
-import {
-  NotFoundError,
-  ConflictError,
-  encodeCursor,
-  decodeCursor,
-  DEFAULT_PAGE_SIZE,
-  MAX_PAGE_SIZE,
-} from "../../shared/utilities";
 import type { AppDb, AppTx } from "../../shared/types";
+import {
+  ConflictError,
+  DEFAULT_PAGE_SIZE,
+  decodeCursor,
+  encodeCursor,
+  MAX_PAGE_SIZE,
+  NotFoundError,
+} from "../../shared/utilities";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -85,9 +85,7 @@ function serializePolicy(p: PolicyRow, currentVersion?: VersionRow | null) {
     id: p.id,
     name: p.name,
     description: p.description,
-    current_version: currentVersion
-      ? serializeVersion(currentVersion)
-      : undefined,
+    current_version: currentVersion ? serializeVersion(currentVersion) : undefined,
     is_active: p.isActive,
     created_at: p.createdAt.toISOString(),
     updated_at: p.updatedAt.toISOString(),
@@ -179,11 +177,7 @@ export function createPolicyService(db: AppDb): PolicyService {
       } catch (err: unknown) {
         // Handle unique constraint violation (DrizzleQueryError wraps PG error in .cause)
         const { code: pgCode, message: msg } = getConstraintErrorDetails(err);
-        if (
-          pgCode === "23505" ||
-          msg.includes("unique") ||
-          msg.includes("duplicate")
-        ) {
+        if (pgCode === "23505" || msg.includes("unique") || msg.includes("duplicate")) {
           throw new ConflictError(`Policy with name '${body.name}' already exists`);
         }
         throw err;
@@ -307,10 +301,7 @@ export function createPolicyService(db: AppDb): PolicyService {
      */
     async getVersionHistory(policyId: string) {
       // Verify policy exists
-      const [policy] = await db
-        .select()
-        .from(policies)
-        .where(eq(policies.id, policyId));
+      const [policy] = await db.select().from(policies).where(eq(policies.id, policyId));
 
       if (!policy) {
         throw new NotFoundError("Policy not found");
@@ -344,12 +335,7 @@ export function createPolicyService(db: AppDb): PolicyService {
         const [oldVersion] = await tx
           .select()
           .from(policyVersions)
-          .where(
-            and(
-              eq(policyVersions.id, versionId),
-              eq(policyVersions.policyId, policyId)
-            )
-          );
+          .where(and(eq(policyVersions.id, versionId), eq(policyVersions.policyId, policyId)));
 
         if (!oldVersion) {
           throw new NotFoundError("Version not found");
@@ -400,7 +386,7 @@ export function createPolicyService(db: AppDb): PolicyService {
     async list(cursor?: string, pageSize?: number) {
       const limit = Math.min(pageSize || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
-      let conditions = [eq(policies.isActive, true)];
+      const conditions = [eq(policies.isActive, true)];
 
       if (cursor) {
         const { timestamp, id: cursorId } = decodeCursor(cursor);
@@ -408,11 +394,8 @@ export function createPolicyService(db: AppDb): PolicyService {
         conditions.push(
           or(
             lt(policies.updatedAt, cursorDate),
-            and(
-              eq(policies.updatedAt, cursorDate),
-              lt(policies.id, cursorId)
-            )
-          )!
+            and(eq(policies.updatedAt, cursorDate), lt(policies.id, cursorId)),
+          )!,
         );
       }
 
@@ -436,9 +419,7 @@ export function createPolicyService(db: AppDb): PolicyService {
         const versions = await db
           .select()
           .from(policyVersions)
-          .where(
-            sql`${policyVersions.id} IN ${versionIds}`
-          );
+          .where(sql`${policyVersions.id} IN ${versionIds}`);
         for (const v of versions) {
           versionMap.set(v.id, v);
         }
@@ -447,17 +428,12 @@ export function createPolicyService(db: AppDb): PolicyService {
       const serialized = items.map((policy) =>
         serializePolicy(
           policy,
-          policy.currentVersionId
-            ? versionMap.get(policy.currentVersionId) ?? null
-            : null
-        )
+          policy.currentVersionId ? (versionMap.get(policy.currentVersionId) ?? null) : null,
+        ),
       );
 
       const nextCursor = hasMore
-        ? encodeCursor(
-            items[items.length - 1].updatedAt.getTime(),
-            items[items.length - 1].id
-          )
+        ? encodeCursor(items[items.length - 1].updatedAt.getTime(), items[items.length - 1].id)
         : null;
 
       return { items: serialized, nextCursor };

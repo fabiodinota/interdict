@@ -7,16 +7,16 @@
  */
 
 import {
+  boolean,
+  index,
+  integer,
+  pgEnum,
   pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
   uuid,
   varchar,
-  text,
-  integer,
-  timestamp,
-  pgEnum,
-  boolean,
-  uniqueIndex,
-  index,
 } from "drizzle-orm/pg-core";
 
 /** Compilation status lifecycle: pending -> compiling -> compiled | failed */
@@ -58,9 +58,7 @@ export const policyVersions = pgTable(
     version: integer("version").notNull(), // auto-incrementing per policy
     regoSource: text("rego_source").notNull(),
     entrypoint: varchar("entrypoint", { length: 512 }).notNull(),
-    compilationStatus: compilationStatusEnum("compilation_status")
-      .notNull()
-      .default("pending"),
+    compilationStatus: compilationStatusEnum("compilation_status").notNull().default("pending"),
     compilationError: text("compilation_error"),
     wasmPath: varchar("wasm_path", { length: 1024 }), // filesystem path (discretion: fs + DB ref)
     wasmHash: varchar("wasm_hash", { length: 64 }), // SHA-256 hex
@@ -69,9 +67,7 @@ export const policyVersions = pgTable(
     createdBy: uuid("created_by"), // FK to users (enforced in Phase 7)
     changeDescription: text("change_description"),
   },
-  (table) => [
-    uniqueIndex("policy_version_unique").on(table.policyId, table.version),
-  ]
+  (table) => [uniqueIndex("policy_version_unique").on(table.policyId, table.version)],
 );
 
 // ---------------------------------------------------------------------------
@@ -98,9 +94,9 @@ export const policyScopeAssignments = pgTable(
       .notNull()
       .references(() => policies.id, { onDelete: "cascade" }),
     orgId: varchar("org_id", { length: 64 }).notNull().default("default"),
-    deptId: varchar("dept_id", { length: 64 }),    // null = org-wide
-    teamId: varchar("team_id", { length: 64 }),    // null = dept-wide or org-wide
-    vendorIds: text("vendor_ids"),                  // JSON string array, null = all vendors
+    deptId: varchar("dept_id", { length: 64 }), // null = org-wide
+    teamId: varchar("team_id", { length: 64 }), // null = dept-wide or org-wide
+    vendorIds: text("vendor_ids"), // JSON string array, null = all vendors
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

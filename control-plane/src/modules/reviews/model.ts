@@ -13,17 +13,9 @@ import { t } from "elysia";
 
 /** GET /queue query parameters */
 export const ReviewQueueParams = t.Object({
-  status: t.Optional(
-    t.Union([
-      t.Literal("pending"),
-      t.Literal("claimed"),
-      t.Literal("all"),
-    ])
-  ),
+  status: t.Optional(t.Union([t.Literal("pending"), t.Literal("claimed"), t.Literal("all")])),
   cursor: t.Optional(t.String()),
-  page_size: t.Optional(
-    t.Number({ minimum: 1, maximum: 200, default: 50 })
-  ),
+  page_size: t.Optional(t.Number({ minimum: 1, maximum: 200, default: 50 })),
 });
 
 // ---------------------------------------------------------------------------

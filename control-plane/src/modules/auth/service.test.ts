@@ -5,8 +5,8 @@
  * These functions are deterministic and do not require database access.
  */
 
-import { describe, test, expect } from "bun:test";
-import { hashApiKey, generateApiKey } from "./service";
+import { describe, expect, test } from "bun:test";
+import { generateApiKey, hashApiKey } from "./service";
 
 describe("hashApiKey", () => {
   test("produces a 64-character hex string", () => {

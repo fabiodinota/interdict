@@ -12,21 +12,21 @@
  * Usage: bun run src/seed/run-seed.ts
  */
 
-import { eq, and } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
+import path from "node:path";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db/postgres";
 import {
-  frameworks,
+  apiKeys,
+  departments,
   frameworkPolicies,
+  frameworks,
   policies,
   policyVersions,
-  departments,
-  users,
-  apiKeys,
-  userDepartments,
   rolePermissions,
+  userDepartments,
+  users,
 } from "../db/schema/index";
-import path from "path";
 
 // ---------------------------------------------------------------------------
 // Identity Seed Types
@@ -150,19 +150,16 @@ async function seedIdentity(): Promise<void> {
     for (const deptName of userData.departments) {
       const deptId = departmentMap.get(deptName);
       if (!deptId) {
-        console.warn(`[seed]   WARNING: Department '${deptName}' not found for user '${userData.email}'`);
+        console.warn(
+          `[seed]   WARNING: Department '${deptName}' not found for user '${userData.email}'`,
+        );
         continue;
       }
 
       const existingLink = await db
         .select({ userId: userDepartments.userId })
         .from(userDepartments)
-        .where(
-          and(
-            eq(userDepartments.userId, userId),
-            eq(userDepartments.departmentId, deptId),
-          ),
-        )
+        .where(and(eq(userDepartments.userId, userId), eq(userDepartments.departmentId, deptId)))
         .limit(1);
 
       if (existingLink.length === 0) {
@@ -253,12 +250,7 @@ async function seedIdentity(): Promise<void> {
       const existing = await db
         .select({ id: rolePermissions.id })
         .from(rolePermissions)
-        .where(
-          and(
-            eq(rolePermissions.role, role),
-            eq(rolePermissions.permission, permission),
-          ),
-        )
+        .where(and(eq(rolePermissions.role, role), eq(rolePermissions.permission, permission)))
         .limit(1);
 
       if (existing.length === 0) {
@@ -282,7 +274,9 @@ async function seedIdentity(): Promise<void> {
       if (process.env.SEED_SHOW_KEYS === "true") {
         console.log(`  [seed] API key for ${email}: ${key}`);
       } else {
-        console.log(`  [seed] API key created for ${email} (set SEED_SHOW_KEYS=true to reveal — local dev only)`);
+        console.log(
+          `  [seed] API key created for ${email} (set SEED_SHOW_KEYS=true to reveal — local dev only)`,
+        );
       }
     }
     console.log("=".repeat(72));
@@ -342,7 +336,7 @@ async function seedFramework(frameworkDir: string): Promise<void> {
 
   if (existing.length > 0) {
     console.log(
-      `[seed] Framework '${frameworkDef.slug}' already exists (id=${existing[0].id}), skipping`
+      `[seed] Framework '${frameworkDef.slug}' already exists (id=${existing[0].id}), skipping`,
     );
     return;
   }
@@ -415,13 +409,11 @@ async function seedFramework(frameworkDir: string): Promise<void> {
       sortOrder: policyDef.sort_order,
     });
 
-    console.log(
-      `[seed]   Policy created: ${policyName} (${policyDef.requirement_ref})`
-    );
+    console.log(`[seed]   Policy created: ${policyName} (${policyDef.requirement_ref})`);
   }
 
   console.log(
-    `[seed] Framework '${frameworkDef.name}' seeded with ${frameworkDef.policies.length} policies`
+    `[seed] Framework '${frameworkDef.name}' seeded with ${frameworkDef.policies.length} policies`,
   );
 }
 
@@ -476,7 +468,7 @@ async function main(): Promise<void> {
 
   console.log("[seed] Seed complete!");
   console.log(
-    `[seed] Results: ${successCount} created, ${skipCount} skipped (already exist), ${errorCount} errors`
+    `[seed] Results: ${successCount} created, ${skipCount} skipped (already exist), ${errorCount} errors`,
   );
 
   // Exit cleanly

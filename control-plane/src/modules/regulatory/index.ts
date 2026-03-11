@@ -5,31 +5,26 @@
  * Prefix: /api/v1/regulatory
  */
 
+import { and, count, eq, sql } from "drizzle-orm";
 import { Elysia, t } from "elysia";
-import { eq, and, desc, sql, isNull, count } from "drizzle-orm";
+import { db as pgDb } from "../../db/postgres";
 import {
-  frameworks,
-  frameworkPolicies,
   frameworkActivations,
+  frameworkPolicies,
+  frameworks,
   policies,
   policyVersions,
 } from "../../db/schema/index";
-import {
-  apiResponse,
-  NotFoundError,
-} from "../../shared/utilities";
 import type { AppDb, RouteContext } from "../../shared/types";
-import {
-  ActivateFrameworkBody,
-  TogglePolicyBody,
-} from "./model";
+import { apiResponse, NotFoundError } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
-import { db as pgDb } from "../../db/postgres";
+import { ActivateFrameworkBody, TogglePolicyBody } from "./model";
 
-type RegulatoryRouteContext<
-  TBody = unknown,
-  TParams = Record<string, string>,
-> = RouteContext<TBody, Record<string, string | undefined>, TParams>;
+type RegulatoryRouteContext<TBody = unknown, TParams = Record<string, string>> = RouteContext<
+  TBody,
+  Record<string, string | undefined>,
+  TParams
+>;
 
 /** Extract the Drizzle db from the Elysia store, falling back to the global singleton. */
 function resolveDb(store: unknown): AppDb {
@@ -48,53 +43,57 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   /**
    * GET /frameworks - List all frameworks with activation status (Read-Only Auditor+)
    */
-  .get("/frameworks", async (ctx) => {
-    const routeCtx = ctx as unknown as RegulatoryRouteContext;
-    const db = resolveDb(routeCtx.store);
+  .get(
+    "/frameworks",
+    async (ctx) => {
+      const routeCtx = ctx as unknown as RegulatoryRouteContext;
+      const db = resolveDb(routeCtx.store);
 
-    // Bulk queries — exactly 3 DB round-trips regardless of framework count (HIGH-S1)
-    const [allFrameworks, allPolicyCounts, allActivations] = await Promise.all([
-      db.select().from(frameworks).orderBy(frameworks.name),
-      db
-        .select({
-          frameworkId: frameworkPolicies.frameworkId,
-          policyCount: count(),
-          activePolicyCount: sql<number>`count(*) filter (where ${frameworkPolicies.isRequired})`,
-        })
-        .from(frameworkPolicies)
-        .groupBy(frameworkPolicies.frameworkId),
-      db
-        .select({ frameworkId: frameworkActivations.frameworkId })
-        .from(frameworkActivations)
-        .where(eq(frameworkActivations.isActive, true)),
-    ]);
+      // Bulk queries — exactly 3 DB round-trips regardless of framework count (HIGH-S1)
+      const [allFrameworks, allPolicyCounts, allActivations] = await Promise.all([
+        db.select().from(frameworks).orderBy(frameworks.name),
+        db
+          .select({
+            frameworkId: frameworkPolicies.frameworkId,
+            policyCount: count(),
+            activePolicyCount: sql<number>`count(*) filter (where ${frameworkPolicies.isRequired})`,
+          })
+          .from(frameworkPolicies)
+          .groupBy(frameworkPolicies.frameworkId),
+        db
+          .select({ frameworkId: frameworkActivations.frameworkId })
+          .from(frameworkActivations)
+          .where(eq(frameworkActivations.isActive, true)),
+      ]);
 
-    const policyCountMap = new Map<string, { policyCount: number; activePolicyCount: number }>(
-      allPolicyCounts.map((r) => [
-        r.frameworkId,
-        { policyCount: Number(r.policyCount), activePolicyCount: Number(r.activePolicyCount) },
-      ])
-    );
-    const activeSet = new Set(allActivations.map((r) => r.frameworkId));
+      const policyCountMap = new Map<string, { policyCount: number; activePolicyCount: number }>(
+        allPolicyCounts.map((r) => [
+          r.frameworkId,
+          { policyCount: Number(r.policyCount), activePolicyCount: Number(r.activePolicyCount) },
+        ]),
+      );
+      const activeSet = new Set(allActivations.map((r) => r.frameworkId));
 
-    const result = allFrameworks.map((fw) => {
-      const counts = policyCountMap.get(fw.id) ?? { policyCount: 0, activePolicyCount: 0 };
-      return {
-        id: fw.id,
-        slug: fw.slug,
-        name: fw.name,
-        description: fw.description,
-        jurisdiction: fw.jurisdiction,
-        version: fw.version,
-        isSeeded: fw.isSeeded,
-        isActive: activeSet.has(fw.id),
-        policyCount: counts.policyCount,
-        activePolicyCount: counts.activePolicyCount,
-      };
-    });
+      const result = allFrameworks.map((fw) => {
+        const counts = policyCountMap.get(fw.id) ?? { policyCount: 0, activePolicyCount: 0 };
+        return {
+          id: fw.id,
+          slug: fw.slug,
+          name: fw.name,
+          description: fw.description,
+          jurisdiction: fw.jurisdiction,
+          version: fw.version,
+          isSeeded: fw.isSeeded,
+          isActive: activeSet.has(fw.id),
+          policyCount: counts.policyCount,
+          activePolicyCount: counts.activePolicyCount,
+        };
+      });
 
-    return apiResponse(result);
-  }, { auth: ["read_only_auditor"] })
+      return apiResponse(result);
+    },
+    { auth: ["read_only_auditor"] },
+  )
 
   /**
    * GET /frameworks/:slug - Get framework details with policies (Read-Only Auditor+)
@@ -122,10 +121,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
         .select()
         .from(frameworkActivations)
         .where(
-          and(
-            eq(frameworkActivations.frameworkId, fw.id),
-            eq(frameworkActivations.isActive, true)
-          )
+          and(eq(frameworkActivations.frameworkId, fw.id), eq(frameworkActivations.isActive, true)),
         )
         .limit(1);
 
@@ -170,7 +166,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
             sortOrder: fp.sortOrder,
             compilationStatus,
           };
-        })
+        }),
       );
 
       return apiResponse({
@@ -190,7 +186,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
       params: t.Object({
         slug: t.String(),
       }),
-    }
+    },
   )
 
   /**
@@ -199,10 +195,13 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
   .post(
     "/frameworks/:slug/activate",
     async (ctx) => {
-      const routeCtx = ctx as unknown as RegulatoryRouteContext<{ is_active?: boolean }, { slug: string }>;
+      const routeCtx = ctx as unknown as RegulatoryRouteContext<
+        { is_active?: boolean },
+        { slug: string }
+      >;
       const db = resolveDb(routeCtx.store);
       const params = routeCtx.params;
-      const body = routeCtx.body;
+      const _body = routeCtx.body;
 
       const fwRows = await db
         .select()
@@ -220,10 +219,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
         .select()
         .from(frameworkActivations)
         .where(
-          and(
-            eq(frameworkActivations.frameworkId, fw.id),
-            eq(frameworkActivations.isActive, true)
-          )
+          and(eq(frameworkActivations.frameworkId, fw.id), eq(frameworkActivations.isActive, true)),
         )
         .limit(1);
 
@@ -243,7 +239,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
       auth: ["policy_admin"],
       params: t.Object({ slug: t.String() }),
       body: t.Optional(ActivateFrameworkBody),
-    }
+    },
   )
 
   /**
@@ -272,10 +268,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
         .select()
         .from(frameworkActivations)
         .where(
-          and(
-            eq(frameworkActivations.frameworkId, fw.id),
-            eq(frameworkActivations.isActive, true)
-          )
+          and(eq(frameworkActivations.frameworkId, fw.id), eq(frameworkActivations.isActive, true)),
         )
         .limit(1);
 
@@ -297,7 +290,7 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
     {
       auth: ["policy_admin"],
       params: t.Object({ slug: t.String() }),
-    }
+    },
   )
 
   /**
@@ -332,14 +325,14 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
         .where(
           and(
             eq(frameworkPolicies.frameworkId, fwRows[0].id),
-            eq(frameworkPolicies.policyId, params.policyId)
-          )
+            eq(frameworkPolicies.policyId, params.policyId),
+          ),
         )
         .limit(1);
 
       if (fpRows.length === 0) {
         throw new NotFoundError(
-          `Policy '${params.policyId}' not found in framework '${params.slug}'`
+          `Policy '${params.policyId}' not found in framework '${params.slug}'`,
         );
       }
 
@@ -360,64 +353,59 @@ export const regulatoryModule = new Elysia({ prefix: "/api/v1/regulatory" })
         policyId: t.String(),
       }),
       body: TogglePolicyBody,
-    }
+    },
   )
 
   /**
    * GET /active-policies - Get all currently active policy IDs (additive merge)
    */
-  .get("/active-policies", async (ctx) => {
-    const routeCtx = ctx as unknown as RegulatoryRouteContext;
-    const db = resolveDb(routeCtx.store);
+  .get(
+    "/active-policies",
+    async (ctx) => {
+      const routeCtx = ctx as unknown as RegulatoryRouteContext;
+      const db = resolveDb(routeCtx.store);
 
-    // 1. Get all directly active custom policies (not in any framework)
-    const allActivePolicies = await db
-      .select({ id: policies.id })
-      .from(policies)
-      .where(eq(policies.isActive, true));
+      // 1. Get all directly active custom policies (not in any framework)
+      const allActivePolicies = await db
+        .select({ id: policies.id })
+        .from(policies)
+        .where(eq(policies.isActive, true));
 
-    const allFrameworkPolicyIds = await db
-      .select({ policyId: frameworkPolicies.policyId })
-      .from(frameworkPolicies);
+      const allFrameworkPolicyIds = await db
+        .select({ policyId: frameworkPolicies.policyId })
+        .from(frameworkPolicies);
 
-    const frameworkPolicyIdSet = new Set(
-      allFrameworkPolicyIds.map((fp) => fp.policyId)
-    );
+      const frameworkPolicyIdSet = new Set(allFrameworkPolicyIds.map((fp) => fp.policyId));
 
-    // Custom policies = active policies NOT in any framework
-    const customActivePolicyIds = allActivePolicies
-      .filter((p) => !frameworkPolicyIdSet.has(p.id))
-      .map((p) => p.id);
+      // Custom policies = active policies NOT in any framework
+      const customActivePolicyIds = allActivePolicies
+        .filter((p) => !frameworkPolicyIdSet.has(p.id))
+        .map((p) => p.id);
 
-    // 2. Get active framework policies
-    const activeActivations = await db
-      .select({ frameworkId: frameworkActivations.frameworkId })
-      .from(frameworkActivations)
-      .where(eq(frameworkActivations.isActive, true));
+      // 2. Get active framework policies
+      const activeActivations = await db
+        .select({ frameworkId: frameworkActivations.frameworkId })
+        .from(frameworkActivations)
+        .where(eq(frameworkActivations.isActive, true));
 
-    const activeFrameworkIds = new Set(
-      activeActivations.map((a) => a.frameworkId)
-    );
+      const activeFrameworkIds = new Set(activeActivations.map((a) => a.frameworkId));
 
-    const allFp = await db
-      .select({
-        policyId: frameworkPolicies.policyId,
-        frameworkId: frameworkPolicies.frameworkId,
-        isRequired: frameworkPolicies.isRequired,
-      })
-      .from(frameworkPolicies);
+      const allFp = await db
+        .select({
+          policyId: frameworkPolicies.policyId,
+          frameworkId: frameworkPolicies.frameworkId,
+          isRequired: frameworkPolicies.isRequired,
+        })
+        .from(frameworkPolicies);
 
-    const frameworkActivePolicyIds = allFp
-      .filter(
-        (fp) =>
-          activeFrameworkIds.has(fp.frameworkId) && fp.isRequired
-      )
-      .map((fp) => fp.policyId);
+      const frameworkActivePolicyIds = allFp
+        .filter((fp) => activeFrameworkIds.has(fp.frameworkId) && fp.isRequired)
+        .map((fp) => fp.policyId);
 
-    // Merge (deduplicate)
-    const mergedIds = [
-      ...new Set([...customActivePolicyIds, ...frameworkActivePolicyIds]),
-    ];
+      // Merge (deduplicate)
+      const mergedIds = [...new Set([...customActivePolicyIds, ...frameworkActivePolicyIds])];
 
-    return apiResponse({ policyIds: mergedIds, count: mergedIds.length });
-  }, { auth: ["read_only_auditor"] });
+      return apiResponse({ policyIds: mergedIds, count: mergedIds.length });
+    },
+    { auth: ["read_only_auditor"] },
+  );

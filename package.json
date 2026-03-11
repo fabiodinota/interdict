@@ -11,17 +11,17 @@
   },
   "lint-staged": {
     "crates/**/*.rs": [
-      "echo '⚠ Rust files staged — cargo fmt/clippy checked in CI (or run locally via WSL2)'"
+      "echo Rust files staged -- cargo fmt/clippy checked in CI or run locally via WSL2"
     ],
     "control-plane/src/**/*.{ts,tsx,js,jsx}": [
-      "npx --prefix control-plane @biomejs/biome check --fix --no-errors-on-unmatched"
+      "control-plane/node_modules/.bin/biome check --fix --no-errors-on-unmatched"
     ],
     "dashboard/src/**/*.{ts,tsx,js,jsx}": [
-      "npx --prefix dashboard prettier --write",
-      "npx --prefix dashboard eslint --fix"
+      "dashboard/node_modules/.bin/prettier --write",
+      "dashboard/node_modules/.bin/eslint --fix"
     ],
     "dashboard/src/**/*.css": [
-      "npx --prefix dashboard prettier --write"
+      "dashboard/node_modules/.bin/prettier --write"
     ]
   }
 }

@@ -11,13 +11,13 @@
  * example-domain fallbacks.
  */
 
-import * as samlify from "samlify";
+import { existsSync, readFileSync } from "node:fs";
 import * as validator from "@authenio/samlify-xsd-schema-validator";
-import { readFileSync, existsSync } from "node:fs";
+import * as samlify from "samlify";
 
 // Set the XSD schema validator for XML signature verification
 samlify.setSchemaValidator(
-  validator as unknown as Parameters<typeof samlify.setSchemaValidator>[0]
+  validator as unknown as Parameters<typeof samlify.setSchemaValidator>[0],
 );
 
 // ---------------------------------------------------------------------------
@@ -34,8 +34,7 @@ function getRequiredEnv(name: string): string {
 
 const SP_KEY_PATH = process.env.SAML_SP_KEY_PATH || "/certs/saml-sp.key";
 const SP_CERT_PATH = process.env.SAML_SP_CERT_PATH || "/certs/saml-sp.crt";
-const IDP_METADATA_PATH =
-  process.env.SAML_IDP_METADATA_PATH || "/config/idp-metadata.xml";
+const IDP_METADATA_PATH = process.env.SAML_IDP_METADATA_PATH || "/config/idp-metadata.xml";
 
 // ---------------------------------------------------------------------------
 // File Loading (graceful degradation)
@@ -74,7 +73,7 @@ const idpMetadataValue = idpMetadata ?? undefined;
 if (!samlEnabled) {
   console.warn(
     "[SAML] SAML SSO is disabled. Missing cert/key/metadata files. " +
-    `Checked: SP_KEY=${SP_KEY_PATH}, SP_CERT=${SP_CERT_PATH}, IDP_META=${IDP_METADATA_PATH}`
+      `Checked: SP_KEY=${SP_KEY_PATH}, SP_CERT=${SP_CERT_PATH}, IDP_META=${IDP_METADATA_PATH}`,
   );
 }
 

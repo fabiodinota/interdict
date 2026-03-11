@@ -34,7 +34,7 @@ function checkOpaBinary(path: string): void {
     console.warn(
       `[config] WARNING: OPA binary not found in PATH (searched for '${path}'). ` +
         `Policy compilation will fail until OPA is installed. ` +
-        `Install from https://www.openpolicyagent.org/docs/latest/#running-opa`
+        `Install from https://www.openpolicyagent.org/docs/latest/#running-opa`,
     );
   } else {
     console.log(`[config] OPA binary found at: ${resolved}`);
@@ -46,7 +46,7 @@ export function loadConfig(): Config {
     port: parseInt(process.env.PORT ?? "3000", 10),
     databaseUrl: requireEnv(
       "DATABASE_URL",
-      isProduction ? undefined : "postgres://interdict:interdict@localhost:5432/interdict"
+      isProduction ? undefined : "postgres://interdict:interdict@localhost:5432/interdict",
     ),
     clickhouseUrl: requireEnv("CLICKHOUSE_URL", "http://localhost:8123"),
     clickhouseDatabase: requireEnv("CLICKHOUSE_DATABASE", "interdict"),
@@ -57,15 +57,15 @@ export function loadConfig(): Config {
     grpcPort: parseInt(process.env.INTERDICT_GRPC_PORT ?? "50052", 10),
     grpcMaxMessageSize: parseInt(
       process.env.INTERDICT_GRPC_MAX_MESSAGE_SIZE ?? String(16 * 1024 * 1024),
-      10
+      10,
     ),
   };
 
-  if (isNaN(config.port) || config.port < 1 || config.port > 65535) {
+  if (Number.isNaN(config.port) || config.port < 1 || config.port > 65535) {
     throw new Error(`Invalid PORT value: ${process.env.PORT}`);
   }
 
-  if (isNaN(config.grpcPort) || config.grpcPort < 1 || config.grpcPort > 65535) {
+  if (Number.isNaN(config.grpcPort) || config.grpcPort < 1 || config.grpcPort > 65535) {
     throw new Error(`Invalid INTERDICT_GRPC_PORT value: ${process.env.INTERDICT_GRPC_PORT}`);
   }
 

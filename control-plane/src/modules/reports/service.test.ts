@@ -7,16 +7,18 @@
  * - Partial failures don't crash report generation
  */
 
-import { describe, it, expect } from "bun:test";
-import { ReportService, type ReportData, type ReportWarning } from "./service";
+import { describe, expect, it } from "bun:test";
 import type { AppDb } from "../../shared/types";
+import { ReportService } from "./service";
 
 // ---------------------------------------------------------------------------
 // Mock ClickHouse client that always fails
 // ---------------------------------------------------------------------------
 
 const failingClickhouse: any = {
-  query: () => { throw new Error("ClickHouse connection refused"); },
+  query: () => {
+    throw new Error("ClickHouse connection refused");
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -33,23 +35,31 @@ const emptyClickhouse: any = {
 // Mock DB that always fails
 // ---------------------------------------------------------------------------
 
-const failingDb = new Proxy({}, {
-  get() {
-    return () => { throw new Error("Postgres connection refused"); };
+const failingDb = new Proxy(
+  {},
+  {
+    get() {
+      return () => {
+        throw new Error("Postgres connection refused");
+      };
+    },
   },
-}) as unknown as AppDb;
+) as unknown as AppDb;
 
 // ---------------------------------------------------------------------------
 // Mock DB that returns empty arrays for any chained query
 // ---------------------------------------------------------------------------
 
 function createEmptyDb() {
-  const chainable: any = new Proxy({}, {
-    get(_target, prop) {
-      if (prop === "then") return undefined; // not a thenable
-      return (..._args: any[]) => chainable;
+  const chainable: any = new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        if (prop === "then") return undefined; // not a thenable
+        return (..._args: any[]) => chainable;
+      },
     },
-  });
+  );
   // Override the terminal .from() to return a promise of empty array
   const handler: any = {
     get(_target: any, prop: string) {
@@ -97,11 +107,17 @@ describe("ReportService", () => {
       expect(report.warnings.length).toBeGreaterThanOrEqual(1);
 
       // Failed sections should be null
-      const chSections = ["summary", "violationsByType", "violationsByDepartment", "violationsByVendor", "topIncidents"];
+      const chSections = [
+        "summary",
+        "violationsByType",
+        "violationsByDepartment",
+        "violationsByVendor",
+        "topIncidents",
+      ];
       for (const section of chSections) {
         const warning = report.warnings.find((w) => w.section === section);
         expect(warning).toBeDefined();
-        expect(warning!.message).toContain("ClickHouse connection refused");
+        expect(warning?.message).toContain("ClickHouse connection refused");
       }
 
       // CH data sections should be null
@@ -121,7 +137,7 @@ describe("ReportService", () => {
       for (const section of pgSections) {
         const warning = report.warnings.find((w) => w.section === section);
         expect(warning).toBeDefined();
-        expect(warning!.message).toContain("Postgres connection refused");
+        expect(warning?.message).toContain("Postgres connection refused");
       }
 
       // PG data sections should be null

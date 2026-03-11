@@ -11,9 +11,9 @@
  */
 
 import { inArray } from "drizzle-orm";
-import { users, vendors, policies } from "../../db/schema/index";
-import type { ClickHouseAuditRow, AuditRecord } from "./model";
+import { policies, users, vendors } from "../../db/schema/index";
 import type { AppDb } from "../../shared/types";
+import type { AuditRecord, ClickHouseAuditRow } from "./model";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,7 +49,7 @@ interface EnrichedPolicyRule {
  */
 export async function enrichAuditRecords(
   db: AppDb,
-  rows: ClickHouseAuditRow[]
+  rows: ClickHouseAuditRow[],
 ): Promise<AuditRecord[]> {
   if (rows.length === 0) {
     return [];
@@ -87,7 +87,7 @@ export async function enrichAuditRecords(
       ...r,
       policy_id: r.policy_id ?? null,
       rule: r.rule ?? null,
-      policy_name: r.policy_id ? policyMap.get(r.policy_id) ?? null : null,
+      policy_name: r.policy_id ? (policyMap.get(r.policy_id) ?? null) : null,
     }));
 
     return {
@@ -120,10 +120,7 @@ export async function enrichAuditRecords(
  * Batch-fetch user display names by email.
  * Returns Map<email, displayName>.
  */
-async function batchLookupUsers(
-  db: AppDb,
-  emails: string[]
-): Promise<Map<string, string>> {
+async function batchLookupUsers(db: AppDb, emails: string[]): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   if (emails.length === 0) return map;
 
@@ -142,10 +139,7 @@ async function batchLookupUsers(
  * Batch-fetch vendor display names by vendor name.
  * Returns Map<name, displayName>.
  */
-async function batchLookupVendors(
-  db: AppDb,
-  names: string[]
-): Promise<Map<string, string>> {
+async function batchLookupVendors(db: AppDb, names: string[]): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   if (names.length === 0) return map;
 
@@ -164,10 +158,7 @@ async function batchLookupVendors(
  * Batch-fetch policy names by policy ID.
  * Returns Map<id, name>.
  */
-async function batchLookupPolicies(
-  db: AppDb,
-  ids: string[]
-): Promise<Map<string, string>> {
+async function batchLookupPolicies(db: AppDb, ids: string[]): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   if (ids.length === 0) return map;
 

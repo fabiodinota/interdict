@@ -7,12 +7,12 @@
  */
 
 import { Elysia } from "elysia";
-import { createSigningKeysService } from "./service";
-import { apiResponse } from "../../shared/utilities";
-import { authPlugin } from "../auth/middleware";
 import { db as pgDb } from "../../db/postgres";
 import type { AppStore, RouteContext } from "../../shared/types";
+import { apiResponse } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
 import type { SigningKeysService } from "./service";
+import { createSigningKeysService } from "./service";
 
 type SigningKeysRouteContext = RouteContext & {
   signingKeysService: SigningKeysService;
@@ -35,7 +35,7 @@ export const signingKeysModule = new Elysia({
       const keys = await routeCtx.signingKeysService.listKeys();
       return apiResponse(keys);
     },
-    { auth: ["super_admin"] }
+    { auth: ["super_admin"] },
   )
 
   // POST /rotate -- Trigger key rotation (Super Admin only)
@@ -48,7 +48,7 @@ export const signingKeysModule = new Elysia({
       routeCtx.set.status = 201;
       return apiResponse(result);
     },
-    { auth: ["super_admin"] }
+    { auth: ["super_admin"] },
   )
 
   // GET /active -- Get current active key public info (Policy Admin+)
@@ -66,7 +66,7 @@ export const signingKeysModule = new Elysia({
       }
       return apiResponse(key);
     },
-    { auth: ["policy_admin"] }
+    { auth: ["policy_admin"] },
   )
 
   // GET /public-keys -- Get all public keys for verification (Read-Only Auditor+)
@@ -77,5 +77,5 @@ export const signingKeysModule = new Elysia({
       const keys = await routeCtx.signingKeysService.getAllPublicKeys();
       return apiResponse(keys);
     },
-    { auth: ["read_only_auditor"] }
+    { auth: ["read_only_auditor"] },
   );

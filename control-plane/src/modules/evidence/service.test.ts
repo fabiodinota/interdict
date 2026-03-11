@@ -175,15 +175,11 @@ describe("Hex codec", () => {
 describe("Ed25519 signature verification", () => {
   test("can generate and verify a signature over content_bytes", async () => {
     // Generate a key pair using Web Crypto
-    const keyPair = await crypto.subtle.generateKey(
-      { name: "Ed25519" },
-      true,
-      ["sign", "verify"]
-    );
+    const keyPair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
 
     // Content bytes (simulating protobuf-encoded bundle with chain/sig fields zeroed)
     const contentBytes = hexToBytes(
-      "0a0a62756e646c652d30303112096b65726e656c2d30311a060880c0d7bb0c"
+      "0a0a62756e646c652d30303112096b65726e656c2d30311a060880c0d7bb0c",
     );
 
     // Sign the content bytes (matching collector behavior)
@@ -191,8 +187,8 @@ describe("Ed25519 signature verification", () => {
       await crypto.subtle.sign(
         "Ed25519",
         keyPair.privateKey,
-        contentBytes as unknown as BufferSource
-      )
+        contentBytes as unknown as BufferSource,
+      ),
     );
     expect(signature.length).toBe(64);
 
@@ -201,7 +197,7 @@ describe("Ed25519 signature verification", () => {
       "Ed25519",
       keyPair.publicKey,
       signature as unknown as BufferSource,
-      contentBytes as unknown as BufferSource
+      contentBytes as unknown as BufferSource,
     );
     expect(valid).toBe(true);
 
@@ -212,7 +208,7 @@ describe("Ed25519 signature verification", () => {
       "Ed25519",
       keyPair.publicKey,
       signature as unknown as BufferSource,
-      tampered as unknown as BufferSource
+      tampered as unknown as BufferSource,
     );
     expect(invalid).toBe(false);
   });
@@ -221,14 +217,10 @@ describe("Ed25519 signature verification", () => {
     // This test documents that the old control plane behavior (verifying
     // signature over chain_hash) would fail for signatures created by the
     // Rust collector (which signs content_bytes).
-    const keyPair = await crypto.subtle.generateKey(
-      { name: "Ed25519" },
-      true,
-      ["sign", "verify"]
-    );
+    const keyPair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
 
     const contentBytes = hexToBytes(
-      "0a0a62756e646c652d30303112096b65726e656c2d30311a060880c0d7bb0c"
+      "0a0a62756e646c652d30303112096b65726e656c2d30311a060880c0d7bb0c",
     );
 
     // Sign content_bytes (as the collector does)
@@ -236,8 +228,8 @@ describe("Ed25519 signature verification", () => {
       await crypto.subtle.sign(
         "Ed25519",
         keyPair.privateKey,
-        contentBytes as unknown as BufferSource
-      )
+        contentBytes as unknown as BufferSource,
+      ),
     );
 
     // Compute chain_hash
@@ -249,7 +241,7 @@ describe("Ed25519 signature verification", () => {
       "Ed25519",
       keyPair.publicKey,
       signature as unknown as BufferSource,
-      contentBytes as unknown as BufferSource
+      contentBytes as unknown as BufferSource,
     );
     expect(correctResult).toBe(true);
 
@@ -258,7 +250,7 @@ describe("Ed25519 signature verification", () => {
       "Ed25519",
       keyPair.publicKey,
       signature as unknown as BufferSource,
-      chainHash as unknown as BufferSource
+      chainHash as unknown as BufferSource,
     );
     expect(wrongResult).toBe(false);
   });
@@ -271,11 +263,7 @@ describe("Ed25519 signature verification", () => {
 describe("Full chain verification pipeline", () => {
   test("three-bundle chain verifies correctly end-to-end", async () => {
     // Generate a signing key pair
-    const keyPair = await crypto.subtle.generateKey(
-      { name: "Ed25519" },
-      true,
-      ["sign", "verify"]
-    );
+    const keyPair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
 
     // Simulate three bundles
     const contents = [
@@ -302,11 +290,7 @@ describe("Full chain verification pipeline", () => {
 
       // Sign content_bytes (matching Rust collector)
       const sig = new Uint8Array(
-        await crypto.subtle.sign(
-          "Ed25519",
-          keyPair.privateKey,
-          content as unknown as BufferSource
-        )
+        await crypto.subtle.sign("Ed25519", keyPair.privateKey, content as unknown as BufferSource),
       );
 
       bundles.push({
@@ -343,7 +327,7 @@ describe("Full chain verification pipeline", () => {
         "Ed25519",
         keyPair.publicKey,
         sig as unknown as BufferSource,
-        contentBytes as unknown as BufferSource
+        contentBytes as unknown as BufferSource,
       );
       expect(valid).toBe(true);
     }

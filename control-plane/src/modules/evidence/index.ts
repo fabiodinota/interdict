@@ -11,16 +11,13 @@
  */
 
 import { Elysia } from "elysia";
-import { EvidenceVerificationService } from "./service";
-import {
-  VerifyBundlesBody,
-  BundlesQueryParams,
-} from "./model";
-import { apiResponse, paginatedResponse } from "../../shared/utilities";
-import type { AppStore, RouteContext } from "../../shared/types";
-import { authPlugin } from "../auth/middleware";
-import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
+import { db as pgDb } from "../../db/postgres";
+import type { AppStore, RouteContext } from "../../shared/types";
+import { apiResponse, paginatedResponse } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
+import { BundlesQueryParams, VerifyBundlesBody } from "./model";
+import { EvidenceVerificationService } from "./service";
 
 type EvidenceRouteContext<
   TBody = unknown,
@@ -48,15 +45,13 @@ export const evidenceModule = new Elysia({ prefix: "/api/v1/evidence" })
     "/verify",
     async (ctx) => {
       const routeCtx = ctx as unknown as EvidenceRouteContext<{ bundle_ids: string[] }>;
-      const results = await routeCtx.evidenceService.verifyBundles(
-        routeCtx.body.bundle_ids
-      );
+      const results = await routeCtx.evidenceService.verifyBundles(routeCtx.body.bundle_ids);
       return apiResponse(results);
     },
     {
       auth: ["read_only_auditor"],
       body: VerifyBundlesBody,
-    }
+    },
   )
 
   // ---------------------------------------------------------------------------
@@ -82,17 +77,13 @@ export const evidenceModule = new Elysia({ prefix: "/api/v1/evidence" })
         filters,
         routeCtx.query.cursor,
         pageSize,
-        routeCtx.user.departmentIds
+        routeCtx.user.departmentIds,
       );
 
-      return paginatedResponse(
-        result.items,
-        result.nextCursor,
-        undefined
-      );
+      return paginatedResponse(result.items, result.nextCursor, undefined);
     },
     {
       auth: ["read_only_auditor"],
       query: BundlesQueryParams,
-    }
+    },
   );

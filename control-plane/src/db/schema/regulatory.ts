@@ -6,14 +6,14 @@
  */
 
 import {
+  boolean,
+  integer,
   pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
   uuid,
   varchar,
-  text,
-  integer,
-  timestamp,
-  boolean,
-  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { policies } from "./policies";
 
@@ -47,12 +47,7 @@ export const frameworkPolicies = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [
-    uniqueIndex("framework_policy_unique").on(
-      table.frameworkId,
-      table.policyId
-    ),
-  ]
+  (table) => [uniqueIndex("framework_policy_unique").on(table.frameworkId, table.policyId)],
 );
 
 /** Tracks framework activation/deactivation history */

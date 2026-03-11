@@ -6,14 +6,14 @@
  */
 
 import { Elysia, t } from "elysia";
-import { ReportService } from "./service";
-import { generatePDF } from "./pdf-generator";
-import { generateCSV } from "./csv-generator";
-import { ValidationError } from "../../shared/utilities";
-import type { AppStore, RouteContext } from "../../shared/types";
-import { authPlugin } from "../auth/middleware";
-import { db as pgDb } from "../../db/postgres";
 import { clickhouse as chClient } from "../../db/clickhouse";
+import { db as pgDb } from "../../db/postgres";
+import type { AppStore, RouteContext } from "../../shared/types";
+import { ValidationError } from "../../shared/utilities";
+import { authPlugin } from "../auth/middleware";
+import { generateCSV } from "./csv-generator";
+import { generatePDF } from "./pdf-generator";
+import { ReportService } from "./service";
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
@@ -42,7 +42,7 @@ export const reportsModule = new Elysia({ prefix: "/api/v1/reports" })
       const from = new Date(from_date);
       const to = new Date(to_date);
 
-      if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
         throw new ValidationError("Invalid date format. Use ISO 8601 dates.");
       }
 
@@ -91,5 +91,5 @@ export const reportsModule = new Elysia({ prefix: "/api/v1/reports" })
         from_date: t.String(),
         to_date: t.String(),
       }),
-    }
+    },
   );

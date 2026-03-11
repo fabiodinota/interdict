@@ -43,7 +43,7 @@ export function generateCSV(reportData: ReportData): string {
   lines.push(
     csvRow([
       `Report Period: ${formatDate(reportData.dateRange.from)} - ${formatDate(reportData.dateRange.to)}`,
-    ])
+    ]),
   );
   lines.push(csvRow([`Generated: ${formatDate(reportData.generatedAt)}`]));
   lines.push("");
@@ -115,14 +115,7 @@ export function generateCSV(reportData: ReportData): string {
     lines.push(csvRow(["Timestamp", "Actor", "Vendor", "Model", "Action", "Token Count"]));
     for (const inc of reportData.topIncidents) {
       lines.push(
-        csvRow([
-          inc.timestamp,
-          inc.actor,
-          inc.vendor,
-          inc.model,
-          inc.action,
-          inc.tokenCount,
-        ])
+        csvRow([inc.timestamp, inc.actor, inc.vendor, inc.model, inc.action, inc.tokenCount]),
       );
     }
   } else {

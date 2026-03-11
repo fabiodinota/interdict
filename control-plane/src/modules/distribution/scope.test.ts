@@ -11,7 +11,7 @@
  * - Different org → never matches
  */
 
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
 
 // Re-implement the matching function here for unit testing since it's
 // not exported from server.ts. This MUST stay in sync with the real
@@ -119,36 +119,36 @@ describe("scopeMatchesKernel", () => {
         { orgId: "other", deptId: "", teamId: "" },
       ];
 
-      const matched = scopes.filter(s => scopeMatchesKernel(s, ORG, "", ""));
+      const matched = scopes.filter((s) => scopeMatchesKernel(s, ORG, "", ""));
       expect(matched.length).toBe(3); // all 3 ORG scopes, not the "other" org
     });
 
     it("dept-level kernel sees org-wide + its dept, not other depts", () => {
       const scopes = [
-        { orgId: ORG, deptId: "", teamId: "" },         // org-wide: yes
-        { orgId: ORG, deptId: DEPT_A, teamId: "" },     // same dept: yes
-        { orgId: ORG, deptId: DEPT_B, teamId: "" },     // diff dept: no
+        { orgId: ORG, deptId: "", teamId: "" }, // org-wide: yes
+        { orgId: ORG, deptId: DEPT_A, teamId: "" }, // same dept: yes
+        { orgId: ORG, deptId: DEPT_B, teamId: "" }, // diff dept: no
         { orgId: ORG, deptId: DEPT_A, teamId: TEAM_1 }, // team in dept: yes
       ];
 
-      const matched = scopes.filter(s => scopeMatchesKernel(s, ORG, DEPT_A, ""));
+      const matched = scopes.filter((s) => scopeMatchesKernel(s, ORG, DEPT_A, ""));
       expect(matched.length).toBe(3);
-      expect(matched.find(s => s.deptId === DEPT_B)).toBeUndefined();
+      expect(matched.find((s) => s.deptId === DEPT_B)).toBeUndefined();
     });
 
     it("team-level kernel sees org-wide + its dept + its team only", () => {
       const scopes = [
-        { orgId: ORG, deptId: "", teamId: "" },          // org-wide: yes
-        { orgId: ORG, deptId: DEPT_A, teamId: "" },      // same dept: yes
-        { orgId: ORG, deptId: DEPT_A, teamId: TEAM_1 },  // exact team: yes
-        { orgId: ORG, deptId: DEPT_A, teamId: TEAM_2 },  // diff team: no
-        { orgId: ORG, deptId: DEPT_B, teamId: "" },      // diff dept: no
+        { orgId: ORG, deptId: "", teamId: "" }, // org-wide: yes
+        { orgId: ORG, deptId: DEPT_A, teamId: "" }, // same dept: yes
+        { orgId: ORG, deptId: DEPT_A, teamId: TEAM_1 }, // exact team: yes
+        { orgId: ORG, deptId: DEPT_A, teamId: TEAM_2 }, // diff team: no
+        { orgId: ORG, deptId: DEPT_B, teamId: "" }, // diff dept: no
       ];
 
-      const matched = scopes.filter(s => scopeMatchesKernel(s, ORG, DEPT_A, TEAM_1));
+      const matched = scopes.filter((s) => scopeMatchesKernel(s, ORG, DEPT_A, TEAM_1));
       expect(matched.length).toBe(3);
-      expect(matched.find(s => s.teamId === TEAM_2)).toBeUndefined();
-      expect(matched.find(s => s.deptId === DEPT_B)).toBeUndefined();
+      expect(matched.find((s) => s.teamId === TEAM_2)).toBeUndefined();
+      expect(matched.find((s) => s.deptId === DEPT_B)).toBeUndefined();
     });
   });
 });

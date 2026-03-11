@@ -17,20 +17,11 @@
  */
 
 import type { ClickHouseClient } from "@clickhouse/client";
-import { eq, and, sql, lt, inArray } from "drizzle-orm";
+import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import { reviewItems } from "../../db/schema/reviews";
-import {
-  DEFAULT_PAGE_SIZE,
-  MAX_PAGE_SIZE,
-  ConflictError,
-  ValidationError,
-} from "../../shared/utilities";
 import type { AppDb } from "../../shared/types";
-import {
-  ALLOWED_RESOLUTIONS,
-  type ReviewItemResponse,
-  type EscalatedBundleRow,
-} from "./model";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, ValidationError } from "../../shared/utilities";
+import { ALLOWED_RESOLUTIONS, type EscalatedBundleRow, type ReviewItemResponse } from "./model";
 
 // SLA duration: 4 hours in milliseconds
 const SLA_DURATION_MS = 4 * 60 * 60 * 1000;
@@ -73,7 +64,7 @@ export class ReviewService {
   async createReviewItem(
     bundleId: string,
     escalatedAt: Date,
-    source: "kernel_l3" | "session_pattern" = "kernel_l3"
+    source: "kernel_l3" | "session_pattern" = "kernel_l3",
   ): Promise<{ id: string; created: boolean }> {
     const slaDeadline = new Date(escalatedAt.getTime() + SLA_DURATION_MS);
 
@@ -107,8 +98,7 @@ export class ReviewService {
       };
     } catch (err: unknown) {
       // Handle race condition: UNIQUE violation from concurrent inserts.
-      const message =
-        err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
       if (message.includes("unique") || message.includes("duplicate")) {
         const existing = await this.db
           .select({ id: reviewItems.id })
@@ -136,7 +126,7 @@ export class ReviewService {
   async getQueue(
     statusFilter: string = "pending",
     cursor: string | undefined,
-    pageSize: number | undefined
+    pageSize: number | undefined,
   ): Promise<{
     items: ReviewItemResponse[];
     nextCursor: string | null;
@@ -155,12 +145,11 @@ export class ReviewService {
 
     if (cursor) {
       conditions.push(
-        sql`(${reviewItems.slaDeadline}, ${reviewItems.id}) > (${new Date(cursor).toISOString()}, '')`
+        sql`(${reviewItems.slaDeadline}, ${reviewItems.id}) > (${new Date(cursor).toISOString()}, '')`,
       );
     }
 
-    const whereClause =
-      conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Query review items from Postgres
     const rows = await this.db
@@ -174,9 +163,7 @@ export class ReviewService {
     const items = hasMore ? rows.slice(0, limit) : rows;
 
     const nextCursor =
-      hasMore && items.length > 0
-        ? items[items.length - 1].slaDeadline.toISOString()
-        : null;
+      hasMore && items.length > 0 ? items[items.length - 1].slaDeadline.toISOString() : null;
 
     // Enrich with ClickHouse bundle details
     const enriched = await this.enrichWithBundleDetails(items);
@@ -191,10 +178,7 @@ export class ReviewService {
    * Claim a review item with optimistic locking.
    * Returns null if the item is already claimed (caller should return 409).
    */
-  async claimReview(
-    reviewId: string,
-    userId: string
-  ): Promise<ReviewItemResponse | null> {
+  async claimReview(reviewId: string, userId: string): Promise<ReviewItemResponse | null> {
     const result = await this.db
       .update(reviewItems)
       .set({
@@ -203,9 +187,7 @@ export class ReviewService {
         status: "claimed",
         updatedAt: new Date(),
       })
-      .where(
-        and(eq(reviewItems.id, reviewId), eq(reviewItems.status, "pending"))
-      )
+      .where(and(eq(reviewItems.id, reviewId), eq(reviewItems.status, "pending")))
       .returning();
 
     if (!result || result.length === 0) {
@@ -224,24 +206,21 @@ export class ReviewService {
     reviewId: string,
     userId: string,
     resolution: string,
-    notes: string
+    notes: string,
   ): Promise<ReviewItemResponse | null> {
     // Validate resolution category
     if (!(ALLOWED_RESOLUTIONS as readonly string[]).includes(resolution)) {
       throw new ValidationError(
-        `Invalid resolution. Must be one of: ${ALLOWED_RESOLUTIONS.join(", ")}`
+        `Invalid resolution. Must be one of: ${ALLOWED_RESOLUTIONS.join(", ")}`,
       );
     }
 
     if (!notes || notes.length < 10) {
-      throw new ValidationError(
-        "Resolution notes are required and must be at least 10 characters"
-      );
+      throw new ValidationError("Resolution notes are required and must be at least 10 characters");
     }
 
     // Determine status: violation_confirmed -> rejected, others -> approved
-    const newStatus =
-      resolution === "violation_confirmed" ? "rejected" : "approved";
+    const newStatus = resolution === "violation_confirmed" ? "rejected" : "approved";
 
     const result = await this.db
       .update(reviewItems)
@@ -256,8 +235,8 @@ export class ReviewService {
       .where(
         and(
           eq(reviewItems.id, reviewId),
-          sql`(${reviewItems.claimedBy} = ${userId} OR ${reviewItems.status} = 'pending')`
-        )
+          sql`(${reviewItems.claimedBy} = ${userId} OR ${reviewItems.status} = 'pending')`,
+        ),
       )
       .returning();
 
@@ -314,7 +293,7 @@ export class ReviewService {
     }, RECONCILE_INTERVAL_MS);
 
     console.log(
-      `[reviews] Background reconciliation started (${RECONCILE_INTERVAL_MS / 1000}s interval, catch-up only)`
+      `[reviews] Background reconciliation started (${RECONCILE_INTERVAL_MS / 1000}s interval, catch-up only)`,
     );
   }
 
@@ -339,9 +318,7 @@ export class ReviewService {
    */
   async reconcileEscalations(): Promise<number> {
     // Strip trailing 'Z' — ClickHouse DateTime64(3) params reject timezone suffixes
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-      .toISOString()
-      .replace("Z", "");
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString().replace("Z", "");
 
     // Get recent escalated bundles from ClickHouse
     const resultSet = await this.clickhouse.query({
@@ -371,31 +348,21 @@ export class ReviewService {
       .from(reviewItems)
       .where(inArray(reviewItems.bundleId, bundleIds));
 
-    const existingBundleIds = new Set(
-      existingRows.map((r) => r.bundleId)
-    );
+    const existingBundleIds = new Set(existingRows.map((r) => r.bundleId));
 
     // Create review items for new escalations (idempotent via UNIQUE constraint)
-    const newItems = escalatedBundles.filter(
-      (b) => !existingBundleIds.has(b.bundle_id)
-    );
+    const newItems = escalatedBundles.filter((b) => !existingBundleIds.has(b.bundle_id));
 
     if (newItems.length === 0) return 0;
 
     let created = 0;
     for (const b of newItems) {
-      const result = await this.createReviewItem(
-        b.bundle_id,
-        new Date(b.timestamp),
-        "kernel_l3"
-      );
+      const result = await this.createReviewItem(b.bundle_id, new Date(b.timestamp), "kernel_l3");
       if (result.created) created++;
     }
 
     if (created > 0) {
-      console.log(
-        `[reviews] Reconciler created ${created} review item(s) (catch-up)`
-      );
+      console.log(`[reviews] Reconciler created ${created} review item(s) (catch-up)`);
     }
     return created;
   }
@@ -411,19 +378,12 @@ export class ReviewService {
         status: "auto_escalated",
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(reviewItems.status, "pending"),
-          lt(reviewItems.slaDeadline, new Date())
-        )
-      )
+      .where(and(eq(reviewItems.status, "pending"), lt(reviewItems.slaDeadline, new Date())))
       .returning({ id: reviewItems.id });
 
     const count = result?.length ?? 0;
     if (count > 0) {
-      console.log(
-        `[reviews] Auto-escalated ${count} expired review item(s)`
-      );
+      console.log(`[reviews] Auto-escalated ${count} expired review item(s)`);
     }
     return count;
   }
@@ -437,14 +397,14 @@ export class ReviewService {
    * ClickHouse is read-model only — enrichment failure does not break the queue.
    */
   private async enrichWithBundleDetails(
-    rows: Array<typeof reviewItems.$inferSelect>
+    rows: Array<typeof reviewItems.$inferSelect>,
   ): Promise<ReviewItemResponse[]> {
     if (rows.length === 0) return [];
 
     const bundleIds = rows.map((r) => r.bundleId);
 
     // Query ClickHouse for bundle details
-    let bundleMap = new Map<string, EscalatedBundleRow>();
+    const bundleMap = new Map<string, EscalatedBundleRow>();
     try {
       const resultSet = await this.clickhouse.query({
         query: `
@@ -472,7 +432,10 @@ export class ReviewService {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error("[reviews] ClickHouse enrichment failed (read-model only, queue unaffected):", message);
+      console.error(
+        "[reviews] ClickHouse enrichment failed (read-model only, queue unaffected):",
+        message,
+      );
     }
 
     return rows.map((row) => {
@@ -485,7 +448,7 @@ export class ReviewService {
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         console.warn(
-          `[reviews] Failed to parse policy_rules_json for bundle ${row.bundleId}: ${message}`
+          `[reviews] Failed to parse policy_rules_json for bundle ${row.bundleId}: ${message}`,
         );
       }
 
@@ -498,7 +461,8 @@ export class ReviewService {
         claimedBy: row.claimedBy,
         claimedAt: row.claimedAt?.toISOString() ?? null,
         resolvedBy: row.resolvedBy,
-        resolvedAt: row.resolvedAt instanceof Date ? row.resolvedAt.toISOString() : (row.resolvedAt ?? null),
+        resolvedAt:
+          row.resolvedAt instanceof Date ? row.resolvedAt.toISOString() : (row.resolvedAt ?? null),
         resolution: row.resolution,
         resolutionNotes: row.resolutionNotes,
         escalationSource: row.escalationSource ?? null,

@@ -10,13 +10,13 @@
  * - Wasm stored on filesystem with DB reference (path + SHA-256 hash)
  */
 
-import { $ } from "bun";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { $ } from "bun";
 import { eq } from "drizzle-orm";
-import { policies, policyVersions, policyScopeAssignments } from "../../db/schema/policies";
-import { broadcastUpdate } from "../distribution/tracker";
+import { policies, policyScopeAssignments, policyVersions } from "../../db/schema/policies";
 import type { AppDb } from "../../shared/types";
+import { broadcastUpdate } from "../distribution/tracker";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -60,13 +60,8 @@ export interface CompilationResult {
  * 5. Compute SHA-256 hash
  * 6. Write to permanent storage at {wasmStorageDir}/{policyId}/{version}.wasm
  */
-export async function compilePolicy(
-  job: CompilationJob
-): Promise<CompilationResult> {
-  const tmpDir = join(
-    "/tmp",
-    `opa-compile-${crypto.randomUUID()}`
-  );
+export async function compilePolicy(job: CompilationJob): Promise<CompilationResult> {
+  const tmpDir = join("/tmp", `opa-compile-${crypto.randomUUID()}`);
 
   try {
     await mkdir(tmpDir, { recursive: true });
@@ -130,10 +125,7 @@ export async function compilePolicy(
   } catch (err: unknown) {
     // Handle OPA binary not found
     const errMsg = err instanceof Error ? err.message : String(err);
-    if (
-      errMsg.includes("not found") ||
-      errMsg.includes("ENOENT")
-    ) {
+    if (errMsg.includes("not found") || errMsg.includes("ENOENT")) {
       return {
         success: false,
         error:
@@ -168,7 +160,7 @@ export async function compilePolicy(
 export function startCompilationWorker(
   db: AppDb,
   wasmStorageDir: string,
-  pollIntervalMs = 2000
+  pollIntervalMs = 2000,
 ): { stop: () => void } {
   let running = true;
 
@@ -259,7 +251,7 @@ export function startCompilationWorker(
               } catch (error: unknown) {
                 const message = error instanceof Error ? error.message : String(error);
                 console.warn(
-                  `[compiler] Invalid vendorIds JSON for policy ${version.policyId}: ${message}`
+                  `[compiler] Invalid vendorIds JSON for policy ${version.policyId}: ${message}`,
                 );
               }
             }
@@ -289,14 +281,13 @@ export function startCompilationWorker(
             });
 
             console.log(
-              `[compiler] Broadcasting policy update for ${version.policyId} v${version.version} to connected kernels`
+              `[compiler] Broadcasting policy update for ${version.policyId} v${version.version} to connected kernels`,
             );
           } catch (broadcastErr: unknown) {
             // Broadcast failure should not fail the compilation
-            const bMsg = broadcastErr instanceof Error ? broadcastErr.message : String(broadcastErr);
-            console.error(
-              `[compiler] Failed to broadcast update for ${version.policyId}: ${bMsg}`
-            );
+            const bMsg =
+              broadcastErr instanceof Error ? broadcastErr.message : String(broadcastErr);
+            console.error(`[compiler] Failed to broadcast update for ${version.policyId}: ${bMsg}`);
           }
         } else {
           await db
@@ -322,9 +313,7 @@ export function startCompilationWorker(
     }
   };
 
-  run().catch((err) =>
-    console.error("[compiler] Worker crashed:", err)
-  );
+  run().catch((err) => console.error("[compiler] Worker crashed:", err));
 
   return {
     stop: () => {

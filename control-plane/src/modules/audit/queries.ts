@@ -10,7 +10,7 @@
  */
 
 import type { ClickHouseClient } from "@clickhouse/client";
-import { encodeCursor, decodeCursor, DEFAULT_PAGE_SIZE } from "../../shared/utilities";
+import { DEFAULT_PAGE_SIZE, decodeCursor, encodeCursor } from "../../shared/utilities";
 import type { ClickHouseAuditRow } from "./model";
 
 /**
@@ -89,7 +89,7 @@ export async function queryAuditTrail(
   client: ClickHouseClient,
   filters: AuditTrailFilters,
   cursor?: string,
-  limit: number = DEFAULT_PAGE_SIZE
+  limit: number = DEFAULT_PAGE_SIZE,
 ): Promise<AuditTrailResult> {
   const conditions: string[] = [];
   const params: Record<string, unknown> = { limit: limit + 1 };
@@ -115,7 +115,7 @@ export async function queryAuditTrail(
   if (cursor) {
     const c = decodeCursor(cursor);
     conditions.push(
-      "(timestamp < {cursor_ts:DateTime64(3)} OR (timestamp = {cursor_ts:DateTime64(3)} AND bundle_id < {cursor_id:String}))"
+      "(timestamp < {cursor_ts:DateTime64(3)} OR (timestamp = {cursor_ts:DateTime64(3)} AND bundle_id < {cursor_id:String}))",
     );
     params.cursor_ts = toChDateTime(new Date(c.timestamp).toISOString());
     params.cursor_id = c.id;
@@ -172,7 +172,7 @@ export async function queryAuditTrail(
     hasMore && items.length > 0
       ? encodeCursor(
           new Date(items[items.length - 1].timestamp).getTime(),
-          items[items.length - 1].bundle_id
+          items[items.length - 1].bundle_id,
         )
       : null;
 
@@ -190,12 +190,9 @@ export async function queryHourlyViolations(
   client: ClickHouseClient,
   from: string,
   to: string,
-  departmentIds?: string[]  // HIGH-011: scope to user's visible departments
+  departmentIds?: string[], // HIGH-011: scope to user's visible departments
 ): Promise<unknown[]> {
-  const conditions = [
-    "hour >= {from:DateTime64(3)}",
-    "hour <= {to:DateTime64(3)}",
-  ];
+  const conditions = ["hour >= {from:DateTime64(3)}", "hour <= {to:DateTime64(3)}"];
   const params: Record<string, unknown> = { from: toChDateTime(from), to: toChDateTime(to) };
 
   if (departmentIds && departmentIds.length > 0) {
@@ -225,7 +222,7 @@ export async function queryVendorUsage(
   from: string,
   to: string,
   vendor?: string,
-  departmentIds?: string[]  // HIGH-011: scope to user's visible departments
+  departmentIds?: string[], // HIGH-011: scope to user's visible departments
 ): Promise<unknown[]> {
   const conditions = ["hour >= {from:DateTime64(3)}", "hour <= {to:DateTime64(3)}"];
   const params: Record<string, unknown> = { from: toChDateTime(from), to: toChDateTime(to) };
@@ -265,7 +262,7 @@ export async function queryDepartmentSummary(
   from: string,
   to: string,
   department?: string,
-  departmentIds?: string[]
+  departmentIds?: string[],
 ): Promise<unknown[]> {
   const conditions = ["hour >= {from:DateTime64(3)}", "hour <= {to:DateTime64(3)}"];
   const params: Record<string, unknown> = { from: toChDateTime(from), to: toChDateTime(to) };
