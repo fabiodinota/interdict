@@ -6,49 +6,57 @@
  * variables (CLAUDE.md Invariant #6).
  *
  * Graceful degradation: if cert files are missing, SAML is disabled and
- * API key auth continues to work normally.
+ * API key auth continues to work normally. When certs/metadata are present,
+ * required URLs must be configured explicitly; there are no localhost or
+ * example-domain fallbacks.
  */
 
 import * as samlify from "samlify";
-// @ts-ignore -- no type declarations for this package
 import * as validator from "@authenio/samlify-xsd-schema-validator";
 import { readFileSync, existsSync } from "node:fs";
 
 // Set the XSD schema validator for XML signature verification
-samlify.setSchemaValidator(validator);
+samlify.setSchemaValidator(
+  validator as unknown as Parameters<typeof samlify.setSchemaValidator>[0]
+);
 
 // ---------------------------------------------------------------------------
 // Environment Configuration
 // ---------------------------------------------------------------------------
 
-const SP_ENTITY_ID =
-  process.env.SAML_SP_ENTITY_ID ||
-  "https://interdict.example.com/saml/metadata";
+function getRequiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required when SAML is enabled`);
+  }
+  return value;
+}
 
 const SP_KEY_PATH = process.env.SAML_SP_KEY_PATH || "/certs/saml-sp.key";
 const SP_CERT_PATH = process.env.SAML_SP_CERT_PATH || "/certs/saml-sp.crt";
 const IDP_METADATA_PATH =
   process.env.SAML_IDP_METADATA_PATH || "/config/idp-metadata.xml";
 
-const BASE_URL =
-  process.env.SAML_SP_BASE_URL || "http://localhost:3000";
-
 // ---------------------------------------------------------------------------
 // File Loading (graceful degradation)
 // ---------------------------------------------------------------------------
 
-function loadFileOrNull(path: string): string | null {
+function loadFileOrNull(path: string, label: string): string | null {
   if (!existsSync(path)) return null;
   try {
     return readFileSync(path, "utf-8");
-  } catch {
+  } catch (error: unknown) {
+    console.warn(`[SAML] Failed to read ${label}`, {
+      path,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
 
-const spKey = loadFileOrNull(SP_KEY_PATH);
-const spCert = loadFileOrNull(SP_CERT_PATH);
-const idpMetadata = loadFileOrNull(IDP_METADATA_PATH);
+const spKey = loadFileOrNull(SP_KEY_PATH, "SP private key");
+const spCert = loadFileOrNull(SP_CERT_PATH, "SP certificate");
+const idpMetadata = loadFileOrNull(IDP_METADATA_PATH, "IdP metadata");
 
 // ---------------------------------------------------------------------------
 // SAML Enabled Flag
@@ -56,6 +64,12 @@ const idpMetadata = loadFileOrNull(IDP_METADATA_PATH);
 
 /** SAML is enabled only when SP cert, key, and IdP metadata are all present */
 export const samlEnabled = !!(spKey && spCert && idpMetadata);
+
+const BASE_URL = samlEnabled ? getRequiredEnv("SAML_SP_BASE_URL") : "";
+const SP_ENTITY_ID = samlEnabled ? getRequiredEnv("SAML_SP_ENTITY_ID") : "";
+const spKeyValue = spKey ?? undefined;
+const spCertValue = spCert ?? undefined;
+const idpMetadataValue = idpMetadata ?? undefined;
 
 if (!samlEnabled) {
   console.warn(
@@ -74,8 +88,8 @@ export const sp = samlEnabled
       authnRequestsSigned: true,
       wantAssertionsSigned: true,
       wantMessageSigned: false,
-      signingCert: spCert!,
-      privateKey: spKey!,
+      signingCert: spCertValue,
+      privateKey: spKeyValue,
       nameIDFormat: ["urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"],
       assertionConsumerService: [
         {
@@ -99,6 +113,6 @@ export const sp = samlEnabled
 
 export const idp = samlEnabled
   ? samlify.IdentityProvider({
-      metadata: idpMetadata!,
+      metadata: idpMetadataValue,
     })
   : null;

@@ -7,6 +7,14 @@
 
 const COOKIE_NAME = "interdict_session";
 
+function requirePublicApiUrl(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    throw new Error("NEXT_PUBLIC_API_URL is required for SAML auth flows");
+  }
+  return apiUrl;
+}
+
 /**
  * Check if SAML SSO is enabled via environment variable.
  * Safe to call from client components (uses NEXT_PUBLIC_ prefix).
@@ -20,8 +28,7 @@ export function isSamlEnabled(): boolean {
  * The browser navigates here directly (full page redirect, not fetch).
  */
 export function getSsoUrl(): string {
-  const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  const apiUrl = requirePublicApiUrl();
   return `${apiUrl}/api/v1/auth/saml/sso`;
 }
 
@@ -34,8 +41,7 @@ export function logout(): void {
   document.cookie = `${COOKIE_NAME}=; path=/; max-age=0`;
 
   if (isSamlEnabled()) {
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    const apiUrl = requirePublicApiUrl();
     window.location.href = `${apiUrl}/api/v1/auth/saml/slo`;
   } else {
     window.location.href = "/login";

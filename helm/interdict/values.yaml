@@ -121,9 +121,9 @@ controlPlane:
   saml:
     # -- Enable SAML SSO deployment wiring (adds env vars and volume mounts)
     enabled: false
-    # -- SP entity ID (must match IdP configuration)
-    spEntityId: "https://interdict.example.com/saml/metadata"
-    # -- SP base URL (control plane external URL for ACS callback)
+    # -- SP entity ID (required when SAML is enabled; must match IdP configuration)
+    spEntityId: ""
+    # -- SP base URL (required when SAML is enabled; control plane external URL for ACS callback)
     spBaseUrl: ""
     # -- Dashboard URL for post-login redirect
     dashboardUrl: ""
@@ -191,6 +191,8 @@ evidenceCollector:
   fullTextStorage: "false"
   # -- Evidence retention (days, 7 years default)
   retentionDays: "2555"
+  # -- Require S3 Object Lock verification when anchoring is enabled
+  requireObjectLock: "true"
   # -- RUST_LOG level
   rustLog: "info"
   # -- S3/MinIO connection (use existingSecret for production)

@@ -8,7 +8,14 @@ export async function getSessionToken(): Promise<string | null> {
 }
 
 export function getControlPlaneUrl(): string {
-  return process.env.CONTROL_PLANE_URL || "http://localhost:3000";
+  const controlPlaneUrl =
+    process.env.CONTROL_PLANE_URL ?? process.env.NEXT_PUBLIC_API_URL;
+
+  if (!controlPlaneUrl) {
+    throw new Error("CONTROL_PLANE_URL or NEXT_PUBLIC_API_URL must be configured");
+  }
+
+  return controlPlaneUrl;
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;

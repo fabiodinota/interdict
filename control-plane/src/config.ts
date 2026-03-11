@@ -18,6 +18,8 @@ export interface Config {
   grpcMaxMessageSize: number;
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+
 function requireEnv(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
   if (!value) {
@@ -44,7 +46,7 @@ export function loadConfig(): Config {
     port: parseInt(process.env.PORT ?? "3000", 10),
     databaseUrl: requireEnv(
       "DATABASE_URL",
-      "postgres://interdict:interdict@localhost:5432/interdict"
+      isProduction ? undefined : "postgres://interdict:interdict@localhost:5432/interdict"
     ),
     clickhouseUrl: requireEnv("CLICKHOUSE_URL", "http://localhost:8123"),
     clickhouseDatabase: requireEnv("CLICKHOUSE_DATABASE", "interdict"),

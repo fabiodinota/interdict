@@ -24,9 +24,26 @@ import { Elysia } from "elysia";
 import { createAuthService, type AuthenticatedUser } from "./service";
 import { roleHierarchyLevel } from "./permissions";
 import { db } from "../../db/postgres";
+import type { AppDb, AppStore } from "../../shared/types";
 
 /** API key prefix used to distinguish API keys from session tokens */
 const API_KEY_PREFIX = "ik_live_";
+
+interface AuthResolveContext {
+  headers: Record<string, string | undefined>;
+  store?: Partial<AppStore>;
+  status: (code: number, body: AuthErrorPayload) => Record<string, unknown>;
+}
+
+interface AuthErrorPayload {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+  };
+}
+
+type AuthResolveResult = Record<string, unknown>;
 
 /**
  * Auth plugin providing the `auth` macro.
@@ -41,11 +58,12 @@ const API_KEY_PREFIX = "ik_live_";
  */
 export const authPlugin = new Elysia({ name: "auth" })
   .macro("auth", (options?: string[] | boolean) => ({
-    async resolve(ctx: any) {
-      const { headers, store, status } = ctx;
+    async resolve(ctx): Promise<AuthResolveResult> {
+      const authCtx = ctx as unknown as AuthResolveContext;
+      const { headers, store, status } = authCtx;
 
       // 1. Extract Bearer token from Authorization header
-      const authHeader = (headers as Record<string, string | undefined>)["authorization"];
+      const authHeader = headers["authorization"];
       if (!authHeader?.startsWith("Bearer ")) {
         return status(401, {
           success: false,
@@ -59,7 +77,8 @@ export const authPlugin = new Elysia({ name: "auth" })
       const token = authHeader.slice(7);
 
       // 2. Dual-mode authentication: API key vs session token
-      const authService = createAuthService(((store as any)?.db ?? db) as Parameters<typeof createAuthService>[0]);
+      const authDb: AppDb = store?.db ?? db;
+      const authService = createAuthService(authDb);
       let user: AuthenticatedUser | null = null;
 
       if (token.startsWith(API_KEY_PREFIX)) {
