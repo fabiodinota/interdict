@@ -13,10 +13,10 @@
 //! KERN-13: Uses tokio::sync::watch for shutdown (bounded). No unbounded channels.
 
 use crate::config::Config;
-use crate::error::{ProxyBody, ProxyError};
-use crate::evidence::{DeliveryHealth, EvidenceBuffer};
+use crate::error::{ProxyBody, ProxyError, json_response, json_response_with_retry_after};
 use crate::evidence::bundle::RawEvidenceEvent;
 use crate::evidence::identity::ActorIdentity;
+use crate::evidence::{DeliveryHealth, EvidenceBuffer};
 use crate::policy::content_inspection::ContentInspector;
 use crate::policy::hot_reload::PolicySetManager;
 use crate::policy::session::{self, ExchangeRecord, SessionStore};
@@ -29,7 +29,7 @@ use crate::proxy::tls::CertCache;
 use bytes::Bytes;
 use http::{Method, Request, Response, StatusCode};
 use http_body_util::combinators::BoxBody;
-use http_body_util::{BodyExt, Empty, Full};
+use http_body_util::{BodyExt, Empty};
 use hyper::body::Incoming;
 use hyper_util::rt::TokioIo;
 use sha2::{Digest, Sha256};
@@ -46,9 +46,10 @@ fn empty_body() -> ProxyBody {
     BoxBody::new(Empty::<Bytes>::new().map_err(|never| match never {}))
 }
 
-/// Create a full boxed body from bytes.
-fn full_body(data: Vec<u8>) -> ProxyBody {
-    BoxBody::new(Full::new(Bytes::from(data)).map_err(|never| match never {}))
+fn empty_response(status: StatusCode) -> Response<ProxyBody> {
+    let mut response = Response::new(empty_body());
+    *response.status_mut() = status;
+    response
 }
 
 /// Handle an HTTP CONNECT request with TLS interception.
@@ -148,17 +149,14 @@ pub async fn handle_connect(
                             action = "block",
                             "policy pipeline blocked CONNECT request"
                         );
-                        return Ok(Response::builder()
-                            .status(StatusCode::FORBIDDEN)
-                            .header("content-type", "application/json")
-                            .body(full_body(
-                                serde_json::to_vec(&serde_json::json!({
-                                    "error": "policy_blocked",
-                                    "message": "Request blocked by policy"
-                                }))
-                                .expect("JSON serialization should never fail"),
-                            ))
-                            .expect("Response builder with valid status should never fail"));
+                        return Ok(json_response(
+                            StatusCode::FORBIDDEN,
+                            &serde_json::json!({
+                                "error": "policy_blocked",
+                                "message": "Request blocked by policy"
+                            }),
+                            r#"{"error":"policy_blocked","message":"Request blocked by policy"}"#,
+                        ));
                     }
                     VerdictAction::Allow | VerdictAction::Redact => {
                         // Allow: proceed with tunnel
@@ -195,17 +193,14 @@ pub async fn handle_connect(
                     error = %e,
                     "policy pipeline evaluation error, fail-closed"
                 );
-                return Ok(Response::builder()
-                    .status(StatusCode::FORBIDDEN)
-                    .header("content-type", "application/json")
-                    .body(full_body(
-                        serde_json::to_vec(&serde_json::json!({
-                            "error": "policy_error",
-                            "message": "Policy evaluation failed, request blocked (fail-closed)"
-                        }))
-                        .expect("JSON serialization should never fail"),
-                    ))
-                    .expect("Response builder with valid status should never fail"));
+                return Ok(json_response(
+                    StatusCode::FORBIDDEN,
+                    &serde_json::json!({
+                        "error": "policy_error",
+                        "message": "Policy evaluation failed, request blocked (fail-closed)"
+                    }),
+                    r#"{"error":"policy_error","message":"Policy evaluation failed, request blocked (fail-closed)"}"#,
+                ));
             }
         }
     }
@@ -299,11 +294,8 @@ pub async fn handle_connect(
 
                 // Inbound (upstream -> client): inspect responses before forwarding
                 let inbound_inspector = inspector.clone();
-                let inbound_future = relay::inspecting_relay_inbound(
-                    upstream_read,
-                    client_write,
-                    inbound_inspector,
-                );
+                let inbound_future =
+                    relay::inspecting_relay_inbound(upstream_read, client_write, inbound_inspector);
 
                 // Run both directions concurrently; use select! so a block on either
                 // direction causes both to terminate (dropping the other future
@@ -377,10 +369,7 @@ pub async fn handle_connect(
 
     // Return 200 immediately to complete the CONNECT handshake.
     // The tunnel runs asynchronously in the spawned task.
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .body(empty_body())
-        .expect("Response builder with valid status should never fail"))
+    Ok(empty_response(StatusCode::OK))
 }
 
 /// Establish a TLS connection to the upstream vendor.
@@ -543,22 +532,19 @@ impl Service<Request<Incoming>> for ProxyService {
                 if let Some(ref health) = delivery_health {
                     if health.is_unhealthy() {
                         tracing::error!(
-                            consecutive_failures = health.consecutive_failures.load(
-                                std::sync::atomic::Ordering::Relaxed
-                            ),
+                            consecutive_failures = health
+                                .consecutive_failures
+                                .load(std::sync::atomic::Ordering::Relaxed),
                             "high-assurance mode: blocking request due to evidence delivery failure"
                         );
-                        return Ok(Response::builder()
-                            .status(StatusCode::SERVICE_UNAVAILABLE)
-                            .header("content-type", "application/json")
-                            .body(full_body(
-                                serde_json::to_vec(&serde_json::json!({
-                                    "error": "evidence_delivery_unavailable",
-                                    "message": "Request blocked: evidence audit trail is unavailable (high-assurance mode)"
-                                }))
-                                .expect("JSON serialization should never fail"),
-                            ))
-                            .expect("Response builder with valid status should never fail"));
+                        return Ok(json_response(
+                            StatusCode::SERVICE_UNAVAILABLE,
+                            &serde_json::json!({
+                                "error": "evidence_delivery_unavailable",
+                                "message": "Request blocked: evidence audit trail is unavailable (high-assurance mode)"
+                            }),
+                            r#"{"error":"evidence_delivery_unavailable","message":"Request blocked: evidence audit trail is unavailable (high-assurance mode)"}"#,
+                        ));
                     }
                 }
             }
@@ -575,7 +561,11 @@ impl Service<Request<Incoming>> for ProxyService {
                     .authority()
                     .map(|a| a.host().to_string())
                     .unwrap_or_default();
-                Some(session::resolve_session_id(headers, &actor_identity.actor_id, &vendor))
+                Some(session::resolve_session_id(
+                    headers,
+                    &actor_identity.actor_id,
+                    &vendor,
+                ))
             } else {
                 None
             };
@@ -633,17 +623,14 @@ impl Service<Request<Incoming>> for ProxyService {
                     uri = %req.uri(),
                     "non-CONNECT request rejected"
                 );
-                Ok(Response::builder()
-                    .status(StatusCode::BAD_REQUEST)
-                    .header("content-type", "application/json")
-                    .body(full_body(
-                        serde_json::to_vec(&serde_json::json!({
-                            "error": "method_not_supported",
-                            "message": "Only CONNECT requests are supported. This is an explicit HTTPS forward proxy."
-                        }))
-                        .expect("JSON serialization should never fail"),
-                    ))
-                    .expect("Response builder with valid status should never fail"))
+                Ok(json_response(
+                    StatusCode::BAD_REQUEST,
+                    &serde_json::json!({
+                        "error": "method_not_supported",
+                        "message": "Only CONNECT requests are supported. This is an explicit HTTPS forward proxy."
+                    }),
+                    r#"{"error":"method_not_supported","message":"Only CONNECT requests are supported. This is an explicit HTTPS forward proxy."}"#,
+                ))
             }
         })
     }
@@ -704,43 +691,35 @@ fn sha256_hex(input: &str) -> String {
 /// Map a ProxyError to an appropriate HTTP error response.
 fn error_response_for(err: ProxyError) -> Response<ProxyBody> {
     match err {
-        ProxyError::MissingAuthority => Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .header("content-type", "application/json")
-            .body(full_body(
-                serde_json::to_vec(&serde_json::json!({
-                    "error": "missing_authority",
-                    "message": "CONNECT request must include host:port authority"
-                }))
-                .expect("JSON serialization should never fail"),
-            ))
-            .expect("Response builder with valid status should never fail"),
+        ProxyError::MissingAuthority => json_response(
+            StatusCode::BAD_REQUEST,
+            &serde_json::json!({
+                "error": "missing_authority",
+                "message": "CONNECT request must include host:port authority"
+            }),
+            r#"{"error":"missing_authority","message":"CONNECT request must include host:port authority"}"#,
+        ),
         ProxyError::VendorBlocked(ref vendor) => crate::error::vendor_blocked_response(vendor),
-        ProxyError::PoolExhausted(ref vendor) => {
-            let body = serde_json::to_vec(&serde_json::json!({
+        ProxyError::PoolExhausted(ref vendor) => json_response_with_retry_after(
+            StatusCode::SERVICE_UNAVAILABLE,
+            &serde_json::json!({
                 "error": "pool_exhausted",
                 "vendor": vendor,
                 "message": "All connections to this vendor are at maximum capacity"
-            }))
-            .expect("JSON serialization should never fail");
-            Response::builder()
-                .status(StatusCode::SERVICE_UNAVAILABLE)
-                .header("content-type", "application/json")
-                .header("retry-after", "1")
-                .body(full_body(body))
-                .expect("Response builder with valid status should never fail")
-        }
+            }),
+            r#"{"error":"pool_exhausted","message":"All connections to this vendor are at maximum capacity"}"#,
+            "1",
+        ),
         _ => {
-            let body = serde_json::to_vec(&serde_json::json!({
-                "error": "internal_error",
-                "message": err.to_string()
-            }))
-            .expect("JSON serialization should never fail");
-            Response::builder()
-                .status(StatusCode::BAD_GATEWAY)
-                .header("content-type", "application/json")
-                .body(full_body(body))
-                .expect("Response builder with valid status should never fail")
+            tracing::warn!(error = %err, "CONNECT request failed");
+            json_response(
+                StatusCode::BAD_GATEWAY,
+                &serde_json::json!({
+                    "error": "internal_error",
+                    "message": "upstream connection failed"
+                }),
+                r#"{"error":"internal_error","message":"upstream connection failed"}"#,
+            )
         }
     }
 }

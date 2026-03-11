@@ -3,8 +3,8 @@ pub mod client;
 pub mod identity;
 
 use std::io::Cursor;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use prost::Message;
@@ -251,7 +251,11 @@ async fn drain_retry_queue(
     for mut entry in retry_queue.drain(..) {
         health.record_retry();
         match client
-            .submit_batch(&entry.kernel_id, entry.batch_sequence, entry.compressed_payload.clone())
+            .submit_batch(
+                &entry.kernel_id,
+                entry.batch_sequence,
+                entry.compressed_payload.clone(),
+            )
             .await
         {
             Ok(_) => {

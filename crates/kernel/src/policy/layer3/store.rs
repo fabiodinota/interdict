@@ -5,10 +5,11 @@
 //! All queue items are persisted for audit trail and dashboard integration
 //! in Phase 8/9.
 //!
-//! The `Connection` is wrapped in `std::sync::Mutex` to make `ReviewQueueStore`
-//! `Send + Sync`, enabling safe sharing across async tasks via `Arc`.
+//! The `Connection` is wrapped in `Arc<Mutex<_>>` and all SQLite work is
+//! executed via `tokio::task::spawn_blocking` so async callers never block a
+//! Tokio worker thread.
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use rusqlite::{Connection, Result as SqlResult, params};
 
@@ -46,10 +47,10 @@ pub struct QueueItem {
 /// Uses WAL mode for concurrent reads and busy_timeout for write contention.
 /// All operations use parameterized queries to prevent SQL injection.
 ///
-/// Thread-safe via `Mutex<Connection>` — enables sharing across async tasks
-/// with `Arc<ReviewQueueStore>`.
+/// Thread-safe via `Arc<Mutex<Connection>>`; all database work is offloaded to
+/// the blocking thread pool before touching SQLite.
 pub struct ReviewQueueStore {
-    conn: Mutex<Connection>,
+    conn: Arc<Mutex<Connection>>,
 }
 
 impl ReviewQueueStore {
@@ -95,172 +96,190 @@ impl ReviewQueueStore {
         )?;
 
         Ok(Self {
-            conn: Mutex::new(conn),
+            conn: Arc::new(Mutex::new(conn)),
         })
+    }
+
+    async fn run_db<T, F>(&self, operation: F) -> anyhow::Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&Connection) -> anyhow::Result<T> + Send + 'static,
+    {
+        let conn = Arc::clone(&self.conn);
+
+        tokio::task::spawn_blocking(move || {
+            let conn = conn
+                .lock()
+                .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
+            operation(&conn)
+        })
+        .await
+        .map_err(|e| anyhow::anyhow!("sqlite task failed: {e}"))?
     }
 
     /// Insert a new queue item into the review queue.
     ///
     /// Fails with UNIQUE constraint violation if `request_id` already exists.
-    pub fn enqueue(&self, item: &QueueItem) -> anyhow::Result<()> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
-        conn.execute(
-            "INSERT INTO review_queue
-             (id, request_id, pipeline_trace, content_hash, fail_mode,
-              status, created_at, timeout_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![
-                item.id,
-                item.request_id,
-                item.pipeline_trace,
-                item.content_hash,
-                item.fail_mode,
-                item.status,
-                item.created_at,
-                item.timeout_at,
-            ],
-        )?;
-        Ok(())
+    pub async fn enqueue(&self, item: QueueItem) -> anyhow::Result<()> {
+        self.run_db(move |conn| {
+            conn.execute(
+                "INSERT INTO review_queue
+                 (id, request_id, pipeline_trace, content_hash, fail_mode,
+                  status, created_at, timeout_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![
+                    item.id,
+                    item.request_id,
+                    item.pipeline_trace,
+                    item.content_hash,
+                    item.fail_mode,
+                    item.status,
+                    item.created_at,
+                    item.timeout_at,
+                ],
+            )?;
+            Ok(())
+        })
+        .await
     }
 
     /// Get all pending review items, ordered by creation time (oldest first).
-    pub fn get_pending(&self) -> anyhow::Result<Vec<QueueItem>> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
-        let mut stmt = conn.prepare(
-            "SELECT id, request_id, pipeline_trace, content_hash, fail_mode,
-                    status, created_at, timeout_at, verdict, reviewer_id,
-                    reviewer_reason, reviewed_at
-             FROM review_queue
-             WHERE status = 'pending'
-             ORDER BY created_at ASC",
-        )?;
+    pub async fn get_pending(&self) -> anyhow::Result<Vec<QueueItem>> {
+        self.run_db(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id, request_id, pipeline_trace, content_hash, fail_mode,
+                        status, created_at, timeout_at, verdict, reviewer_id,
+                        reviewer_reason, reviewed_at
+                 FROM review_queue
+                 WHERE status = 'pending'
+                 ORDER BY created_at ASC",
+            )?;
 
-        let items = stmt
-            .query_map([], |row| {
-                Ok(QueueItem {
-                    id: row.get(0)?,
-                    request_id: row.get(1)?,
-                    pipeline_trace: row.get(2)?,
-                    content_hash: row.get(3)?,
-                    fail_mode: row.get(4)?,
-                    status: row.get(5)?,
-                    created_at: row.get(6)?,
-                    timeout_at: row.get(7)?,
-                    verdict: row.get(8)?,
-                    reviewer_id: row.get(9)?,
-                    reviewer_reason: row.get(10)?,
-                    reviewed_at: row.get(11)?,
-                })
-            })?
-            .collect::<SqlResult<Vec<_>>>()?;
+            let items = stmt
+                .query_map([], |row| {
+                    Ok(QueueItem {
+                        id: row.get(0)?,
+                        request_id: row.get(1)?,
+                        pipeline_trace: row.get(2)?,
+                        content_hash: row.get(3)?,
+                        fail_mode: row.get(4)?,
+                        status: row.get(5)?,
+                        created_at: row.get(6)?,
+                        timeout_at: row.get(7)?,
+                        verdict: row.get(8)?,
+                        reviewer_id: row.get(9)?,
+                        reviewer_reason: row.get(10)?,
+                        reviewed_at: row.get(11)?,
+                    })
+                })?
+                .collect::<SqlResult<Vec<_>>>()?;
 
-        Ok(items)
+            Ok(items)
+        })
+        .await
     }
 
     /// Look up a queue item by its request_id.
-    pub fn get_by_request_id(&self, request_id: &str) -> anyhow::Result<Option<QueueItem>> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
-        let mut stmt = conn.prepare(
-            "SELECT id, request_id, pipeline_trace, content_hash, fail_mode,
-                    status, created_at, timeout_at, verdict, reviewer_id,
-                    reviewer_reason, reviewed_at
-             FROM review_queue
-             WHERE request_id = ?1",
-        )?;
+    pub async fn get_by_request_id(&self, request_id: &str) -> anyhow::Result<Option<QueueItem>> {
+        let request_id = request_id.to_string();
 
-        let item = stmt
-            .query_row(params![request_id], |row| {
-                Ok(QueueItem {
-                    id: row.get(0)?,
-                    request_id: row.get(1)?,
-                    pipeline_trace: row.get(2)?,
-                    content_hash: row.get(3)?,
-                    fail_mode: row.get(4)?,
-                    status: row.get(5)?,
-                    created_at: row.get(6)?,
-                    timeout_at: row.get(7)?,
-                    verdict: row.get(8)?,
-                    reviewer_id: row.get(9)?,
-                    reviewer_reason: row.get(10)?,
-                    reviewed_at: row.get(11)?,
+        self.run_db(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id, request_id, pipeline_trace, content_hash, fail_mode,
+                        status, created_at, timeout_at, verdict, reviewer_id,
+                        reviewer_reason, reviewed_at
+                 FROM review_queue
+                 WHERE request_id = ?1",
+            )?;
+
+            let item = stmt
+                .query_row(params![request_id], |row| {
+                    Ok(QueueItem {
+                        id: row.get(0)?,
+                        request_id: row.get(1)?,
+                        pipeline_trace: row.get(2)?,
+                        content_hash: row.get(3)?,
+                        fail_mode: row.get(4)?,
+                        status: row.get(5)?,
+                        created_at: row.get(6)?,
+                        timeout_at: row.get(7)?,
+                        verdict: row.get(8)?,
+                        reviewer_id: row.get(9)?,
+                        reviewer_reason: row.get(10)?,
+                        reviewed_at: row.get(11)?,
+                    })
                 })
-            })
-            .optional()?;
+                .optional()?;
 
-        Ok(item)
+            Ok(item)
+        })
+        .await
     }
 
     /// Submit a human verdict for a pending review item.
     ///
     /// Only updates items with status='pending'. Returns `true` if the item
     /// was successfully updated, `false` if it was already reviewed or expired.
-    pub fn submit_verdict(
+    pub async fn submit_verdict(
         &self,
         request_id: &str,
         verdict: &str,
         reviewer_id: &str,
         reason: &str,
     ) -> anyhow::Result<bool> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
-        let updated = conn.execute(
-            "UPDATE review_queue
-             SET status = 'reviewed',
-                 verdict = ?1,
-                 reviewer_id = ?2,
-                 reviewer_reason = ?3,
-                 reviewed_at = datetime('now')
-             WHERE request_id = ?4 AND status = 'pending'",
-            params![verdict, reviewer_id, reason, request_id],
-        )?;
-        Ok(updated > 0)
+        let request_id = request_id.to_string();
+        let verdict = verdict.to_string();
+        let reviewer_id = reviewer_id.to_string();
+        let reason = reason.to_string();
+
+        self.run_db(move |conn| {
+            let updated = conn.execute(
+                "UPDATE review_queue
+                 SET status = 'reviewed',
+                     verdict = ?1,
+                     reviewer_id = ?2,
+                     reviewer_reason = ?3,
+                     reviewed_at = datetime('now')
+                 WHERE request_id = ?4 AND status = 'pending'",
+                params![verdict, reviewer_id, reason, request_id],
+            )?;
+            Ok(updated > 0)
+        })
+        .await
     }
 
     /// Mark all timed-out pending items as expired.
     ///
     /// Called periodically by the queue manager. Returns the number
     /// of items that were expired.
-    pub fn expire_timed_out(&self) -> anyhow::Result<usize> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
-        let updated = conn.execute(
-            "UPDATE review_queue
-             SET status = 'expired'
-             WHERE status = 'pending' AND timeout_at < datetime('now')",
-            [],
-        )?;
-        Ok(updated)
+    pub async fn expire_timed_out(&self) -> anyhow::Result<usize> {
+        self.run_db(|conn| {
+            let updated = conn.execute(
+                "UPDATE review_queue
+                 SET status = 'expired'
+                 WHERE status = 'pending' AND timeout_at < datetime('now')",
+                [],
+            )?;
+            Ok(updated)
+        })
+        .await
     }
 
     /// Delete old reviewed/expired items for storage hygiene.
     ///
     /// Only deletes items with status 'reviewed' or 'expired' that are
     /// older than `older_than_days` days.
-    pub fn cleanup_old(&self, older_than_days: i64) -> anyhow::Result<usize> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| anyhow::anyhow!("mutex poisoned: {e}"))?;
-        let deleted = conn.execute(
-            "DELETE FROM review_queue
-             WHERE status IN ('reviewed', 'expired')
-               AND created_at < datetime('now', ?1)",
-            params![format!("-{older_than_days} days")],
-        )?;
-        Ok(deleted)
+    pub async fn cleanup_old(&self, older_than_days: i64) -> anyhow::Result<usize> {
+        self.run_db(move |conn| {
+            let deleted = conn.execute(
+                "DELETE FROM review_queue
+                 WHERE status IN ('reviewed', 'expired')
+                   AND created_at < datetime('now', ?1)",
+                params![format!("-{older_than_days} days")],
+            )?;
+            Ok(deleted)
+        })
+        .await
     }
 }
 
@@ -317,37 +336,38 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_store_enqueue_and_get_pending() {
+    #[tokio::test]
+    async fn test_store_enqueue_and_get_pending() {
         let store = ReviewQueueStore::new(":memory:").unwrap();
         let item = make_test_item("req-001");
 
-        store.enqueue(&item).unwrap();
+        store.enqueue(item).await.unwrap();
 
-        let pending = store.get_pending().unwrap();
+        let pending = store.get_pending().await.unwrap();
         assert_eq!(pending.len(), 1);
         assert_eq!(pending[0].request_id, "req-001");
         assert_eq!(pending[0].status, "pending");
         assert_eq!(pending[0].content_hash, "sha256-abc123");
     }
 
-    #[test]
-    fn test_store_submit_verdict_updates_status() {
+    #[tokio::test]
+    async fn test_store_submit_verdict_updates_status() {
         let store = ReviewQueueStore::new(":memory:").unwrap();
         let item = make_test_item("req-002");
-        store.enqueue(&item).unwrap();
+        store.enqueue(item).await.unwrap();
 
         let updated = store
             .submit_verdict("req-002", "block", "reviewer-1", "contains PII")
+            .await
             .unwrap();
         assert!(updated);
 
         // Should no longer appear in pending
-        let pending = store.get_pending().unwrap();
+        let pending = store.get_pending().await.unwrap();
         assert!(pending.is_empty());
 
         // Verify the stored verdict
-        let reviewed = store.get_by_request_id("req-002").unwrap().unwrap();
+        let reviewed = store.get_by_request_id("req-002").await.unwrap().unwrap();
         assert_eq!(reviewed.status, "reviewed");
         assert_eq!(reviewed.verdict.as_deref(), Some("block"));
         assert_eq!(reviewed.reviewer_id.as_deref(), Some("reviewer-1"));
@@ -355,71 +375,72 @@ mod tests {
         assert!(reviewed.reviewed_at.is_some());
     }
 
-    #[test]
-    fn test_store_submit_verdict_only_pending() {
+    #[tokio::test]
+    async fn test_store_submit_verdict_only_pending() {
         let store = ReviewQueueStore::new(":memory:").unwrap();
         let item = make_expired_item("req-003");
-        store.enqueue(&item).unwrap();
+        store.enqueue(item).await.unwrap();
 
         // Expire it first
-        store.expire_timed_out().unwrap();
+        store.expire_timed_out().await.unwrap();
 
         // Now try to submit a verdict on the expired item
         let updated = store
             .submit_verdict("req-003", "allow", "reviewer-2", "false alarm")
+            .await
             .unwrap();
         assert!(!updated); // Should return false — item is expired, not pending
     }
 
-    #[test]
-    fn test_store_expire_timed_out() {
+    #[tokio::test]
+    async fn test_store_expire_timed_out() {
         let store = ReviewQueueStore::new(":memory:").unwrap();
 
         // One expired, one not expired
         let expired = make_expired_item("req-004");
         let active = make_test_item("req-005");
-        store.enqueue(&expired).unwrap();
-        store.enqueue(&active).unwrap();
+        store.enqueue(expired).await.unwrap();
+        store.enqueue(active).await.unwrap();
 
-        let count = store.expire_timed_out().unwrap();
+        let count = store.expire_timed_out().await.unwrap();
         assert_eq!(count, 1);
 
         // Only the active item should remain pending
-        let pending = store.get_pending().unwrap();
+        let pending = store.get_pending().await.unwrap();
         assert_eq!(pending.len(), 1);
         assert_eq!(pending[0].request_id, "req-005");
 
         // Expired item should have status='expired'
-        let expired_item = store.get_by_request_id("req-004").unwrap().unwrap();
+        let expired_item = store.get_by_request_id("req-004").await.unwrap().unwrap();
         assert_eq!(expired_item.status, "expired");
     }
 
-    #[test]
-    fn test_store_get_by_request_id() {
+    #[tokio::test]
+    async fn test_store_get_by_request_id() {
         let store = ReviewQueueStore::new(":memory:").unwrap();
         let item = make_test_item("req-006");
-        store.enqueue(&item).unwrap();
+        store.enqueue(item).await.unwrap();
 
-        let found = store.get_by_request_id("req-006").unwrap();
+        let found = store.get_by_request_id("req-006").await.unwrap();
         assert!(found.is_some());
         assert_eq!(found.unwrap().request_id, "req-006");
 
-        let not_found = store.get_by_request_id("nonexistent").unwrap();
+        let not_found = store.get_by_request_id("nonexistent").await.unwrap();
         assert!(not_found.is_none());
     }
 
-    #[test]
-    fn test_store_unique_request_id() {
+    #[tokio::test]
+    async fn test_store_unique_request_id() {
         let store = ReviewQueueStore::new(":memory:").unwrap();
         let item1 = make_test_item("req-007");
-        store.enqueue(&item1).unwrap();
+        store.enqueue(item1).await.unwrap();
 
         // Duplicate request_id should fail with UNIQUE constraint
         let item2 = QueueItem {
             id: "different-id".to_string(),
             ..make_test_item("req-007")
         };
-        let result = store.enqueue(&item2);
+        let result = store.enqueue(item2).await;
         assert!(result.is_err());
     }
 }

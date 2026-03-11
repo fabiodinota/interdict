@@ -4,7 +4,8 @@
 //! structured JSON error responses for client-facing errors.
 
 use bytes::Bytes;
-use http::Response;
+use http::header::{CONTENT_TYPE, RETRY_AFTER};
+use http::{HeaderValue, Response, StatusCode};
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use http_body_util::combinators::BoxBody;
@@ -95,45 +96,75 @@ fn full_body(data: Vec<u8>) -> ProxyBody {
     BoxBody::new(Full::new(Bytes::from(data)).map_err(|never| match never {}))
 }
 
+fn response_with_json_body(status: StatusCode, body: Vec<u8>) -> Response<ProxyBody> {
+    let mut response = Response::new(full_body(body));
+    *response.status_mut() = status;
+    response
+        .headers_mut()
+        .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    response
+}
+
+pub(crate) fn json_response<T: Serialize>(
+    status: StatusCode,
+    payload: &T,
+    fallback_body: &'static str,
+) -> Response<ProxyBody> {
+    match serde_json::to_vec(payload) {
+        Ok(body) => response_with_json_body(status, body),
+        Err(error) => {
+            tracing::error!(error = %error, "failed to serialize JSON error response");
+            response_with_json_body(status, fallback_body.as_bytes().to_vec())
+        }
+    }
+}
+
+pub(crate) fn json_response_with_retry_after<T: Serialize>(
+    status: StatusCode,
+    payload: &T,
+    fallback_body: &'static str,
+    retry_after: &'static str,
+) -> Response<ProxyBody> {
+    let mut response = json_response(status, payload, fallback_body);
+    response
+        .headers_mut()
+        .insert(RETRY_AFTER, HeaderValue::from_static(retry_after));
+    response
+}
+
 /// Build a 403 Forbidden response for blocked vendors.
 ///
 /// Returns a structured JSON body with error type and vendor name.
 pub fn vendor_blocked_response(vendor: &str) -> Response<ProxyBody> {
-    let body = serde_json::to_vec(&ErrorResponse {
-        error: "vendor_blocked",
-        vendor: Some(vendor.to_string()),
-        message: Some(format!(
-            "Vendor '{}' is not on the approved allowlist",
-            vendor
-        )),
-        timeout_ms: None,
-    })
-    .expect("ErrorResponse serialization should never fail");
-
-    Response::builder()
-        .status(http::StatusCode::FORBIDDEN)
-        .header("content-type", "application/json")
-        .body(full_body(body))
-        .expect("Response builder with valid status should never fail")
+    json_response(
+        StatusCode::FORBIDDEN,
+        &ErrorResponse {
+            error: "vendor_blocked",
+            vendor: Some(vendor.to_string()),
+            message: Some(format!(
+                "Vendor '{}' is not on the approved allowlist",
+                vendor
+            )),
+            timeout_ms: None,
+        },
+        r#"{"error":"vendor_blocked","message":"Vendor is not on the approved allowlist"}"#,
+    )
 }
 
 /// Build a 502 Bad Gateway response for unreachable vendors.
 ///
 /// Returns a structured JSON body with error type, vendor name, and timeout.
 pub fn vendor_unreachable_response(vendor: &str, timeout_ms: u64) -> Response<ProxyBody> {
-    let body = serde_json::to_vec(&ErrorResponse {
-        error: "vendor_unreachable",
-        vendor: Some(vendor.to_string()),
-        message: None,
-        timeout_ms: Some(timeout_ms),
-    })
-    .expect("ErrorResponse serialization should never fail");
-
-    Response::builder()
-        .status(http::StatusCode::BAD_GATEWAY)
-        .header("content-type", "application/json")
-        .body(full_body(body))
-        .expect("Response builder with valid status should never fail")
+    json_response(
+        StatusCode::BAD_GATEWAY,
+        &ErrorResponse {
+            error: "vendor_unreachable",
+            vendor: Some(vendor.to_string()),
+            message: None,
+            timeout_ms: Some(timeout_ms),
+        },
+        r#"{"error":"vendor_unreachable"}"#,
+    )
 }
 
 /// Build a 403 Forbidden response when a policy blocks a request.
@@ -146,8 +177,8 @@ pub fn policy_blocked_response(
     reason: Option<&str>,
     detail: BlockResponseDetail,
 ) -> Response<ProxyBody> {
-    let body = match detail {
-        BlockResponseDetail::Detailed => serde_json::to_vec(&PolicyBlockedResponse {
+    let payload = match detail {
+        BlockResponseDetail::Detailed => PolicyBlockedResponse {
             error: "policy_blocked",
             policy_id: Some(policy_id.to_string()),
             reason: reason.map(|r| r.to_string()),
@@ -156,21 +187,20 @@ pub fn policy_blocked_response(
                 policy_id,
                 reason.map(|r| format!(": {}", r)).unwrap_or_default()
             )),
-        }),
-        BlockResponseDetail::Opaque => serde_json::to_vec(&PolicyBlockedResponse {
+        },
+        BlockResponseDetail::Opaque => PolicyBlockedResponse {
             error: "policy_blocked",
             policy_id: None,
             reason: None,
             message: Some("Request blocked by policy".to_string()),
-        }),
-    }
-    .expect("PolicyBlockedResponse serialization should never fail");
+        },
+    };
 
-    Response::builder()
-        .status(http::StatusCode::FORBIDDEN)
-        .header("content-type", "application/json")
-        .body(full_body(body))
-        .expect("Response builder with valid status should never fail")
+    json_response(
+        StatusCode::FORBIDDEN,
+        &payload,
+        r#"{"error":"policy_blocked","message":"Request blocked by policy"}"#,
+    )
 }
 
 /// Structured JSON body for policy-blocked responses.
@@ -189,20 +219,17 @@ struct PolicyBlockedResponse {
 ///
 /// Returns a structured JSON body with `Retry-After: 1` header.
 pub fn backpressure_response() -> Response<ProxyBody> {
-    let body = serde_json::to_vec(&ErrorResponse {
-        error: "service_overloaded",
-        vendor: None,
-        message: Some("Request queue is full. Retry after a brief delay.".to_string()),
-        timeout_ms: None,
-    })
-    .expect("ErrorResponse serialization should never fail");
-
-    Response::builder()
-        .status(http::StatusCode::SERVICE_UNAVAILABLE)
-        .header("content-type", "application/json")
-        .header("retry-after", "1")
-        .body(full_body(body))
-        .expect("Response builder with valid status should never fail")
+    json_response_with_retry_after(
+        StatusCode::SERVICE_UNAVAILABLE,
+        &ErrorResponse {
+            error: "service_overloaded",
+            vendor: None,
+            message: Some("Request queue is full. Retry after a brief delay.".to_string()),
+            timeout_ms: None,
+        },
+        r#"{"error":"service_overloaded","message":"Request queue is full. Retry after a brief delay."}"#,
+        "1",
+    )
 }
 
 #[cfg(test)]

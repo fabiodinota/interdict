@@ -57,11 +57,14 @@ where
         let request_id = uuid::Uuid::new_v4().to_string();
 
         // Insert request ID header
-        req.headers_mut().insert(
-            "x-request-id",
-            http::HeaderValue::from_str(&request_id)
-                .expect("UUID v4 string is always valid header value"),
-        );
+        match http::HeaderValue::from_str(&request_id) {
+            Ok(header_value) => {
+                req.headers_mut().insert("x-request-id", header_value);
+            }
+            Err(error) => {
+                tracing::warn!(error = %error, "failed to encode x-request-id header");
+            }
+        }
 
         let mut inner = self.inner.clone();
         let span = tracing::info_span!("request", request_id = %request_id);

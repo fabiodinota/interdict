@@ -10,6 +10,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use anyhow::Context;
+
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto;
 use hyper_util::service::TowerToHyperService;
@@ -79,7 +81,7 @@ async fn main() -> anyhow::Result<()> {
     // 8b. Initialize Policy Pipeline (Phase 2)
     let wasm_engine = Arc::new(
         policy::wasm_engine::WasmEngine::new(&config.policy)
-            .expect("WasmEngine creation should succeed"),
+            .context("failed to initialize WasmEngine")?,
     );
     tracing::info!("Wasmtime engine with pooling allocator initialized");
 
@@ -111,7 +113,7 @@ async fn main() -> anyhow::Result<()> {
         let classifier = Arc::new(match &config.policy.l2_model_path {
             Some(model_path) => {
                 policy::layer2::classifier::Classifier::load(model_path, labels.clone())
-                    .expect("L2 ONNX model should load")
+                    .with_context(|| format!("failed to load L2 ONNX model from {model_path}"))?
             }
             None => {
                 tracing::info!("No L2 ONNX model configured, using stub classifier");
@@ -137,7 +139,12 @@ async fn main() -> anyhow::Result<()> {
         // Create ReviewQueueStore and ReviewQueue (L3)
         let review_store = Arc::new(
             policy::layer3::store::ReviewQueueStore::new(&config.policy.review_db_path)
-                .expect("ReviewQueueStore should open"),
+                .with_context(|| {
+                    format!(
+                        "failed to open review queue store at {}",
+                        config.policy.review_db_path
+                    )
+                })?,
         );
         let review_queue = Arc::new(policy::layer3::queue::ReviewQueue::new(
             review_store,
@@ -187,11 +194,14 @@ async fn main() -> anyhow::Result<()> {
         background_l2: false,
         enabled: true,
     });
-    let content_inspector = Arc::new(policy::content_inspection::ContentInspector::new(
-        pattern_registry,
-        content_redactor,
-        content_policy_config,
-    ));
+    let content_inspector = Arc::new(
+        policy::content_inspection::ContentInspector::new(
+            pattern_registry,
+            content_redactor,
+            content_policy_config,
+        )
+        .context("failed to initialize content inspector")?,
+    );
     tracing::info!("content inspector initialized with default patterns");
 
     // 8c. Initialize PolicySetManager with empty initial set (Phase 6)
@@ -229,13 +239,23 @@ async fn main() -> anyhow::Result<()> {
         "session store initialized"
     );
 
-    let evidence_collector_addr = std::env::var("INTERDICT_EVIDENCE_COLLECTOR_ADDR")
-        .unwrap_or_else(|_| {
-            #[cfg(not(debug_assertions))]
-            panic!("INTERDICT_EVIDENCE_COLLECTOR_ADDR must be set in release builds");
+    let evidence_collector_addr = match std::env::var("KERNEL_EVIDENCE_COLLECTOR_ADDR")
+        .or_else(|_| std::env::var("INTERDICT_EVIDENCE_COLLECTOR_ADDR"))
+    {
+        Ok(addr) => addr,
+        Err(_) => {
             #[cfg(debug_assertions)]
-            "http://[::1]:50051".to_string()
-        });
+            {
+                "http://[::1]:50051".to_string()
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                return Err(anyhow::anyhow!(
+                    "KERNEL_EVIDENCE_COLLECTOR_ADDR must be set in release builds"
+                ));
+            }
+        }
+    };
     let full_text_storage = std::env::var("INTERDICT_EVIDENCE_FULL_TEXT_STORAGE")
         .map(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
         .unwrap_or(false);
@@ -251,13 +271,13 @@ async fn main() -> anyhow::Result<()> {
     ) {
         let ca = tokio::fs::read(&ca_path)
             .await
-            .unwrap_or_else(|e| panic!("failed to read mTLS CA cert {ca_path}: {e}"));
+            .with_context(|| format!("failed to read mTLS CA cert {ca_path}"))?;
         let cert = tokio::fs::read(&cert_path)
             .await
-            .unwrap_or_else(|e| panic!("failed to read mTLS client cert {cert_path}: {e}"));
+            .with_context(|| format!("failed to read mTLS client cert {cert_path}"))?;
         let key = tokio::fs::read(&key_path)
             .await
-            .unwrap_or_else(|e| panic!("failed to read mTLS client key {key_path}: {e}"));
+            .with_context(|| format!("failed to read mTLS client key {key_path}"))?;
 
         tracing::info!(
             ca_cert = %ca_path,
@@ -274,6 +294,21 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("mTLS not configured for gRPC clients (KERNEL_MTLS_CA_CERT not set)");
         None
     };
+
+    #[cfg(not(debug_assertions))]
+    {
+        if !evidence_collector_addr.starts_with("https://") {
+            return Err(anyhow::anyhow!(
+                "INTERDICT_EVIDENCE_COLLECTOR_ADDR must use https:// in release builds"
+            ));
+        }
+
+        if mtls_certs.is_none() {
+            return Err(anyhow::anyhow!(
+                "KERNEL_MTLS_CA_CERT, KERNEL_MTLS_CLIENT_CERT, and KERNEL_MTLS_CLIENT_KEY must be set in release builds"
+            ));
+        }
+    }
 
     let (evidence_buffer, evidence_flusher_handle) = evidence::EvidenceBuffer::new(
         evidence_collector_addr.clone(),
@@ -394,10 +429,11 @@ async fn main() -> anyhow::Result<()> {
 
     // Spawn shutdown signal handler
     tokio::spawn(async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to listen for SIGINT");
-        tracing::info!("shutdown signal received");
+        if let Err(error) = tokio::signal::ctrl_c().await {
+            tracing::error!(error = %error, "failed to install SIGINT handler");
+        } else {
+            tracing::info!("shutdown signal received");
+        }
         let _ = shutdown_tx.send(true);
     });
 

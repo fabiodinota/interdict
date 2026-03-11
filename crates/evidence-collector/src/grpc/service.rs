@@ -42,6 +42,13 @@ impl EvidenceCollectorService {
     }
 
     async fn process_bundle(&self, kernel_id: &str, mut bundle: EvidenceBundle) -> Result<()> {
+        validate_kernel_id(kernel_id).context("invalid batch kernel_id")?;
+        if bundle.kernel_id != kernel_id {
+            return Err(anyhow!(
+                "bundle kernel_id does not match enclosing batch kernel_id"
+            ));
+        }
+
         let bundle_bytes = bundle.encode_to_vec();
 
         let (chain_hash, sequence_number, previous_hash) = self
@@ -106,6 +113,17 @@ impl EvidenceCollector for EvidenceCollectorService {
         loop {
             match stream.message().await {
                 Ok(Some(batch)) => {
+                    if let Err(error) = validate_kernel_id(&batch.kernel_id) {
+                        rejected_count += 1;
+                        tracing::warn!(
+                            kernel_id = %batch.kernel_id,
+                            batch_sequence = batch.batch_sequence,
+                            error = %error,
+                            "rejected evidence batch with invalid kernel_id"
+                        );
+                        continue;
+                    }
+
                     let bundles = match decode_bundles_payload(&batch.compressed_payload) {
                         Ok(bundles) => bundles,
                         Err(error) => {
@@ -121,10 +139,22 @@ impl EvidenceCollector for EvidenceCollectorService {
                     };
 
                     for bundle in bundles {
-                        if self.process_bundle(&batch.kernel_id, bundle).await.is_ok() {
-                            accepted_count += 1;
-                        } else {
-                            rejected_count += 1;
+                        let bundle_id = bundle.bundle_id.clone();
+
+                        match self.process_bundle(&batch.kernel_id, bundle).await {
+                            Ok(()) => {
+                                accepted_count += 1;
+                            }
+                            Err(error) => {
+                                rejected_count += 1;
+                                tracing::warn!(
+                                    kernel_id = %batch.kernel_id,
+                                    batch_sequence = batch.batch_sequence,
+                                    bundle_id = %bundle_id,
+                                    error = %error,
+                                    "rejected evidence bundle"
+                                );
+                            }
                         }
                     }
                 }
@@ -172,11 +202,7 @@ fn map_bundle_to_row(
     signature: &[u8],
     content_bytes: &[u8],
 ) -> Result<EvidenceRow> {
-    let timestamp = bundle
-        .timestamp
-        .as_ref()
-        .and_then(|ts| Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single())
-        .unwrap_or_else(Utc::now);
+    let timestamp = bundle_timestamp(bundle)?;
 
     Ok(EvidenceRow {
         event_date: EvidenceRow::from_timestamp(timestamp),
@@ -206,9 +232,37 @@ fn map_bundle_to_row(
     })
 }
 
+fn bundle_timestamp(bundle: &EvidenceBundle) -> Result<chrono::DateTime<Utc>> {
+    let timestamp = bundle
+        .timestamp
+        .as_ref()
+        .context("evidence bundle missing timestamp")?;
+
+    Utc.timestamp_opt(timestamp.seconds, timestamp.nanos as u32)
+        .single()
+        .ok_or_else(|| anyhow!("evidence bundle timestamp is invalid"))
+}
+
+fn validate_kernel_id(kernel_id: &str) -> Result<()> {
+    if kernel_id.is_empty() || kernel_id.len() > 128 {
+        return Err(anyhow!("kernel_id must be between 1 and 128 characters"));
+    }
+
+    if !kernel_id
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+    {
+        return Err(anyhow!(
+            "kernel_id may only contain ASCII letters, digits, hyphens, and underscores"
+        ));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{decode_bundles_payload, map_bundle_to_row};
+    use super::{bundle_timestamp, decode_bundles_payload, map_bundle_to_row, validate_kernel_id};
     use crate::grpc::proto::EvidenceBundle;
     use prost::Message;
     use prost_types::Timestamp;
@@ -252,6 +306,10 @@ mod tests {
         let bundle = EvidenceBundle {
             bundle_id: "bundle-1".to_string(),
             kernel_id: "kernel-1".to_string(),
+            timestamp: Some(Timestamp {
+                seconds: 1_772_236_800,
+                nanos: 0,
+            }),
             actor_identity: "analyst".to_string(),
             department: "fraud".to_string(),
             vendor: "openai".to_string(),
@@ -268,13 +326,61 @@ mod tests {
             ..Default::default()
         };
         let content = b"test-content-bytes";
-        let row =
-            map_bundle_to_row(&bundle, &[1u8; 32], &[0u8; 32], &[2u8; 64], content)
-                .expect("map to row");
+        let row = map_bundle_to_row(&bundle, &[1u8; 32], &[0u8; 32], &[2u8; 64], content)
+            .expect("map to row");
 
         assert_eq!(row.chain_hash, "01".repeat(32));
         assert_eq!(row.previous_hash, "00".repeat(32));
         assert_eq!(row.signature, "02".repeat(64));
         assert_eq!(row.content_bytes, hex::encode(content));
+    }
+
+    #[test]
+    fn map_bundle_to_row_requires_timestamp() {
+        let bundle = EvidenceBundle {
+            bundle_id: "bundle-1".to_string(),
+            kernel_id: "kernel-1".to_string(),
+            ..Default::default()
+        };
+
+        let error = map_bundle_to_row(&bundle, &[1u8; 32], &[0u8; 32], &[2u8; 64], b"bytes")
+            .expect_err("missing timestamp should fail");
+        assert!(error.to_string().contains("missing timestamp"));
+    }
+
+    #[test]
+    fn validate_kernel_id_rejects_invalid_characters() {
+        let error = validate_kernel_id("kernel/1").expect_err("invalid kernel id should fail");
+        assert!(error.to_string().contains("kernel_id"));
+    }
+
+    #[test]
+    fn validate_kernel_id_rejects_empty_and_oversized_values() {
+        let empty = validate_kernel_id("").expect_err("empty kernel id should fail");
+        assert!(empty.to_string().contains("kernel_id"));
+
+        let oversized_id = "k".repeat(129);
+        let oversized =
+            validate_kernel_id(&oversized_id).expect_err("oversized kernel id should fail");
+        assert!(oversized.to_string().contains("kernel_id"));
+    }
+
+    #[test]
+    fn validate_kernel_id_accepts_safe_identifier_characters() {
+        validate_kernel_id("kernel_1-prod").expect("safe kernel id should pass");
+    }
+
+    #[test]
+    fn bundle_timestamp_rejects_invalid_timestamp() {
+        let bundle = EvidenceBundle {
+            timestamp: Some(Timestamp {
+                seconds: i64::MAX,
+                nanos: 0,
+            }),
+            ..Default::default()
+        };
+
+        let error = bundle_timestamp(&bundle).expect_err("invalid timestamp should fail");
+        assert!(error.to_string().contains("timestamp"));
     }
 }

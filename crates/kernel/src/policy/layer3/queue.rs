@@ -140,7 +140,7 @@ impl ReviewQueue {
             reviewed_at: None,
         };
 
-        self.store.enqueue(&queue_item)?;
+        self.store.enqueue(queue_item).await?;
 
         // Step 4: Insert sender into pending map.
         self.pending.insert(request_id_str.clone(), tx);
@@ -179,7 +179,7 @@ impl ReviewQueue {
                     "L3 review timeout, applying fail-mode"
                 );
                 // Update store status to 'expired' for this specific request.
-                if let Err(e) = self.store.expire_timed_out() {
+                if let Err(e) = self.store.expire_timed_out().await {
                     tracing::error!(error = %e, "failed to expire timed-out reviews in store");
                 }
                 Ok(fail_mode.default_action())
@@ -193,19 +193,25 @@ impl ReviewQueue {
     /// Called by the management API when a human reviewer decides.
     /// Returns `true` if the verdict was delivered to the waiting connection,
     /// `false` if the request already timed out.
-    pub fn submit_verdict(&self, request_id: &str, verdict: HumanVerdict) -> anyhow::Result<bool> {
+    pub async fn submit_verdict(
+        &self,
+        request_id: &str,
+        verdict: HumanVerdict,
+    ) -> anyhow::Result<bool> {
         // Update SQLite store first.
         let action_str = match verdict.action {
             VerdictAction::Allow => "allow",
             VerdictAction::Redact => "redact",
             VerdictAction::Block => "block",
         };
-        self.store.submit_verdict(
-            request_id,
-            action_str,
-            &verdict.reviewer_id,
-            &verdict.reason,
-        )?;
+        self.store
+            .submit_verdict(
+                request_id,
+                action_str,
+                &verdict.reviewer_id,
+                &verdict.reason,
+            )
+            .await?;
 
         // Try to deliver the verdict through the oneshot channel.
         if let Some((_, tx)) = self.pending.remove(request_id) {
@@ -230,8 +236,8 @@ impl ReviewQueue {
     /// Get all pending queue items from the SQLite store.
     ///
     /// Delegates to `store.get_pending()` for the management API.
-    pub fn get_pending_items(&self) -> anyhow::Result<Vec<QueueItem>> {
-        self.store.get_pending()
+    pub async fn get_pending_items(&self) -> anyhow::Result<Vec<QueueItem>> {
+        self.store.get_pending().await
     }
 }
 
@@ -293,6 +299,7 @@ mod tests {
                     reason: "looks safe".to_string(),
                 },
             )
+            .await
             .unwrap();
         assert!(delivered);
 
@@ -397,6 +404,7 @@ mod tests {
                     reason: "too late".to_string(),
                 },
             )
+            .await
             .unwrap();
         assert!(!delivered);
     }
@@ -415,7 +423,10 @@ mod tests {
             .await;
 
         // Verify the item was persisted to the store.
-        let item = store.get_by_request_id(&request_id.to_string()).unwrap();
+        let item = store
+            .get_by_request_id(&request_id.to_string())
+            .await
+            .unwrap();
         assert!(item.is_some());
         let item = item.unwrap();
         assert_eq!(item.content_hash, "hash-persist");

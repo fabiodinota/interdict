@@ -55,6 +55,9 @@ pub struct ClickHouseWriter {
 
 impl ClickHouseWriter {
     pub async fn new(url: &str, database: &str, user: &str, password: &str) -> Result<Self> {
+        let database =
+            validate_clickhouse_identifier(database).context("invalid ClickHouse database name")?;
+
         // Create the database first using a client without database set
         let bootstrap = Client::default()
             .with_url(url)
@@ -115,6 +118,25 @@ impl ClickHouseWriter {
 
         Ok(())
     }
+}
+
+fn validate_clickhouse_identifier(name: &str) -> Result<&str> {
+    if name.is_empty() || name.len() > 128 {
+        return Err(anyhow!(
+            "database name must be between 1 and 128 characters"
+        ));
+    }
+
+    if !name
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+    {
+        return Err(anyhow!(
+            "database name may only contain ASCII letters, digits, and underscores"
+        ));
+    }
+
+    Ok(name)
 }
 
 async fn run_inserter_worker(

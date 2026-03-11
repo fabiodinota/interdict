@@ -16,7 +16,12 @@ pub struct S3Anchor {
 }
 
 impl S3Anchor {
-    pub async fn new(bucket: &str, region: &str, retention_days: u32) -> Result<Self> {
+    pub async fn new(
+        bucket: &str,
+        region: &str,
+        retention_days: u32,
+        require_object_lock: bool,
+    ) -> Result<Self> {
         let config = if region.is_empty() {
             aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await
         } else {
@@ -40,6 +45,15 @@ impl S3Anchor {
                     tracing::info!(bucket = bucket, "S3 Object Lock verified on bucket");
                 }
                 Err(error) => {
+                    if require_object_lock {
+                        return Err(anyhow::Error::new(error)).with_context(|| {
+                            format!(
+                                "failed to verify S3 Object Lock for bucket {bucket}; \
+                                 set COLLECTOR_REQUIRE_OBJECT_LOCK=false only for dev/test"
+                            )
+                        });
+                    }
+
                     tracing::warn!(
                         bucket = bucket,
                         error = %error,

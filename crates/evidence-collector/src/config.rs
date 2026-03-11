@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -21,6 +22,8 @@ pub struct CollectorConfig {
     pub merkle_max_leaves: u64,
     pub full_text_storage: bool,
     pub retention_days: u32,
+    /// Require S3 Object Lock verification when anchoring is enabled.
+    pub require_object_lock: bool,
     /// Enable mTLS for the gRPC server (requires CA cert, server cert, server key).
     pub mtls_enabled: bool,
     /// Path to the internal CA certificate (trust anchor for client verification).
@@ -50,6 +53,7 @@ impl Default for CollectorConfig {
             merkle_max_leaves: 1_000_000,
             full_text_storage: false,
             retention_days: 2555,
+            require_object_lock: true,
             mtls_enabled: false,
             mtls_ca_cert_path: None,
             mtls_cert_path: None,
@@ -75,12 +79,13 @@ impl CollectorConfig {
     /// - `COLLECTOR_MERKLE_MAX_LEAVES` (default: 1000000)
     /// - `COLLECTOR_FULL_TEXT_STORAGE` (default: false) -- `1`/`true`/`yes`
     /// - `COLLECTOR_RETENTION_DAYS` (default: 2555)
+    /// - `COLLECTOR_REQUIRE_OBJECT_LOCK` (default: true) -- `1`/`true`/`yes`
     /// - `MTLS_ENABLED` (default: "false") -- `true`/`false`
     /// - `MTLS_CA_CERT_PATH` -- CA cert for client verification
     /// - `MTLS_CERT_PATH` -- Server certificate
     /// - `MTLS_KEY_PATH` -- Server private key
     /// - `SIGNING_KEY_WATCH_PATH` -- Optional file path to poll for signing key hot-reload
-    pub fn from_env() -> Self {
+    pub fn from_env() -> Result<Self> {
         let signing_mode = match std::env::var("COLLECTOR_SIGNING_MODE")
             .unwrap_or_else(|_| "dev".to_string())
             .to_ascii_lowercase()
@@ -93,12 +98,12 @@ impl CollectorConfig {
             ),
             "kms" => SigningMode::Kms(
                 std::env::var("COLLECTOR_KMS_KEY_ID")
-                    .expect("COLLECTOR_KMS_KEY_ID required when COLLECTOR_SIGNING_MODE=kms"),
+                    .context("COLLECTOR_KMS_KEY_ID required when COLLECTOR_SIGNING_MODE=kms")?,
             ),
             _ => SigningMode::Dev,
         };
 
-        Self {
+        Ok(Self {
             grpc_listen_addr: std::env::var("COLLECTOR_GRPC_LISTEN_ADDR")
                 .unwrap_or_else(|_| "[::1]:50051".to_string()),
             clickhouse_url: std::env::var("CLICKHOUSE_URL")
@@ -126,6 +131,9 @@ impl CollectorConfig {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(2555),
+            require_object_lock: std::env::var("COLLECTOR_REQUIRE_OBJECT_LOCK")
+                .map(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+                .unwrap_or(true),
             mtls_enabled: std::env::var("MTLS_ENABLED")
                 .map(|v| v.eq_ignore_ascii_case("true"))
                 .unwrap_or(false),
@@ -133,7 +141,7 @@ impl CollectorConfig {
             mtls_cert_path: std::env::var("MTLS_CERT_PATH").ok(),
             mtls_key_path: std::env::var("MTLS_KEY_PATH").ok(),
             signing_key_watch_path: std::env::var("SIGNING_KEY_WATCH_PATH").ok(),
-        }
+        })
     }
 }
 
@@ -157,6 +165,7 @@ mod tests {
             std::env::remove_var("COLLECTOR_MERKLE_MAX_LEAVES");
             std::env::remove_var("COLLECTOR_FULL_TEXT_STORAGE");
             std::env::remove_var("COLLECTOR_RETENTION_DAYS");
+            std::env::remove_var("COLLECTOR_REQUIRE_OBJECT_LOCK");
             std::env::remove_var("SIGNING_KEY_WATCH_PATH");
         }
     }
@@ -166,7 +175,7 @@ mod tests {
         // SAFETY: test-threads=1 prevents concurrent env mutation.
         unsafe { clear_collector_env() };
 
-        let cfg = CollectorConfig::from_env();
+        let cfg = CollectorConfig::from_env().expect("config from env");
         assert_eq!(cfg.grpc_listen_addr, "[::1]:50051");
         assert_eq!(cfg.clickhouse_url, "http://localhost:8123");
         assert_eq!(cfg.clickhouse_database, "interdict");
@@ -177,6 +186,7 @@ mod tests {
         assert_eq!(cfg.merkle_max_leaves, 1_000_000);
         assert!(!cfg.full_text_storage);
         assert_eq!(cfg.retention_days, 2555);
+        assert!(cfg.require_object_lock);
     }
 
     #[test]
@@ -195,7 +205,7 @@ mod tests {
             std::env::set_var("COLLECTOR_MERKLE_MAX_LEAVES", "500000");
         }
 
-        let cfg = CollectorConfig::from_env();
+        let cfg = CollectorConfig::from_env().expect("config from env");
         assert_eq!(cfg.grpc_listen_addr, "[::]:50051");
         assert_eq!(cfg.clickhouse_url, "http://clickhouse:8123");
         assert_eq!(cfg.clickhouse_database, "mydb");
@@ -219,7 +229,7 @@ mod tests {
             std::env::set_var("COLLECTOR_SIGNING_KEY_PATH", "/custom/key.pem");
         }
 
-        let cfg = CollectorConfig::from_env();
+        let cfg = CollectorConfig::from_env().expect("config from env");
         match &cfg.signing_mode {
             SigningMode::File(path) => assert_eq!(path.to_str().unwrap(), "/custom/key.pem"),
             other => panic!("expected SigningMode::File, got {:?}", other),
@@ -237,7 +247,7 @@ mod tests {
             std::env::set_var("COLLECTOR_SIGNING_MODE", "file");
         }
 
-        let cfg = CollectorConfig::from_env();
+        let cfg = CollectorConfig::from_env().expect("config from env");
         match &cfg.signing_mode {
             SigningMode::File(path) => {
                 assert_eq!(path.to_str().unwrap(), "/data/keys/signing.key")
@@ -257,13 +267,13 @@ mod tests {
         for val in &["1", "true", "yes", "TRUE", "Yes", "YES"] {
             // SAFETY: test-threads=1 prevents concurrent env mutation.
             unsafe { std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", val) };
-            let cfg = CollectorConfig::from_env();
+            let cfg = CollectorConfig::from_env().expect("config from env");
             assert!(cfg.full_text_storage, "expected true for '{}'", val);
         }
         for val in &["0", "false", "no", "anything"] {
             // SAFETY: test-threads=1 prevents concurrent env mutation.
             unsafe { std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", val) };
-            let cfg = CollectorConfig::from_env();
+            let cfg = CollectorConfig::from_env().expect("config from env");
             assert!(!cfg.full_text_storage, "expected false for '{}'", val);
         }
 

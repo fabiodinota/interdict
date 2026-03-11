@@ -12,6 +12,7 @@ use crate::policy::patterns::PatternRegistry;
 use crate::policy::redaction::RedactionEngine;
 use crate::policy::streaming::StreamingDetector;
 use crate::policy::verdict::VerdictAction;
+use anyhow::Result;
 use bytes::Bytes;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -47,14 +48,14 @@ impl ContentInspector {
         registry: Arc<PatternRegistry>,
         redactor: Arc<RedactionEngine>,
         policy_config: Arc<PolicyConfig>,
-    ) -> Self {
+    ) -> Result<Self> {
         let detector = Arc::new(StreamingDetector::new(registry, redactor.clone()));
-        Self {
+        Ok(Self {
             detector,
             redactor,
             policy_config,
-            injection_detector: Arc::new(InjectionDetector::new()),
-        }
+            injection_detector: Arc::new(InjectionDetector::new()?),
+        })
     }
 
     /// Inspect request content synchronously.
@@ -140,6 +141,15 @@ impl ContentInspector {
         }
     }
 
+    /// Inspect response content synchronously.
+    ///
+    /// Responses currently follow the same detection and redaction pipeline as
+    /// requests, but the dedicated method keeps the direction explicit at the
+    /// call site.
+    pub fn inspect_response(&self, content: &[u8]) -> InspectionResult {
+        self.inspect_request(content)
+    }
+
     /// Determine if detected categories should trigger blocking.
     ///
     /// For Phase 3, block on high-severity secrets (PRIVATE_KEY, AWS_KEY, OPENAI_KEY).
@@ -181,7 +191,8 @@ mod tests {
         let redactor = Arc::new(RedactionEngine::empty());
         let config = Arc::new(make_test_config());
 
-        let inspector = ContentInspector::new(registry, redactor, config);
+        let inspector = ContentInspector::new(registry, redactor, config)
+            .expect("content inspector initializes");
         let result = inspector.inspect_request(b"Hello world");
 
         assert!(matches!(result.action, VerdictAction::Allow));
@@ -203,7 +214,8 @@ mod tests {
         let redactor = Arc::new(RedactionEngine::empty());
         let config = Arc::new(make_test_config());
 
-        let inspector = ContentInspector::new(registry, redactor, config);
+        let inspector = ContentInspector::new(registry, redactor, config)
+            .expect("content inspector initializes");
         let result = inspector.inspect_request(b"Contact user@example.com");
 
         assert!(matches!(result.action, VerdictAction::Redact));
@@ -227,7 +239,8 @@ mod tests {
         let redactor = Arc::new(RedactionEngine::empty());
         let config = Arc::new(make_test_config());
 
-        let inspector = ContentInspector::new(registry, redactor, config);
+        let inspector = ContentInspector::new(registry, redactor, config)
+            .expect("content inspector initializes");
         let result = inspector.inspect_request(b"Key: AKIAIOSFODNN7EXAMPLE");
 
         assert!(matches!(result.action, VerdictAction::Block));

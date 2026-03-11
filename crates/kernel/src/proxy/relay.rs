@@ -164,7 +164,7 @@ where
         }
 
         let chunk = &buf[..n];
-        let result: InspectionResult = inspector.inspect_request(chunk);
+        let result: InspectionResult = inspector.inspect_response(chunk);
 
         match result.action {
             VerdictAction::Block => {
@@ -278,7 +278,10 @@ mod tests {
             background_l2: false,
             enabled: true,
         });
-        let inspector = Arc::new(ContentInspector::new(registry, redactor, config));
+        let inspector = Arc::new(
+            ContentInspector::new(registry, redactor, config)
+                .expect("content inspector should initialize"),
+        );
 
         let input_data = b"Hello world, this is safe content";
         let (mut reader, mut writer) = duplex(1024);
@@ -327,7 +330,10 @@ mod tests {
             background_l2: false,
             enabled: true,
         });
-        let inspector = Arc::new(ContentInspector::new(registry, redactor, config));
+        let inspector = Arc::new(
+            ContentInspector::new(registry, redactor, config)
+                .expect("content inspector should initialize"),
+        );
 
         let input_data = b"Key: AKIAIOSFODNN7EXAMPLE";
         let (mut reader, mut writer) = duplex(1024);

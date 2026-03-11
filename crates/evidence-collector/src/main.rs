@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{Timelike, Utc};
 use evidence_collector::chain::hasher::ChainManager;
 use evidence_collector::config::{CollectorConfig, SigningMode};
@@ -26,11 +26,19 @@ async fn main() -> Result<()> {
         .json()
         .init();
 
-    let cfg = CollectorConfig::from_env();
+    let cfg = CollectorConfig::from_env()?;
+    let redacted_clickhouse_url = redact_url_credentials(&cfg.clickhouse_url);
+
+    #[cfg(not(debug_assertions))]
+    if !cfg.mtls_enabled {
+        return Err(anyhow::anyhow!(
+            "MTLS_ENABLED must be true for evidence collector in release builds"
+        ));
+    }
 
     info!(
         grpc_listen_addr = %cfg.grpc_listen_addr,
-        clickhouse_url = %cfg.clickhouse_url,
+        clickhouse_url = %redacted_clickhouse_url,
         s3_bucket = %cfg.s3_bucket,
         signing_mode = ?cfg.signing_mode,
         "interdict-collector starting"
@@ -84,7 +92,13 @@ async fn main() -> Result<()> {
     // Initialize S3 anchor if bucket is configured.
     let s3_anchor = if !cfg.s3_bucket.is_empty() {
         Some(Arc::new(
-            S3Anchor::new(&cfg.s3_bucket, &cfg.s3_region, cfg.retention_days).await?,
+            S3Anchor::new(
+                &cfg.s3_bucket,
+                &cfg.s3_region,
+                cfg.retention_days,
+                cfg.require_object_lock,
+            )
+            .await?,
         ))
     } else {
         info!("S3 bucket not configured; merkle anchoring disabled (dev mode)");
@@ -136,22 +150,25 @@ async fn main() -> Result<()> {
         let ca_cert_path = cfg
             .mtls_ca_cert_path
             .as_deref()
-            .expect("MTLS_CA_CERT_PATH required when MTLS_ENABLED=true");
+            .context("MTLS_CA_CERT_PATH required when MTLS_ENABLED=true")?;
         let cert_path = cfg
             .mtls_cert_path
             .as_deref()
-            .expect("MTLS_CERT_PATH required when MTLS_ENABLED=true");
+            .context("MTLS_CERT_PATH required when MTLS_ENABLED=true")?;
         let key_path = cfg
             .mtls_key_path
             .as_deref()
-            .expect("MTLS_KEY_PATH required when MTLS_ENABLED=true");
+            .context("MTLS_KEY_PATH required when MTLS_ENABLED=true")?;
 
-        let ca_cert = std::fs::read_to_string(ca_cert_path)
-            .unwrap_or_else(|e| panic!("failed to read CA cert {ca_cert_path}: {e}"));
-        let server_cert = std::fs::read_to_string(cert_path)
-            .unwrap_or_else(|e| panic!("failed to read server cert {cert_path}: {e}"));
-        let server_key = std::fs::read_to_string(key_path)
-            .unwrap_or_else(|e| panic!("failed to read server key {key_path}: {e}"));
+        let ca_cert = tokio::fs::read_to_string(ca_cert_path)
+            .await
+            .with_context(|| format!("failed to read CA cert {ca_cert_path}"))?;
+        let server_cert = tokio::fs::read_to_string(cert_path)
+            .await
+            .with_context(|| format!("failed to read server cert {cert_path}"))?;
+        let server_key = tokio::fs::read_to_string(key_path)
+            .await
+            .with_context(|| format!("failed to read server key {key_path}"))?;
 
         let tls_config = ServerTlsConfig::new()
             .identity(Identity::from_pem(&server_cert, &server_key))
@@ -160,7 +177,7 @@ async fn main() -> Result<()> {
         info!("mTLS enabled: requiring client certificates for gRPC connections");
         Server::builder()
             .tls_config(tls_config)
-            .expect("invalid mTLS configuration")
+            .context("invalid mTLS configuration")?
     } else {
         info!("mTLS disabled: accepting insecure gRPC connections");
         Server::builder()
@@ -169,10 +186,11 @@ async fn main() -> Result<()> {
     builder
         .add_service(EvidenceCollectorServer::new(service))
         .serve_with_shutdown(grpc_addr, async move {
-            tokio::signal::ctrl_c()
-                .await
-                .expect("install ctrl+c handler");
-            info!("shutdown signal received; draining connections");
+            if let Err(error) = tokio::signal::ctrl_c().await {
+                tracing::error!(error = %error, "failed to install ctrl+c handler");
+            } else {
+                info!("shutdown signal received; draining connections");
+            }
             shutdown_cancel.cancel();
         })
         .await?;
@@ -206,7 +224,7 @@ async fn signing_key_watch_task(
     let mut last_mtime: Option<std::time::SystemTime> = None;
 
     // Record initial mtime if file exists.
-    if let Ok(meta) = std::fs::metadata(&key_path) {
+    if let Ok(meta) = tokio::fs::metadata(&key_path).await {
         last_mtime = meta.modified().ok();
     }
 
@@ -217,7 +235,7 @@ async fn signing_key_watch_task(
                 break;
             }
             _ = poll.tick() => {
-                match std::fs::metadata(&key_path) {
+                match tokio::fs::metadata(&key_path).await {
                     Ok(meta) => {
                         let current_mtime = meta.modified().ok();
                         if current_mtime != last_mtime && last_mtime.is_some() {
@@ -225,18 +243,29 @@ async fn signing_key_watch_task(
                                 path = %key_path.display(),
                                 "signing key file changed, reloading"
                             );
-                            match provider.reload_from_file(&key_path) {
-                                Ok(()) => {
+                            let reload_provider = Arc::clone(&provider);
+                            let reload_path = key_path.clone();
+                            match tokio::task::spawn_blocking(move || {
+                                reload_provider.reload_from_file(&reload_path)
+                            }).await {
+                                Ok(Ok(())) => {
                                     info!(
                                         new_key_id = %provider.current().key_id(),
                                         "signing key hot-reloaded successfully"
+                                    );
+                                }
+                                Ok(Err(err)) => {
+                                    tracing::error!(
+                                        error = %err,
+                                        path = %key_path.display(),
+                                        "failed to reload signing key"
                                     );
                                 }
                                 Err(err) => {
                                     tracing::error!(
                                         error = %err,
                                         path = %key_path.display(),
-                                        "failed to reload signing key"
+                                        "signing key reload task failed"
                                     );
                                 }
                             }
@@ -253,5 +282,18 @@ async fn signing_key_watch_task(
                 }
             }
         }
+    }
+}
+
+fn redact_url_credentials(url: &str) -> String {
+    match url.split_once("://") {
+        Some((scheme, remainder)) => match remainder.split_once('@') {
+            Some((userinfo, host)) if userinfo.contains(':') => {
+                format!("{scheme}://REDACTED:REDACTED@{host}")
+            }
+            Some((_userinfo, host)) => format!("{scheme}://REDACTED@{host}"),
+            None => url.to_string(),
+        },
+        None => url.to_string(),
     }
 }
