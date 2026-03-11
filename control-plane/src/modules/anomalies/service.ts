@@ -46,6 +46,11 @@ const SEVERITY_ORDER: Record<AnomalyAlert["severity"], number> = {
   info: 2,
 };
 
+export interface AnomalyDetectionResult {
+  alerts: AnomalyAlert[];
+  warnings: string[];
+}
+
 // ---------------------------------------------------------------------------
 // AnomalyService
 // ---------------------------------------------------------------------------
@@ -61,17 +66,33 @@ export class AnomalyService {
    * Run all four anomaly detection queries and return a sorted list of alerts.
    * Sorted by severity (critical first) then by ratio descending.
    */
-  async detectAnomalies(): Promise<AnomalyAlert[]> {
+  async detectAnomalies(): Promise<AnomalyDetectionResult> {
     const now = new Date().toISOString();
     const alerts: AnomalyAlert[] = [];
+    const warnings: string[] = [];
+
+    const handleQueryFailure = (label: string, error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[anomalies] ${label} query failed: ${message}`);
+      warnings.push(`${label} query failed: ${message}`);
+      return [];
+    };
 
     // Run all four queries in parallel
     const [volumeRows, offHoursRows, vendorRows, topicRows] =
       await Promise.all([
-        queryVolumeAnomalies(this.clickhouse).catch(() => []),
-        queryOffHoursUsage(this.clickhouse).catch(() => []),
-        queryVendorSwitching(this.clickhouse).catch(() => []),
-        queryTopicDrift(this.clickhouse).catch(() => []),
+        queryVolumeAnomalies(this.clickhouse).catch((error: unknown) =>
+          handleQueryFailure("volume", error)
+        ),
+        queryOffHoursUsage(this.clickhouse).catch((error: unknown) =>
+          handleQueryFailure("off-hours", error)
+        ),
+        queryVendorSwitching(this.clickhouse).catch((error: unknown) =>
+          handleQueryFailure("vendor-switch", error)
+        ),
+        queryTopicDrift(this.clickhouse).catch((error: unknown) =>
+          handleQueryFailure("topic-drift", error)
+        ),
       ]);
 
     // --- Volume Spikes ---
@@ -189,14 +210,14 @@ export class AnomalyService {
       return bRatio - aRatio;
     });
 
-    return alerts;
+    return { alerts, warnings };
   }
 
   /**
    * Generate summary counts from the full alert list.
    */
   async getSummary(): Promise<AnomalySummary> {
-    const alerts = await this.detectAnomalies();
+    const { alerts } = await this.detectAnomalies();
 
     const summary: AnomalySummary = {
       total: alerts.length,

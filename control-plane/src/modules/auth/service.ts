@@ -188,7 +188,12 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
         .set({ lastUsedAt: new Date() })
         .where(eq(apiKeys.id, keyRow.id))
         .then(() => {})
-        .catch(() => {});
+        .catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(
+            `[auth] Failed to update lastUsedAt for API key ${keyRow.id}: ${message}`
+          );
+        });
 
       return {
         id: user.id,

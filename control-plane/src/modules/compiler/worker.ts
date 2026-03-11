@@ -148,8 +148,9 @@ export async function compilePolicy(
     // Cleanup temp directory
     try {
       await $`rm -rf ${tmpDir}`.quiet().nothrow();
-    } catch {
-      // Ignore cleanup failures
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.debug(`[compiler] Temp directory cleanup failed for ${tmpDir}: ${message}`);
     }
   }
 }
@@ -253,7 +254,14 @@ export function startCompilationWorker(
             const scopeRow = scopeRows[0];
             let vendorIds: string[] = [];
             if (scopeRow?.vendorIds) {
-              try { vendorIds = JSON.parse(scopeRow.vendorIds); } catch { /* default empty */ }
+              try {
+                vendorIds = JSON.parse(scopeRow.vendorIds);
+              } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : String(error);
+                console.warn(
+                  `[compiler] Invalid vendorIds JSON for policy ${version.policyId}: ${message}`
+                );
+              }
             }
 
             broadcastUpdate({

@@ -142,7 +142,9 @@ function formatDate(iso: string): string {
       month: "short",
       day: "numeric",
     });
-  } catch {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[pdf-generator] Invalid date format "${iso}": ${message}`);
     return iso;
   }
 }
