@@ -528,25 +528,24 @@ impl Service<Request<Incoming>> for ProxyService {
             // Phase 19: High-assurance fail-closed check.
             // If evidence delivery has been persistently failing, refuse new
             // requests to prevent unaudited AI usage.
-            if high_assurance {
-                if let Some(ref health) = delivery_health {
-                    if health.is_unhealthy() {
-                        tracing::error!(
-                            consecutive_failures = health
-                                .consecutive_failures
-                                .load(std::sync::atomic::Ordering::Relaxed),
-                            "high-assurance mode: blocking request due to evidence delivery failure"
-                        );
-                        return Ok(json_response(
-                            StatusCode::SERVICE_UNAVAILABLE,
-                            &serde_json::json!({
-                                "error": "evidence_delivery_unavailable",
-                                "message": "Request blocked: evidence audit trail is unavailable (high-assurance mode)"
-                            }),
-                            r#"{"error":"evidence_delivery_unavailable","message":"Request blocked: evidence audit trail is unavailable (high-assurance mode)"}"#,
-                        ));
-                    }
-                }
+            if high_assurance
+                && let Some(ref health) = delivery_health
+                && health.is_unhealthy()
+            {
+                tracing::error!(
+                    consecutive_failures = health
+                        .consecutive_failures
+                        .load(std::sync::atomic::Ordering::Relaxed),
+                    "high-assurance mode: blocking request due to evidence delivery failure"
+                );
+                return Ok(json_response(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    &serde_json::json!({
+                        "error": "evidence_delivery_unavailable",
+                        "message": "Request blocked: evidence audit trail is unavailable (high-assurance mode)"
+                    }),
+                    r#"{"error":"evidence_delivery_unavailable","message":"Request blocked: evidence audit trail is unavailable (high-assurance mode)"}"#,
+                ));
             }
 
             // Phase 19: Extract actor identity from request headers.

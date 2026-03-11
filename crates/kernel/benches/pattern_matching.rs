@@ -127,7 +127,8 @@ fn benchmark_full_inspection(c: &mut Criterion) {
         enabled: true,
     });
 
-    let inspector = ContentInspector::new(registry, redactor, config);
+    let inspector =
+        ContentInspector::new(registry, redactor, config).expect("inspector should initialize");
 
     let samples = vec![
         (

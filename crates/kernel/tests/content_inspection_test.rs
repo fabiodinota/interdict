@@ -49,7 +49,7 @@ fn make_inspector_with_defaults() -> ContentInspector {
     });
     let redactor = Arc::new(RedactionEngine::empty());
     let config = Arc::new(make_policy_config());
-    ContentInspector::new(registry, redactor, config)
+    ContentInspector::new(registry, redactor, config).expect("default inspector should initialize")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -78,13 +78,13 @@ fn test_sc1_email_detected_and_replaced() {
 
     let redacted = String::from_utf8_lossy(result.redacted_content.as_deref().unwrap());
     assert!(
-        redacted.contains("[REDACTED:EMAIL]"),
-        "expected placeholder in: {}",
+        !redacted.contains("user@example.com"),
+        "original email should be absent: {}",
         redacted
     );
     assert!(
-        !redacted.contains("user@example.com"),
-        "original email should be absent: {}",
+        redacted.contains("****"),
+        "expected asterisk placeholder in: {}",
         redacted
     );
 }
@@ -108,8 +108,13 @@ fn test_sc1_phone_detected_and_replaced() {
 
     let redacted = String::from_utf8_lossy(result.redacted_content.as_deref().unwrap());
     assert!(
-        redacted.contains("[REDACTED:PHONE]"),
-        "expected placeholder in: {}",
+        !redacted.contains("555-123-4567"),
+        "original phone should be absent: {}",
+        redacted
+    );
+    assert!(
+        redacted.contains("****"),
+        "expected asterisk placeholder in: {}",
         redacted
     );
 }
@@ -133,13 +138,13 @@ fn test_sc1_ssn_detected_and_replaced() {
 
     let redacted = String::from_utf8_lossy(result.redacted_content.as_deref().unwrap());
     assert!(
-        redacted.contains("[REDACTED:SSN]"),
-        "expected placeholder in: {}",
+        !redacted.contains("123-45-6789"),
+        "original SSN should be absent: {}",
         redacted
     );
     assert!(
-        !redacted.contains("123-45-6789"),
-        "original SSN should be absent: {}",
+        redacted.contains("****"),
+        "expected asterisk placeholder in: {}",
         redacted
     );
 }
@@ -163,8 +168,8 @@ fn test_sc1_address_detected_and_replaced() {
 
     let redacted = String::from_utf8_lossy(result.redacted_content.as_deref().unwrap());
     assert!(
-        redacted.contains("[REDACTED:ADDRESS]"),
-        "expected placeholder in: {}",
+        redacted.contains("****"),
+        "expected asterisk placeholder in: {}",
         redacted
     );
 }
@@ -212,8 +217,13 @@ fn test_sc2_credit_card_luhn_valid_detected() {
 
     let redacted = String::from_utf8_lossy(result.redacted_content.as_deref().unwrap());
     assert!(
-        redacted.contains("[REDACTED:CREDIT_CARD]"),
-        "expected card placeholder in: {}",
+        !redacted.contains("4532015112830366"),
+        "original card number should be absent: {}",
+        redacted
+    );
+    assert!(
+        redacted.contains("****"),
+        "expected asterisk placeholder in: {}",
         redacted
     );
 }
@@ -341,12 +351,7 @@ async fn test_sc3_streaming_redacts_email_across_chunks() {
         collected.push_str(&String::from_utf8_lossy(&chunk));
     }
 
-    // Email should be redacted in the output
-    assert!(
-        collected.contains("[REDACTED:EMAIL]") || collected.contains("REDACTED"),
-        "email should be redacted in streaming output: {}",
-        collected
-    );
+    // Email should be redacted in the output (replaced with asterisks)
     assert!(
         !collected.contains("user@example.com"),
         "original email should be absent: {}",
@@ -621,7 +626,8 @@ fn test_sc5_custom_patterns_integrated_with_inspector() {
     let redactor = Arc::new(RedactionEngine::empty());
     let config = Arc::new(make_policy_config());
 
-    let inspector = ContentInspector::new(registry, redactor, config);
+    let inspector =
+        ContentInspector::new(registry, redactor, config).expect("inspector should initialize");
 
     let result = inspector.inspect_request(b"Matter M789012 for Acme Corp is confidential");
 
@@ -673,7 +679,8 @@ fn test_sc5_custom_patterns_alongside_builtin_patterns() {
     let redactor = Arc::new(RedactionEngine::empty());
     let config = Arc::new(make_policy_config());
 
-    let inspector = ContentInspector::new(registry, redactor, config);
+    let inspector =
+        ContentInspector::new(registry, redactor, config).expect("inspector should initialize");
 
     // Mixed content: both built-in PII and custom pattern
     let result = inspector.inspect_request(b"Re: M456789 -- contact john@law.com for details");
@@ -835,7 +842,8 @@ fn test_context_aware_phone_with_boosting_keyword() {
     let redactor = Arc::new(RedactionEngine::empty());
     let config = Arc::new(make_policy_config());
 
-    let inspector = ContentInspector::new(registry, redactor, config);
+    let inspector =
+        ContentInspector::new(registry, redactor, config).expect("inspector should initialize");
 
     // With context keyword "call" -- confidence gets boosted, should detect
     let result = inspector.inspect_request(b"Please call 555-1234 at noon");
@@ -862,7 +870,8 @@ fn test_context_aware_confidence_boosters_applied() {
     let redactor = Arc::new(RedactionEngine::empty());
     let config = Arc::new(make_policy_config());
 
-    let inspector = ContentInspector::new(registry, redactor, config);
+    let inspector =
+        ContentInspector::new(registry, redactor, config).expect("inspector should initialize");
 
     // Context boosters are present -- detection should succeed
     let result_with_context = inspector.inspect_request(b"phone number 555-1234 for contact");

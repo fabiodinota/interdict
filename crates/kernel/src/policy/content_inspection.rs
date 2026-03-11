@@ -74,10 +74,18 @@ impl ContentInspector {
         // PLCY-11: prompt injection/jailbreak detection has priority.
         let injections = self.injection_detector.detect(&text);
         if !injections.is_empty() {
-            let categories: Vec<String> = injections
+            let mut categories: Vec<String> = injections
                 .iter()
                 .map(|d| format!("INJECTION:{:?}", d.kind))
                 .collect();
+
+            // Also run pattern detection for audit completeness — log ALL
+            // sensitive content found in a blocked request.
+            if let crate::policy::streaming::ScanResult::FullMatch(detections) =
+                self.detector.scan(&text)
+            {
+                categories.extend(detections.iter().map(|d| d.category.clone()));
+            }
 
             return InspectionResult {
                 action: VerdictAction::Block,
@@ -152,12 +160,15 @@ impl ContentInspector {
 
     /// Determine if detected categories should trigger blocking.
     ///
-    /// For Phase 3, block on high-severity secrets (PRIVATE_KEY, AWS_KEY, OPENAI_KEY).
+    /// Block on high-severity secrets that must never transit to an LLM.
     /// Future: make this policy-configurable.
     fn should_block_categories(&self, categories: &[String]) -> bool {
-        categories
-            .iter()
-            .any(|cat| matches!(cat.as_str(), "PRIVATE_KEY" | "AWS_KEY" | "OPENAI_KEY"))
+        categories.iter().any(|cat| {
+            matches!(
+                cat.as_str(),
+                "PRIVATE_KEY" | "AWS_KEY" | "OPENAI_KEY" | "GITHUB_TOKEN"
+            )
+        })
     }
 }
 

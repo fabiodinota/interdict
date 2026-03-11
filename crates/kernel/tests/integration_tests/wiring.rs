@@ -43,11 +43,14 @@ async fn test_pii_inspection_wired_through_proxy() {
         background_l2: false,
         enabled: true,
     });
-    let inspector = Arc::new(kernel::policy::content_inspection::ContentInspector::new(
-        pattern_registry,
-        redactor,
-        policy_config,
-    ));
+    let inspector = Arc::new(
+        kernel::policy::content_inspection::ContentInspector::new(
+            pattern_registry,
+            redactor,
+            policy_config,
+        )
+        .expect("inspector should initialize"),
+    );
 
     // 2. Create TestProxy with content inspector wired in
     let proxy = TestProxy::with_config(TestProxyConfig {

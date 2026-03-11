@@ -343,7 +343,10 @@ async fn test_l2_uncertain_routes_to_l3() {
     assert_eq!(result.merged_verdict.final_action, VerdictAction::Block);
 
     // Verify the queue item was persisted in SQLite
-    let item = store.get_by_request_id(&request_id.to_string()).unwrap();
+    let item = store
+        .get_by_request_id(&request_id.to_string())
+        .await
+        .unwrap();
     assert!(
         item.is_some(),
         "L3 queue item should be persisted in SQLite"

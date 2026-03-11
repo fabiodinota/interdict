@@ -112,22 +112,48 @@ impl StreamingDetector {
     }
 
     fn has_partial_match_at_end(&self, content: &str, rule: &PatternRule) -> bool {
-        // Check if content ends with a prefix that could be part of a pattern
-        // For simplicity in Phase 3, check if last 10 chars could start a pattern
+        // Check if content ends with a prefix that could be part of a pattern.
         if content.len() < 3 {
             return false;
         }
 
         // Get the tail of the content
-        let tail_start = content.len().saturating_sub(10);
+        let tail_start = content.len().saturating_sub(20);
         let tail = &content[tail_start..];
 
         // For email patterns, check if we have partial structure like "user@" or "user@ex"
-        // This is a heuristic — a more sophisticated approach would check pattern prefixes
-        if rule.category == "EMAIL" {
-            // Check if tail contains @ but doesn't match the full pattern
-            if tail.contains('@') && rule.pattern.find(tail).is_none() {
-                return true;
+        if rule.category == "EMAIL" && tail.contains('@') && rule.pattern.find(tail).is_none() {
+            return true;
+        }
+
+        // For digit-separator patterns (SSN, IBAN, credit card, phone), check
+        // if the tail ends with digits/separators that look like a partial number.
+        if matches!(
+            rule.category.as_str(),
+            "SSN" | "PHONE" | "CREDIT_CARD" | "IBAN"
+        ) {
+            let trimmed = tail.trim_end();
+            // Check if tail ends with a digit-separator fragment (e.g. "123-45-" or "123-")
+            if let Some(last) = trimmed.chars().last()
+                && (last.is_ascii_digit() || last == '-' || last == ' ')
+            {
+                // Look for a run of digits and separators at the end
+                let suffix: String = trimmed
+                    .chars()
+                    .rev()
+                    .take_while(|c| c.is_ascii_digit() || *c == '-' || *c == ' ')
+                    .collect::<String>()
+                    .chars()
+                    .rev()
+                    .collect();
+                // If we have at least 3 chars of digit+separator and no full match,
+                // it's likely a partial SSN/phone/card being assembled
+                if suffix.len() >= 3
+                    && suffix.chars().any(|c| c.is_ascii_digit())
+                    && rule.pattern.find(trimmed).is_none()
+                {
+                    return true;
+                }
             }
         }
 

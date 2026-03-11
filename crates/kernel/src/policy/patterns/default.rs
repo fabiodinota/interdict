@@ -210,13 +210,14 @@ fn credit_card_pattern() -> PatternRule {
 
 /// IBAN (International Bank Account Number) pattern with checksum validation.
 ///
-/// Matches format: GB82 WEST 1234 5698 7654 32
+/// Matches format: GB82 WEST 1234 5698 7654 32 or DE89370400440532013000
+/// Supports space-separated groups (up to 8 groups of 4, plus trailing).
 /// Uses mod-97 checksum validation per ISO 13616.
 fn iban_pattern() -> PatternRule {
     PatternRule {
         category: "IBAN".to_string(),
         pattern: Regex::new(
-            r"\b[A-Z]{2}\d{2}[\s]?[A-Z0-9]{4}[\s]?[A-Z0-9]{4}[\s]?[A-Z0-9]{4}[\s]?[A-Z0-9]{0,18}\b",
+            r"\b[A-Z]{2}\d{2}[\s]?[A-Z0-9]{4}(?:[\s]?[A-Z0-9]{4}){1,7}(?:[\s]?[A-Z0-9]{1,4})?\b",
         )
         .unwrap(),
         validator: Some(Arc::new(|text: &str| validate_iban(text))),
@@ -261,11 +262,12 @@ fn aws_access_key_pattern() -> PatternRule {
 
 /// OpenAI API key pattern.
 ///
-/// Matches format: sk- followed by 48+ characters
+/// Matches format: sk- followed by 48+ alphanumeric/hyphen characters.
+/// Covers sk-..., sk-proj-..., sk-org-... prefixed keys.
 fn openai_key_pattern() -> PatternRule {
     PatternRule {
         category: "OPENAI_KEY".to_string(),
-        pattern: Regex::new(r"\bsk-[a-zA-Z0-9]{48,}\b").unwrap(),
+        pattern: Regex::new(r"\bsk-[a-zA-Z0-9\-]{48,}\b").unwrap(),
         validator: None,
         base_confidence: 1.0,
         context_boosters: vec!["openai".to_string(), "api".to_string(), "key".to_string()],

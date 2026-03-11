@@ -35,6 +35,7 @@ impl InjectionDetector {
             r"ignore\s+(all\s+)?(previous|prior|above|earlier)\s+instructions?",
             r"disregard\s+(your\s+)?(system\s+prompt|previous\s+instructions?|all\s+instructions?)",
             r"forget\s+(everything|all)\s+(you('ve| have)\s+been\s+told|previous)",
+            r"forget\s+(previous|prior|all)\s+(context|instructions?|rules?|guidelines?)",
             r"override\s+(your\s+)?(previous\s+instructions?|system\s+prompt|constraints?)",
             r"new\s+instructions?\s*[:;]",
             r"from\s+now\s+on,?\s+you\s+(must|will|should|are\s+to)\s+ignore",
