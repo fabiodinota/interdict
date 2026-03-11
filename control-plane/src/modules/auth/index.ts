@@ -20,9 +20,15 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { Elysia } from "elysia";
 import { db as pgDb } from "../../db/postgres";
 import type * as schema from "../../db/schema";
-import { apiResponse, paginatedResponse } from "../../shared/utilities";
+import { apiError, apiResponse, paginatedResponse } from "../../shared/utilities";
 import { authPlugin } from "./middleware";
-import { ApiKeyListQuery, CreateApiKeyBody, ExchangeCodeBody, RevokeApiKeyParams } from "./model";
+import {
+  ApiKeyListQuery,
+  CreateApiKeyBody,
+  ExchangeApiKeyBody,
+  ExchangeCodeBody,
+  RevokeApiKeyParams,
+} from "./model";
 import { createSamlRoutes } from "./saml/handlers";
 import { type AuthenticatedUser, type AuthService, createAuthService } from "./service";
 
@@ -63,6 +69,27 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
       return apiResponse(profile);
     },
     { auth: true },
+  )
+
+  // -------------------------------------------------------------------------
+  // POST /session/exchange-api-key -- exchange API key for opaque session
+  // -------------------------------------------------------------------------
+  .post(
+    "/session/exchange-api-key",
+    async (rawCtx) => {
+      const ctx = rawCtx as unknown as AuthCtx;
+      const result = await ctx.authService.exchangeApiKeyForSession(ctx.body.apiKey as string);
+
+      if (!result) {
+        ctx.set.status = 401;
+        return apiError("UNAUTHORIZED", "Invalid API key");
+      }
+
+      return apiResponse(result);
+    },
+    {
+      body: ExchangeApiKeyBody,
+    },
   )
 
   // -------------------------------------------------------------------------

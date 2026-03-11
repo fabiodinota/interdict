@@ -14,14 +14,14 @@
       "echo Rust files staged -- cargo fmt/clippy checked in CI or run locally via WSL2"
     ],
     "control-plane/src/**/*.{ts,tsx,js,jsx}": [
-      "control-plane/node_modules/.bin/biome check --fix --no-errors-on-unmatched"
+      "sh -c 'cd control-plane && ./node_modules/.bin/biome check --fix ./src'"
     ],
     "dashboard/src/**/*.{ts,tsx,js,jsx}": [
-      "dashboard/node_modules/.bin/prettier --write",
-      "dashboard/node_modules/.bin/eslint --fix"
+      "sh -c 'cd dashboard && ./node_modules/.bin/prettier --write \"src/**/*.{ts,tsx,js,jsx,json}\"'",
+      "sh -c 'cd dashboard && ./node_modules/.bin/eslint --fix src'"
     ],
     "dashboard/src/**/*.css": [
-      "dashboard/node_modules/.bin/prettier --write"
+      "sh -c 'cd dashboard && ./node_modules/.bin/prettier --write \"src/**/*.css\"'"
     ]
   }
 }

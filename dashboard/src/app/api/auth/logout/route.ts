@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getControlPlaneUrl, SESSION_COOKIE_NAME } from "@/lib/auth";
+import {
+  getClearedSessionCookieOptions,
+  getControlPlaneUrl,
+  SESSION_COOKIE_NAME,
+} from "@/lib/auth";
 
 /**
  * POST /api/auth/logout
@@ -32,13 +36,7 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json({ success: true });
 
-  response.cookies.set(SESSION_COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 0,
-    path: "/",
-  });
+  response.cookies.set(SESSION_COOKIE_NAME, "", getClearedSessionCookieOptions());
 
   return response;
 }

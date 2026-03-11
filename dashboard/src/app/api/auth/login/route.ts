@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
-import { getControlPlaneUrl, SESSION_COOKIE_NAME } from "@/lib/auth";
+import {
+  getControlPlaneUrl,
+  getSessionCookieOptions,
+  parseLoginRequest,
+  SESSION_COOKIE_NAME,
+} from "@/lib/auth";
 
 export async function POST(request: Request) {
+  const parsed = await parseLoginRequest(request);
+  if (!parsed.success) {
+    return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
+  }
+
   try {
-    const body = await request.json();
-    const { apiKey } = body;
-
-    if (!apiKey || typeof apiKey !== "string") {
-      return NextResponse.json(
-        { success: false, error: { message: "API key is required" } },
-        { status: 400 },
-      );
-    }
-
     // Validate the key against the control plane
     const controlPlaneUrl = getControlPlaneUrl();
-    const res = await fetch(`${controlPlaneUrl}/api/v1/auth/me`, {
+    const res = await fetch(`${controlPlaneUrl}/api/v1/auth/session/exchange-api-key`, {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({ apiKey: parsed.data.apiKey }),
     });
 
     if (!res.ok) {
@@ -28,21 +30,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const userData = await res.json();
+    const exchange = await res.json();
+    const sessionToken = exchange?.data?.token;
+    const user = exchange?.data?.user;
 
-    // Set httpOnly session cookie
+    if (typeof sessionToken !== "string" || !user) {
+      throw new Error("Invalid exchange response");
+    }
+
     const response = NextResponse.json({
       success: true,
-      data: userData.data,
+      data: user,
     });
 
-    response.cookies.set(SESSION_COOKIE_NAME, apiKey, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: "/",
-    });
+    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, getSessionCookieOptions());
 
     return response;
   } catch {

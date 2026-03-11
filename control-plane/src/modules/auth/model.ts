@@ -21,6 +21,11 @@ export const ExchangeCodeBody = t.Object({
   code: t.String({ minLength: 64, maxLength: 64 }),
 });
 
+/** Body for POST /api/v1/auth/session/exchange-api-key */
+export const ExchangeApiKeyBody = t.Object({
+  apiKey: t.String({ minLength: 1 }),
+});
+
 // ---------------------------------------------------------------------------
 // Query Parameters
 // ---------------------------------------------------------------------------
@@ -70,9 +75,16 @@ export const CreateApiKeyResponse = t.Object({
   created_at: t.String(),
 });
 
+/** Response for POST /api/v1/auth/session/exchange-api-key */
+export const ExchangeApiKeyResponse = t.Object({
+  token: t.String(),
+  user: WhoAmIResponse,
+});
+
 // ---------------------------------------------------------------------------
 // Type exports
 // ---------------------------------------------------------------------------
 
 export type CreateApiKeyBodyType = typeof CreateApiKeyBody.static;
 export type ApiKeyListQueryType = typeof ApiKeyListQuery.static;
+export type ExchangeApiKeyBodyType = typeof ExchangeApiKeyBody.static;

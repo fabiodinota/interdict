@@ -27,6 +27,7 @@ import {
   userDepartments,
   users,
 } from "../db/schema/index";
+import { buildSeedKeyOutput } from "./key-output";
 
 // ---------------------------------------------------------------------------
 // Identity Seed Types
@@ -53,7 +54,7 @@ interface IdentitySeedData {
 
 /**
  * Generates an API key with the ik_live_ prefix.
- * Returns plaintext (shown once), SHA-256 hash (stored), and display prefix.
+ * Returns plaintext, SHA-256 hash (stored), and display prefix.
  */
 function generateApiKey(): { plaintext: string; hash: string; prefix: string } {
   const random = randomBytes(32).toString("base64url");
@@ -74,9 +75,6 @@ function generateApiKey(): { plaintext: string; hash: string; prefix: string } {
  *
  * Idempotent: skips existing records by unique key (name/email/role+permission).
  * API keys are only generated for users that have no existing keys.
- *
- * IMPORTANT: API key plaintext is printed to stdout exactly once during seed.
- * Per CLAUDE.md Invariant 6, keys MUST NOT be logged after this point.
  */
 async function seedIdentity(): Promise<void> {
   console.log("[seed] Starting identity seed...");
@@ -116,7 +114,7 @@ async function seedIdentity(): Promise<void> {
 
   // 2. Seed users (human)
   console.log(`[seed] Seeding ${seedData.users.length} users...`);
-  const generatedKeys: Array<{ email: string; key: string }> = [];
+  const generatedKeys: Array<{ email: string; prefix: string }> = [];
 
   for (const userData of seedData.users) {
     const existing = await db
@@ -179,7 +177,7 @@ async function seedIdentity(): Promise<void> {
       .limit(1);
 
     if (existingKeys.length === 0) {
-      const { plaintext, hash, prefix } = generateApiKey();
+      const { hash, prefix } = generateApiKey();
       await db.insert(apiKeys).values({
         userId,
         keyHash: hash,
@@ -187,7 +185,7 @@ async function seedIdentity(): Promise<void> {
         label: "Initial seed key",
         isActive: true,
       });
-      generatedKeys.push({ email: userData.email, key: plaintext });
+      generatedKeys.push({ email: userData.email, prefix });
     }
   }
 
@@ -230,7 +228,7 @@ async function seedIdentity(): Promise<void> {
       .limit(1);
 
     if (existingKeys.length === 0) {
-      const { plaintext, hash, prefix } = generateApiKey();
+      const { hash, prefix } = generateApiKey();
       await db.insert(apiKeys).values({
         userId,
         keyHash: hash,
@@ -238,7 +236,7 @@ async function seedIdentity(): Promise<void> {
         label: "Service account seed key",
         isActive: true,
       });
-      generatedKeys.push({ email: svc.email, key: plaintext });
+      generatedKeys.push({ email: svc.email, prefix });
     }
   }
 
@@ -264,23 +262,11 @@ async function seedIdentity(): Promise<void> {
     console.log(`[seed]   Role '${role}': ${perms.length} permissions seeded`);
   }
 
-  // 5. Print generated API keys (plaintext shown EXACTLY ONCE)
+  // 5. Print generated API key metadata without revealing secrets
   if (generatedKeys.length > 0) {
-    console.log("");
-    console.log("=".repeat(72));
-    console.log("  GENERATED API KEYS (shown once -- save these securely)");
-    console.log("=".repeat(72));
-    for (const { email, key } of generatedKeys) {
-      if (process.env.SEED_SHOW_KEYS === "true") {
-        console.log(`  [seed] API key for ${email}: ${key}`);
-      } else {
-        console.log(
-          `  [seed] API key created for ${email} (set SEED_SHOW_KEYS=true to reveal — local dev only)`,
-        );
-      }
+    for (const line of buildSeedKeyOutput(generatedKeys)) {
+      console.log(line);
     }
-    console.log("=".repeat(72));
-    console.log("");
   }
 
   console.log("[seed] Identity seed complete.");

@@ -1,16 +1,10 @@
 /**
- * Tests for GET /api/auth/me
- *
- * Validates session check: returns 401 when unauthenticated, proxies user data
- * when session is valid, handles control-plane failures.
+ * Tests for GET /api/auth/me.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, mockFetch } from "../helpers/next-mocks";
 
-// ---------------------------------------------------------------------------
-// Module mocks
-// ---------------------------------------------------------------------------
-let mockToken: string | null = "valid-token";
+let mockToken: string | null = "session_opaque_token";
 
 vi.mock("@/lib/auth", () => ({
   getSessionToken: vi.fn(async () => mockToken),
@@ -23,7 +17,7 @@ describe("GET /api/auth/me", () => {
   let fetchSpy: ReturnType<typeof mockFetch>;
 
   beforeEach(() => {
-    mockToken = "valid-token";
+    mockToken = "session_opaque_token";
     fetchSpy = mockFetch(async () =>
       jsonResponse({ success: true, data: { id: "u1", displayName: "Admin" } }),
     );
@@ -52,7 +46,7 @@ describe("GET /api/auth/me", () => {
     expect(body.data).toEqual({ id: "u1", displayName: "Admin" });
   });
 
-  it("returns 401 when control-plane rejects the token (session expired)", async () => {
+  it("returns 401 when control-plane rejects the token", async () => {
     fetchSpy = mockFetch(async () => new Response(null, { status: 401 }));
     const res = await GET();
 
@@ -72,13 +66,13 @@ describe("GET /api/auth/me", () => {
     expect(body.error.message).toBe("Failed to fetch user");
   });
 
-  it("sends Bearer token to control-plane", async () => {
+  it("sends the opaque session token to control-plane", async () => {
     await GET();
 
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toBe("http://control-plane:3000/api/v1/auth/me");
     expect((init as RequestInit).headers).toEqual(
-      expect.objectContaining({ Authorization: "Bearer valid-token" }),
+      expect.objectContaining({ Authorization: "Bearer session_opaque_token" }),
     );
   });
 });

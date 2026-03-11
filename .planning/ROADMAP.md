@@ -2,7 +2,7 @@
 
 ## Overview
 
-Interdict.io is an AI governance kernel for regulated enterprises. v1.0 shipped the data plane and control plane API. v1.1 made it deployable and usable with identity, dashboard, and deployment packaging. v1.2 closed the gap between claims and provable behavior. v1.3 remediates all findings from a comprehensive codebase scan.
+Interdict.io is an AI governance kernel for regulated enterprises. v1.0 shipped the data plane and control plane API. v1.1 made it deployable and usable with identity, dashboard, and deployment packaging. v1.2 closed the gap between claims and provable behavior. v1.3 remediates all findings from a comprehensive codebase scan. v1.4 focuses on the remaining hardening work: secret/session handling, deployment-flexible mTLS, evidence query scale, repo-wide quality gates, and codebase truth cleanup.
 
 ## Milestones
 
@@ -10,6 +10,7 @@ Interdict.io is an AI governance kernel for regulated enterprises. v1.0 shipped 
 - **v1.1 Pilot Ready** -- Phases 7-15 (shipped 2026-03-04)
 - **v1.2 Trustworthiness & Hardening** -- Phases 16-24 (completed 2026-03-10)
 - **v1.3 Scan Remediation** -- Phases 25-29 (completed in working tree 2026-03-11)
+- **v1.4 Hardening & Release Readiness** -- Phases 30-33 (planning)
 
 ## Phases
 
@@ -76,6 +77,18 @@ Scan report: `.planning/phases/v1.3-scan-remediation/SCAN-REPORT.md`
 
 </details>
 
+<details open>
+<summary>v1.4 Hardening & Release Readiness (Phases 30-33) -- IN PROGRESS</summary>
+
+- [x] Phase 30: Secret, Session, and Seed Hardening -- completed in working tree 2026-03-11 (3/3 plans)
+- [ ] Phase 31: Distribution TLS & Evidence Query Scale Hardening -- unplanned
+- [ ] Phase 32: Repo Quality Gates & Infra Lint Coverage -- unplanned
+- [ ] Phase 33: Warning Burn-Down, Next 16 Cleanup & Project Truth -- unplanned
+
+Execution roadmap: `.planning/phases/v1.4-hardening-readiness/EXECUTION-ROADMAP.md`
+
+</details>
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -84,7 +97,39 @@ Scan report: `.planning/phases/v1.3-scan-remediation/SCAN-REPORT.md`
 | 7-15 | v1.1 | 24/24 | Complete | 2026-03-04 |
 | 16-24 | v1.2 | 9/9 phases | Complete | 2026-03-10 |
 | 25-29 | v1.3 | 5/5 phases | Complete | 2026-03-11 |
+| 30-33 | v1.4 | 1/4 phases | In Progress | 2026-03-11 |
+
+## Planned Next Phases
+
+### Phase 30: Secret, Session, and Seed Hardening
+
+**Goal:** Remove plaintext secret exposure paths and harden dashboard auth/session handling without changing the BFF architecture.
+**Requirements:** [HR-SEC-01, HR-AUTH-01, HR-AUTH-02]
+**Plans:** 3 plans
+
+Plans:
+- [x] `30-01-PLAN.md` -- Remove plaintext seed key reveal output and add regression coverage.
+- [x] `30-02-PLAN.md` -- Add control-plane API-key-to-session exchange contract and tests.
+- [x] `30-03-PLAN.md` -- Update dashboard login/me/logout to use validated opaque sessions.
+
+### Phase 31: Distribution TLS & Evidence Query Scale Hardening
+
+**Goal:** Make kernel distribution TLS deployment-flexible and ensure large evidence queries stay partition-safe in ClickHouse.
+**Requirements:** [HR-DIST-01, HR-EVID-01]
+**Plans:** 0 plans
+
+### Phase 32: Repo Quality Gates & Infra Lint Coverage
+
+**Goal:** Extend formatter, linter, hook, and CI coverage to deployment and infra artifacts, not just app code.
+**Requirements:** [HR-OPS-01, HR-OPS-02]
+**Plans:** 0 plans
+
+### Phase 33: Warning Burn-Down, Next 16 Cleanup & Project Truth
+
+**Goal:** Reduce remaining warning debt, complete framework cleanup, and align planning docs with actual verified repo state.
+**Requirements:** [HR-MAINT-01, HR-DOC-01]
+**Plans:** 0 plans
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-11 -- v1.3 scan remediation executed and verified in working tree*
+*Last updated: 2026-03-11 -- v1.4 hardening milestone scaffolded for planning*

@@ -90,6 +90,17 @@ export function generateApiKey(): {
 
 export interface AuthService {
   authenticateByApiKey(token: string): Promise<AuthenticatedUser | null>;
+  exchangeApiKeyForSession(token: string): Promise<{
+    token: string;
+    user: {
+      id: string;
+      email: string;
+      displayName: string;
+      role: string;
+      departments: string[];
+      isService: boolean;
+    };
+  } | null>;
   createApiKey(
     userId: string,
     label?: string,
@@ -198,6 +209,22 @@ export function createAuthService(db: PostgresJsDatabase<typeof schema>): AuthSe
         role: user.role,
         isService: user.isService,
         departmentIds,
+      };
+    },
+
+    async exchangeApiKeyForSession(token: string) {
+      const authenticatedUser = await this.authenticateByApiKey(token);
+
+      if (!authenticatedUser) {
+        return null;
+      }
+
+      const sessionToken = await this.createSession(authenticatedUser.id);
+      const user = await this.whoAmI(authenticatedUser.id);
+
+      return {
+        token: sessionToken,
+        user,
       };
     },
 
