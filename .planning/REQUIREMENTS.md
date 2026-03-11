@@ -26,8 +26,8 @@ This file tracks the currently active hardening requirements for the next milest
 
 ### Repo Quality Gates and Infra Coverage
 
-- [ ] **HR-OPS-01**: Docker, Helm, proto, shell, and YAML artifacts have explicit lint/validation coverage in CI.
-- [ ] **HR-OPS-02**: Local developer workflows clearly automate or document quality checks across Windows + WSL Rust and JS/TS surfaces.
+- [x] **HR-OPS-01**: Docker, Helm, proto, shell, and YAML artifacts have explicit lint/validation coverage in CI.
+- [x] **HR-OPS-02**: Local developer workflows clearly automate or document quality checks across Windows + WSL Rust and JS/TS surfaces.
 
 ### Warning Burn-Down and Project Truth
 
@@ -43,8 +43,8 @@ This file tracks the currently active hardening requirements for the next milest
 | HR-AUTH-02 | Phase 30 | Complete |
 | HR-DIST-01 | Phase 31 | Complete |
 | HR-EVID-01 | Phase 31 | Complete |
-| HR-OPS-01 | Phase 32 | Planned |
-| HR-OPS-02 | Phase 32 | Planned |
+| HR-OPS-01 | Phase 32 | Complete |
+| HR-OPS-02 | Phase 32 | Complete |
 | HR-MAINT-01 | Phase 33 | Planned |
 | HR-DOC-01 | Phase 33 | Planned |
 
@@ -54,4 +54,4 @@ This file tracks the currently active hardening requirements for the next milest
 - Unmapped: 0
 
 ---
-*Last updated: 2026-03-11 -- Phase 31 requirements verified in working tree*
+*Last updated: 2026-03-11 -- Phase 32 requirements verified in working tree*

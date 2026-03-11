@@ -10,7 +10,7 @@ Interdict.io is an AI governance kernel for regulated enterprises. v1.0 shipped 
 - **v1.1 Pilot Ready** -- Phases 7-15 (shipped 2026-03-04)
 - **v1.2 Trustworthiness & Hardening** -- Phases 16-24 (completed 2026-03-10)
 - **v1.3 Scan Remediation** -- Phases 25-29 (completed in working tree 2026-03-11)
-- **v1.4 Hardening & Release Readiness** -- Phases 30-33 (planning)
+- **v1.4 Hardening & Release Readiness** -- Phases 30-33 (in progress)
 
 ## Phases
 
@@ -82,7 +82,7 @@ Scan report: `.planning/phases/v1.3-scan-remediation/SCAN-REPORT.md`
 
 - [x] Phase 30: Secret, Session, and Seed Hardening -- completed in working tree 2026-03-11 (3/3 plans)
 - [x] Phase 31: Distribution TLS & Evidence Query Scale Hardening -- completed in working tree 2026-03-11 (2/2 plans)
-- [ ] Phase 32: Repo Quality Gates & Infra Lint Coverage -- unplanned
+- [x] Phase 32: Repo Quality Gates & Infra Lint Coverage -- completed in working tree 2026-03-11 (3/3 plans)
 - [ ] Phase 33: Warning Burn-Down, Next 16 Cleanup & Project Truth -- unplanned
 
 Execution roadmap: `.planning/phases/v1.4-hardening-readiness/EXECUTION-ROADMAP.md`
@@ -97,7 +97,7 @@ Execution roadmap: `.planning/phases/v1.4-hardening-readiness/EXECUTION-ROADMAP.
 | 7-15 | v1.1 | 24/24 | Complete | 2026-03-04 |
 | 16-24 | v1.2 | 9/9 phases | Complete | 2026-03-10 |
 | 25-29 | v1.3 | 5/5 phases | Complete | 2026-03-11 |
-| 30-33 | v1.4 | 2/4 phases | In Progress | 2026-03-11 |
+| 30-33 | v1.4 | 3/4 phases | In Progress | 2026-03-11 |
 
 ## Planned Next Phases
 
@@ -126,7 +126,12 @@ Plans:
 
 **Goal:** Extend formatter, linter, hook, and CI coverage to deployment and infra artifacts, not just app code.
 **Requirements:** [HR-OPS-01, HR-OPS-02]
-**Plans:** 0 plans
+**Plans:** 3 plans
+
+Plans:
+- [x] `32-01-PLAN.md` -- Create the canonical repo-root infra lint and WSL Rust verification command layer.
+- [x] `32-02-PLAN.md` -- Add a dedicated CI infra-quality job that installs and runs the repo infra gate.
+- [x] `32-03-PLAN.md` -- Consolidate Husky/local hook docs around staged infra checks and WSL-backed Rust validation.
 
 ### Phase 33: Warning Burn-Down, Next 16 Cleanup & Project Truth
 
@@ -136,4 +141,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-02-26*
-*Last updated: 2026-03-11 -- Phase 31 distribution TLS and evidence query hardening completed in working tree*
+*Last updated: 2026-03-11 -- Phase 32 repo quality gates and infra lint coverage completed in working tree*

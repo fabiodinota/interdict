@@ -3,7 +3,10 @@
   "name": "interdict",
   "description": "AI governance kernel for regulated enterprises",
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint:infra": "bash scripts/quality/infra-check.sh",
+    "lint:infra:staged": "bash scripts/quality/infra-check.sh --staged",
+    "verify:rust:wsl": "bash scripts/quality/rust-wsl-check.sh"
   },
   "devDependencies": {
     "husky": "^9",

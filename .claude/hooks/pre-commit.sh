@@ -4,15 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "${ROOT_DIR}"
 
-echo "Running pre-commit checks"
+echo "Running Husky-aligned pre-commit helper"
 
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace --all-targets --quiet
+npx lint-staged
+npm run lint:infra:staged
 
-# Optional future control-plane checks (run only if service dirs exist).
-if [ -d "control-plane" ] && command -v bun >/dev/null 2>&1; then
-  (cd control-plane && bun run lint && bun test)
-fi
-
-echo "Pre-commit checks passed"
+echo "Pre-commit helper checks passed"

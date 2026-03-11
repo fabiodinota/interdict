@@ -1,43 +1,39 @@
 # Hook Scripts
 
-This directory contains repository hook scripts used by pre-commit and optional Claude Code/OpenCode hook integrations.
+Husky is the active git hook system in this repo. The installed hooks live at `.husky/pre-commit` and `.husky/pre-push`.
 
-## Files
+This directory now holds helper scripts that mirror the Husky behavior for Claude Code/OpenCode integrations or manual invocation. It is not a second install path.
 
-- `pre-commit-checks.sh`: Fast staged-file checks scoped by changed paths
-- `pre-push-checks.sh`: Full workspace validation before pushes (format, clippy, tests, build)
+## Canonical Local Workflow
 
-## Install
+### `.husky/pre-commit`
 
-1. Install pre-commit:
+- Runs `npx lint-staged` for the existing JS/TS formatting and lint fixes.
+- Runs `npm run lint:infra:staged` so staged Dockerfiles, shell scripts, proto files, workflow YAML, `docker-compose.yml`, and Helm chart metadata or values get checked before commit.
+- Stays intentionally fast; it does not run full-repo Rust or app test suites.
 
-```bash
-pip install pre-commit
-```
+### `.husky/pre-push`
 
-2. Install git hooks:
+- Runs `npm run lint:infra` for the full repo infra-quality gate.
+- Runs `npm run verify:rust:wsl` for the Rust gates required by `CLAUDE.md`.
+- On Windows, `verify:rust:wsl` is expected to execute through WSL because native MSVC Rust verification remains unreliable on this host.
 
-```bash
-pre-commit install --hook-type pre-commit --hook-type pre-push
-```
+## Helper Entry Points
 
-3. Run all hooks once:
+- `.claude/hooks/pre-commit.sh` mirrors `.husky/pre-commit`
+- `.claude/hooks/pre-push.sh` mirrors `.husky/pre-push`
 
-```bash
-pre-commit run --all-files
-```
+Use those helper scripts only when an automation entry point wants the same behavior outside Git's installed hook path.
 
-## Covered Checks
+## CI Relationship
 
-| Hook | Scope | Checks |
-|------|-------|--------|
-| pre-commit | Changed Rust files | `cargo fmt --check`, `cargo clippy -D warnings` |
-| pre-commit | Changed control-plane files | `bun run typecheck` |
-| pre-commit | Changed dashboard files | `bun run lint` |
-| pre-push | All | Full cargo test, control-plane tests, dashboard build |
+- CI is the source of truth for deterministic repo validation.
+- `.github/workflows/ci-quality-security.yml` runs the full `lint:infra` gate with installed copies of `hadolint`, `shellcheck`, `yamllint`, `buf`, and `helm`.
+- Local infra-hook runs expect those same CLIs to be available when you change infra surfaces; the helper scripts fail loudly instead of silently skipping missing tools.
+- Local hooks are optimized for developer feedback, not for replacing CI.
 
-## Notes
+## Windows and WSL Notes
 
-- Pre-commit hooks are scoped by changed paths to keep commit feedback fast.
-- Pre-push hooks run the full verification gates from CLAUDE.md.
-- CI remains the source of truth for full matrix and security checks.
+- Windows developers should have WSL available before relying on `.husky/pre-push`.
+- `npm run verify:rust:wsl` prints a clear failure if `wsl.exe` is unavailable.
+- Non-Windows hosts run the same Rust gates natively through `scripts/quality/rust-wsl-check.sh`.

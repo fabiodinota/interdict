@@ -1,0 +1,10 @@
+extends: default
+
+ignore: |
+  helm/interdict/templates/
+  helm/interdict/charts/
+
+rules:
+  document-start: disable
+  line-length: disable
+  truthy: disable

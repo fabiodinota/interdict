@@ -5,14 +5,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${ROOT_DIR}"
 
-echo "Running pre-push checks"
+echo "Running Husky-aligned pre-push helper"
 
-CHANGED_FILES="$(git diff --name-only HEAD~1..HEAD 2>/dev/null || git diff --name-only)"
-if printf '%s\n' "${CHANGED_FILES}" | grep -q '^crates/kernel/'; then
-  echo "Kernel changes detected, running benchmark checks"
-  "${SCRIPT_DIR}/benchmark.sh"
-fi
+npm run lint:infra
+npm run verify:rust:wsl
 
-"${SCRIPT_DIR}/security-audit.sh"
-
-echo "Pre-push checks passed"
+echo "Pre-push helper checks passed"

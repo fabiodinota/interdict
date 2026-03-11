@@ -9,6 +9,45 @@ permissions:
   contents: read
 
 jobs:
+  infra-quality:
+    name: infra-quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install shell tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck python3-pip
+          python3 -m pip install --user yamllint
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install hadolint
+        run: |
+          HADOLINT_VERSION=v2.12.0
+          curl -fsSL "https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/hadolint-Linux-x86_64" -o hadolint
+          chmod +x hadolint
+          sudo mv hadolint /usr/local/bin/hadolint
+
+      - name: Setup buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: 1.50.0
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.17.1
+
+      - name: Run infra quality gate
+        run: npm run lint:infra
+
   quality:
     name: quality (${{ matrix.deployment_mode }})
     runs-on: ubuntu-latest

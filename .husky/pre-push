@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+set -eu
+
+npm run lint:infra
+npm run verify:rust:wsl
