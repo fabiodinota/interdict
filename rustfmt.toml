@@ -1,0 +1,7 @@
+# Rust formatting configuration
+# Applied by `cargo fmt` — matches CI gate: `cargo fmt --all -- --check`
+edition = "2024"
+max_width = 100
+tab_spaces = 4
+use_field_init_shorthand = true
+use_try_shorthand = true

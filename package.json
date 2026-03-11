@@ -1,0 +1,27 @@
+{
+  "private": true,
+  "name": "interdict",
+  "description": "AI governance kernel for regulated enterprises",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9",
+    "lint-staged": "^16"
+  },
+  "lint-staged": {
+    "crates/**/*.rs": [
+      "echo '⚠ Rust files staged — cargo fmt/clippy checked in CI (or run locally via WSL2)'"
+    ],
+    "control-plane/src/**/*.{ts,tsx,js,jsx}": [
+      "npx --prefix control-plane @biomejs/biome check --fix --no-errors-on-unmatched"
+    ],
+    "dashboard/src/**/*.{ts,tsx,js,jsx}": [
+      "npx --prefix dashboard prettier --write",
+      "npx --prefix dashboard eslint --fix"
+    ],
+    "dashboard/src/**/*.css": [
+      "npx --prefix dashboard prettier --write"
+    ]
+  }
+}

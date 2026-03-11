@@ -103,6 +103,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Lint + format check
+        run: npx @biomejs/biome check ./src
+
       - name: Type check
         run: bunx tsc --noEmit
 
@@ -132,6 +135,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Format check
+        run: npx prettier --check 'src/**/*.{ts,tsx,js,jsx,json,css}'
 
       - name: Lint
         run: npx eslint

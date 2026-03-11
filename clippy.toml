@@ -1,0 +1,4 @@
+# Clippy configuration
+# Applied by `cargo clippy` — matches CI gate: `cargo clippy --workspace --all-targets -- -D warnings`
+too-many-arguments-threshold = 8
+type-complexity-threshold = 300

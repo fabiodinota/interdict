@@ -25,6 +25,7 @@ dist/
 !.env.test.example
 
 # Local AI tool config
+.claude/settings.local.json
 .claude/mcp/servers.local.json
 .claude/mcp/*.key
 .claude/mcp/*.pem
@@ -47,6 +48,12 @@ coverage/
 # Runtime data
 data/
 
+# Next.js
+.next/
+
 # Build artifacts
 *.wasm
 !policies/*.wasm
+
+# Windows artifacts
+nul
