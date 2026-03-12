@@ -104,14 +104,10 @@ jobs:
       - name: Cargo audit
         run: cargo audit
 
-      - name: Cargo deny (if configured)
+      - name: Cargo deny
         run: |
-          if [ -f deny.toml ]; then
-            cargo install cargo-deny --locked
-            cargo deny check
-          else
-            echo "Skipping cargo deny (deny.toml not present)"
-          fi
+          cargo install cargo-deny --locked
+          cargo deny check
 
       - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@0.28.0

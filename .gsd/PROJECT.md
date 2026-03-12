@@ -67,18 +67,17 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 - ✓ Kernel sidecar deployment (KEP-753) — v1.1
 - ✓ CA certificate trust scripts (macOS, Windows, Linux) — v1.1
 
-### Active (v1.2 Trustworthiness & Hardening)
-
-- [x] Evidence verification is internally consistent across all verification surfaces (Phase 16)
-- [x] Auth bootstrap no longer persists raw bearer credentials (Phase 17)
-- [x] JS/TS correctness is enforced in CI (Phase 17)
-- [x] Reporting and policy-scope behavior are honest and complete (Phase 18)
-- [x] Evidence attribution and durability match audit expectations (Phase 19)
-- [x] Review workflow architecture has one source of truth (Phase 20)
-- [x] Core kernel and control-plane change hotspots have been reduced (Phase 21)
-- [x] Dashboard trust-sensitive workflows are automated and verified (Phase 22)
-- [x] Deployment artifacts and docs no longer overclaim production readiness (Phase 23)
-- [x] Final product language matches what the platform can actually prove (Phase 24)
+**Trustworthiness & Hardening — v1.2**
+- ✓ Evidence verification is internally consistent across all verification surfaces — v1.2
+- ✓ Auth bootstrap no longer persists raw bearer credentials — v1.2
+- ✓ JS/TS correctness is enforced in CI — v1.2
+- ✓ Reporting and policy-scope behavior are honest and complete — v1.2
+- ✓ Evidence attribution and durability match audit expectations — v1.2
+- ✓ Review workflow architecture has one source of truth — v1.2
+- ✓ Core kernel and control-plane change hotspots have been reduced — v1.2
+- ✓ Dashboard trust-sensitive workflows are automated and verified — v1.2
+- ✓ Deployment artifacts and docs no longer overclaim production readiness — v1.2
+- ✓ Final product language matches what the platform can actually prove — v1.2
 
 ### Out of Scope
 
@@ -99,13 +98,19 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
-**v1.2 complete (2026-03-10).** All 9 hardening phases finished. Evidence verification, auth, reporting, scope, evidence delivery, review workflow, maintainability, dashboard testing, deployment artifacts, and Kubernetes security controls all hardened.
+**M006 in progress (2026-03-12).** S01 is complete and merged locally: `default.rs` now compiles hot-path regexes via `LazyLock`, `InjectionDetector::default()` no longer panics on regex compilation, and `regorus.rs` returns a fail-mode verdict instead of panicking on pool exhaustion. S02/T01 is also merged locally: `deny.toml` is present, CI runs `cargo deny` unconditionally, and workspace crates now declare proprietary license metadata required by cargo-deny v0.18. Remaining M006 work is S02/T02-T04 plus all of S03.
 
-**v1.1 shipped 2026-03-04.** Full platform operational: Rust kernel + evidence pipeline + control plane API + Next.js dashboard + Docker Compose + Helm chart. ~61,000 LOC across Rust, TypeScript, and Helm. 16 phases, 52 plans across 2 milestones. 21/21 v1.1 requirements satisfied with 8 tech debt items tracked (none blocking).
+**M005 (Hardening & Release Readiness) complete 2026-03-12.** 4 slices across 4 sessions. Eliminated credential leak paths (seed plaintext reveal removed, API-key-to-session exchange for BFF cookies), made kernel mTLS distribution hostname deployment-configurable, established canonical repo-root quality gates with CI infra-quality job and Husky-based local hooks, and burned down warning debt (Biome for control-plane, Next.js 15→16 upgrade, Dockerfile and proto lint fixes). All 4 HR-* requirements validated.
+
+**M004 (Scan Remediation) complete 2026-03-12.** 5 slices across 5 sessions. Systematic remediation of codebase scan findings: panic-free Rust with fallible constructors and async-safe mutexes, type-safe TypeScript across all 11 control-plane modules, fail-closed auth configuration, zero silent error swallowing, and deployment config parity with healthchecks and resource limits.
+
+**M003 (v1.2 Trustworthiness & Hardening) complete 2026-03-12.** 9 slices across 9 sessions. Systematic trust audit: evidence verification consistency, auth secret hardening, reporting honesty, identity attribution, durable delivery, review workflow consolidation, typed maintainability, dashboard test coverage (0→62 tests), deployment artifact hardening, and Kubernetes security controls (NetworkPolicy, PDB, HPA). 8 new architectural decisions (D016–D023). All 10 v1.2 requirements validated.
+
+**v1.1 shipped 2026-03-04.** Full platform operational: Rust kernel + evidence pipeline + control plane API + Next.js dashboard + Docker Compose + Helm chart. ~61,000 LOC across Rust, TypeScript, and Helm. 16 phases, 52 plans across 2 milestones. 21/21 v1.1 requirements satisfied.
 
 **Pilot partners:** Boutique law firm (~80 employees, Docker Compose) and small private bank (Kubernetes/Helm) — both interested, discussions scheduled for March 2026.
 
-**Architecture:** Strict Data Plane (Rust, hot path) / Control Plane (Bun/Elysia API + Next.js dashboard) separation. Zero cross-plane contamination through both milestones.
+**Architecture:** Strict Data Plane (Rust, hot path) / Control Plane (Bun/Elysia API + Next.js dashboard) separation. Zero cross-plane contamination through all milestones.
 
 **Tech stack:** Rust (tokio, hyper, tonic, wasmtime, regorus), Bun + Elysia (API), Next.js + React (dashboard), PostgreSQL (config), ClickHouse (audit logs), protobuf/gRPC (internal comms).
 
@@ -137,6 +142,10 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | ECDSA P-256 for internal CA | Broader TLS library compatibility than Ed25519 | ✓ Good — mTLS operational |
 | ArcSwap for signing key hot-reload | Lock-free atomic swaps, no restart needed | ✓ Good — 30s poll cycle |
 | KEP-753 native sidecar pattern | Kubernetes-native lifecycle management | ✓ Good — initContainer with restartPolicy |
+| Evidence signature payload = protobuf with zeroed chain/sig fields | Canonical signed payload format | ✓ Good — cross-language consistency |
+| Postgres single authoritative review store | One source of truth for workflow state | ✓ Good — eliminated dual-write |
+| Air-gapped OPA multi-stage Dockerfile | Offline-compatible deployment | ✓ Good — single stage replacement |
+| Opt-in Helm security templates (NetworkPolicy, PDB, HPA) | No breaking changes to existing deployments | ✓ Good — disabled by default |
 
 ---
-*Last updated: 2026-03-10 after v1.2 milestone completion*
+*Last updated: 2026-03-12 after merging M006/S01 and M006/S02-T01 into master*

@@ -2,6 +2,8 @@
 name = "interdict-verify"
 version = "0.1.0"
 edition = "2024"
+license = "LicenseRef-Proprietary"
+publish = false
 
 [lib]
 name = "interdict_verify"

@@ -2,6 +2,8 @@
 name = "evidence-collector"
 version = "0.1.0"
 edition = "2024"
+license = "LicenseRef-Proprietary"
+publish = false
 
 [[bin]]
 name = "interdict-collector"

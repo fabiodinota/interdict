@@ -53,7 +53,7 @@ This milestone is complete only when all are true:
 
 ## Slices
 
-- [ ] **S01: Production Safety Panic Elimination** `risk:high` `depends:[]`
+- [x] **S01: Production Safety Panic Elimination** `risk:high` `depends:[]`
   > After this: All 12 Regex::new().unwrap() in default.rs use LazyLock, InjectionDetector::default() is infallible, and regorus.rs semaphore path returns fail-mode verdict instead of panicking. `cargo test --workspace` proves zero panic paths remain.
 - [ ] **S02: Security And Dependency Hygiene** `risk:medium` `depends:[S01]`
   > After this: `cargo deny check` passes, rand versions are aligned to 0.9, workspace [lints] are centralized, all Dockerfiles run as non-root with read-only rootfs, and docker-compose has no hardcoded credentials.

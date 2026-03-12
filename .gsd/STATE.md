@@ -1,27 +1,23 @@
 # GSD State
 
-<!-- Auto-generated. Updated by deriveState(). -->
+**Active Milestone:** M006 — Production Safety & Quality
+**Active Slice:** S02 — Security And Dependency Hygiene
+**Phase:** executing
+**Requirements Status:** 0 active · 4 validated · 0 deferred · 0 out of scope
 
-## M001: MVP
+## Milestone Registry
+- ✅ **M001:** MVP
+- ✅ **M002:** Pilot Ready
+- ✅ **M003:** Trustworthiness & Hardening
+- ✅ **M004:** Scan Remediation
+- ✅ **M005:** Hardening & Release Readiness
+- 🔄 **M006:** Production Safety & Quality
 
-- Slices: 7/7
+## Recent Decisions
+- None recorded
 
-## M002: Pilot Ready
+## Blockers
+- None
 
-- Slices: 9/9
-
-## M003: Trustworthiness & Hardening
-
-- Slices: 9/9
-
-## M004: Scan Remediation
-
-- Slices: 5/5
-
-## M005: Hardening & Release Readiness
-
-- Slices: 4/4
-
-## M006: Production Safety & Quality
-
-- Slices: 0/3
+## Next Action
+Execute T02: Align rand 0.8 to 0.9 in evidence-collector and add workspace lints in slice S02.

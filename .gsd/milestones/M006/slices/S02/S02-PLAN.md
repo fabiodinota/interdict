@@ -41,7 +41,7 @@
 
 ## Tasks
 
-- [ ] **T01: Add deny.toml with license compliance and duplicate detection** `est:30m`
+- [x] **T01: Add deny.toml with license compliance and duplicate detection** `est:30m`
   - Why: CI already has a conditional `cargo deny` step that currently skips because no deny.toml exists (ASSESSMENT §6: "cargo deny step skips silently"). Adding config activates it immediately.
   - Files: `deny.toml`, `.github/workflows/ci-quality-security.yml`
   - Do: Create `deny.toml` with `[licenses]` allowlist (MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Unicode-DFS-2016, OpenSSL, Zlib, Unicode-3.0), `[bans]` for duplicate detection with skip list for known-acceptable dups (multiple versions of same crate that are transitive), and `[advisories]` pointing to rustsec DB. Ensure the CI step condition no longer skips.

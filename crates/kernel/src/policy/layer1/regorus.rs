@@ -77,10 +77,21 @@ impl RegorusPool {
         };
 
         // Pop an engine from the pool (semaphore guarantees availability)
-        let engine = self
-            .engines
-            .pop()
-            .expect("semaphore guarantees engine availability");
+        let engine = match self.engines.pop() {
+            Some(e) => e,
+            None => {
+                // Should never happen — semaphore should guarantee availability.
+                // Return fail-mode verdict instead of panicking.
+                drop(permit);
+                tracing::error!("regorus engine pool unexpectedly empty despite semaphore permit");
+                return PolicyVerdict {
+                    policy_id: policy_id.to_string(),
+                    action: fail_mode.default_action(),
+                    redactions: vec![],
+                    reason: Some("engine pool unexpectedly empty".to_string()),
+                };
+            }
+        };
 
         let engines = self.engines.clone();
         let input = input_json.to_string();
@@ -136,6 +147,19 @@ impl RegorusPool {
         let mut engine = regorus::Engine::new();
         engine.add_policy(policy_id.to_string(), rego_source.to_string())?;
         Ok(engine)
+    }
+
+    /// Create a pool with semaphore permits but no engines (test-only).
+    ///
+    /// Used to exercise the pool-exhaustion fail-mode path.
+    #[cfg(test)]
+    fn new_empty_for_test(size: usize) -> Self {
+        let queue = ArrayQueue::new(size.max(1));
+        Self {
+            engines: Arc::new(queue),
+            semaphore: Arc::new(Semaphore::new(size)),
+            pool_size: size,
+        }
     }
 
     /// Returns the configured pool size.
@@ -449,5 +473,51 @@ mod tests {
     fn test_load_policy_invalid_rego_returns_error() {
         let engine = RegorusPool::load_policy("bad.rego", "this is not valid rego at all!!!");
         assert!(engine.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_pool_exhaustion_returns_fail_closed_verdict() {
+        // Create a pool with semaphore permits but no engines — simulates
+        // a pool-empty state that would have panicked before this fix.
+        let pool = RegorusPool::new_empty_for_test(2);
+
+        let verdict = pool
+            .evaluate(
+                r#"{"vendor": "test"}"#,
+                "data.interdict.policy.test.verdict",
+                "exhaustion-policy",
+                FailMode::FailClosed,
+            )
+            .await;
+
+        // Should get fail-closed Block action instead of a panic
+        assert_eq!(verdict.action, VerdictAction::Block);
+        assert_eq!(verdict.policy_id, "exhaustion-policy");
+        assert_eq!(
+            verdict.reason,
+            Some("engine pool unexpectedly empty".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn test_pool_exhaustion_returns_fail_open_verdict() {
+        let pool = RegorusPool::new_empty_for_test(2);
+
+        let verdict = pool
+            .evaluate(
+                r#"{"vendor": "test"}"#,
+                "data.interdict.policy.test.verdict",
+                "exhaustion-policy-open",
+                FailMode::FailOpen,
+            )
+            .await;
+
+        // Should get fail-open Allow action instead of a panic
+        assert_eq!(verdict.action, VerdictAction::Allow);
+        assert_eq!(verdict.policy_id, "exhaustion-policy-open");
+        assert_eq!(
+            verdict.reason,
+            Some("engine pool unexpectedly empty".to_string())
+        );
     }
 }
