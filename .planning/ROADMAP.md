@@ -59,11 +59,11 @@ Full details archived in `milestones/v1.1-ROADMAP.md`
 - [x] Phase 23: Deployment Truth and Artifact Hardening -- completed 2026-03-10 (03785bd)
 - [x] Phase 24: Platform Hardening and Release Gate -- completed 2026-03-10
 
-Full details in `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADMAP.md`
+Full details in `.planning/milestones/v1.2-EXECUTION-ROADMAP.md`
 
 </details>
 
-<details open>
+<details>
 <summary>v1.3 Scan Remediation (Phases 25-29) -- COMPLETED 2026-03-11</summary>
 
 - [x] Phase 25: Rust Robustness & Async Safety -- completed 2026-03-11
@@ -72,12 +72,12 @@ Full details in `.planning/phases/v1.2-trustworthiness-hardening/EXECUTION-ROADM
 - [x] Phase 28: Observability & Error Honesty -- completed 2026-03-11
 - [x] Phase 29: Deployment Completeness & Config Parity -- completed 2026-03-11
 
-Full details in `.planning/phases/v1.3-scan-remediation/EXECUTION-ROADMAP.md`
-Scan report: `.planning/phases/v1.3-scan-remediation/SCAN-REPORT.md`
+Full details in `.planning/milestones/v1.3-EXECUTION-ROADMAP.md`
+Scan report: `.planning/milestones/v1.3-SCAN-REPORT.md`
 
 </details>
 
-<details open>
+<details>
 <summary>v1.4 Hardening & Release Readiness (Phases 30-33) -- COMPLETED 2026-03-11</summary>
 
 - [x] Phase 30: Secret, Session, and Seed Hardening -- completed and verified 2026-03-11 (3/3 plans)
@@ -85,7 +85,7 @@ Scan report: `.planning/phases/v1.3-scan-remediation/SCAN-REPORT.md`
 - [x] Phase 32: Repo Quality Gates & Infra Lint Coverage -- completed and verified 2026-03-11 (3/3 plans)
 - [x] Phase 33: Warning Burn-Down, Next 16 Cleanup & Project Truth -- completed and verified 2026-03-11 (5/5 plans)
 
-Execution roadmap: `.planning/phases/v1.4-hardening-readiness/EXECUTION-ROADMAP.md`
+Execution roadmap: `.planning/milestones/v1.4-EXECUTION-ROADMAP.md`
 
 </details>
 
