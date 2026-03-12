@@ -21,6 +21,22 @@ Purpose: enforce consistent, high-assurance behavior across Claude Code, OpenCod
 
 Use these rules before implementing code, tests, infra, or docs changes.
 
+## Resource Paths
+
+### GSD / pi (V2 canonical)
+
+- Project context: `AGENTS.md` (root)
+- Skills: `.gsd/skills/*/SKILL.md`
+- Subagents: `.pi/agents/*.md`
+- Project settings: `.gsd/settings.json`
+
+### Claude Code
+
+- Rules: `.claude/rules/*.md`
+- Skills: `.claude/skills/*/SKILL.md`
+- Subagents: `.claude/agents/*.md`
+- MCP templates: `.claude/mcp/servers.example.json`
+
 ## Agent-First Workflow
 
 For non-trivial work, default sequence:
@@ -30,18 +46,19 @@ For non-trivial work, default sequence:
 3. `k8s-specialist` validates deployability (sidecar, network policy, manifests/Helm where applicable).
 4. `multi-agent-coordinator` synthesizes findings and final acceptance criteria.
 
-Local Interdict subagent profiles live in `.claude/agents/`.
+Local subagent profiles live in `.pi/agents/` (GSD) and `.claude/agents/` (Claude Code).
 
 ## Skills Catalog
 
-Project skills live in `.claude/skills/` and are invoked as slash commands:
+Project skills (invoke with `/skill:name`):
 
-- `/wasm-policy-compile`
-- `/evidence-bundle-audit`
-- `/k8s-sidecar-provision`
-- `/regulatory-map-generator`
-
-Each skill includes inputs, execution steps, verification, and expected artifacts.
+- `/skill:wasm-policy-compile` — Compile and validate policy artifacts
+- `/skill:evidence-bundle-audit` — Audit evidence hash chaining and signatures
+- `/skill:k8s-sidecar-provision` — Kubernetes sidecar deployment validation
+- `/skill:regulatory-map-generator` — Map regulations to enforcement capabilities
+- `/skill:rust-skills` — 179-rule Rust best practices guide
+- `/skill:scan` — Full codebase scan for violations, security gaps, and architecture breaks
+- `/skill:emil-anim` — Tasteful, purposeful web animations (Emil Kowalski / animations.dev philosophy)
 
 ## MCP Usage
 
@@ -66,7 +83,7 @@ If touched paths include policy enforcement or evidence logic, run additional ta
 
 - Workflow file: `.github/workflows/ci-quality-security.yml`
 - Dependency automation: `renovate.json`
-- Local hooks: `.claude/hooks/*.sh`
+- Local hooks: `.husky/` (canonical), `.claude/hooks/` (helper mirrors)
 
 Do not bypass failing hooks/checks; fix root causes.
 
@@ -74,8 +91,9 @@ Do not bypass failing hooks/checks; fix root causes.
 
 For architectural/security-impacting changes, update:
 
-- `.planning/STATE.md` (position and decisions)
-- `.planning/ROADMAP.md` (if plan status changes)
-- `.planning/REQUIREMENTS.md` (if requirement completion changes)
+- `.gsd/STATE.md` (milestone/slice progress)
+- `.gsd/DECISIONS.md` (append new architectural decisions)
+- `.gsd/PROJECT.md` (if project context changes)
+- `.planning/ROADMAP.md` (historical phase record — read-only, append new phases only)
 
 Keep `education.md` updated with mistakes and corrective actions.

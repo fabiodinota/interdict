@@ -1,6 +1,6 @@
-# AGENTS.md: Interdict Agent Contract (Mirror)
+# AGENTS.md: Interdict Agent Contract
 
-This file mirrors `CLAUDE.md` so Codex/OpenCode/Claude share one operating contract.
+This file is the cross-agent operating contract loaded by GSD (pi), Claude Code, Codex, and OpenCode.
 
 ## Non-Negotiable Invariants
 
@@ -15,11 +15,35 @@ This file mirrors `CLAUDE.md` so Codex/OpenCode/Claude share one operating contr
 
 ## Required References
 
-- Source of truth: `CLAUDE.md`
-- Rules: `.claude/rules/architecture-invariants.md`, `.claude/rules/agent-workflow.md`, `.claude/rules/security-evidence.md`
-- Skills: `.claude/skills/*/SKILL.md`
-- Subagents: `.claude/agents/*.md`
-- MCP templates: `.claude/mcp/servers.example.json`
+### Single Canonical Directory: `.gsd/`
+
+All shared project intelligence lives in `.gsd/`. Other tool directories are Windows junction
+points that transparently serve the same files — edit only in `.gsd/`.
+
+| Path | Purpose |
+|------|---------|
+| `.gsd/agents/` | Subagent profiles (canonical) |
+| `.gsd/skills/` | Project skills (canonical) |
+| `.gsd/rules/` | Architecture/workflow/security rules (canonical) |
+| `.gsd/hooks/` | Pre-commit and CI hooks (canonical) |
+| `.gsd/mcp/` | MCP server templates (canonical) |
+| `.gsd/PROJECT.md` | Living project document |
+| `.gsd/STATE.md` | Milestone/slice progress |
+| `.gsd/DECISIONS.md` | Append-only decision register |
+| `.gsd/settings.json` | GSD settings |
+
+### Junctions (read-only aliases — never edit here)
+
+| Junction | Points to |
+|----------|----------|
+| `.pi/agents/` | `.gsd/agents/` |
+| `.claude/agents/` | `.gsd/agents/` |
+| `.claude/skills/` | `.gsd/skills/` |
+| `.claude/rules/` | `.gsd/rules/` |
+| `.claude/hooks/` | `.gsd/hooks/` |
+| `.claude/mcp/` | `.gsd/mcp/` |
+
+After a fresh clone run: `bash scripts/setup-junctions.sh`
 
 ## Default Execution Pattern
 
@@ -27,6 +51,18 @@ This file mirrors `CLAUDE.md` so Codex/OpenCode/Claude share one operating contr
 2. `security-auditor` reviews security/compliance impact.
 3. `k8s-specialist` validates deployability where infra is touched.
 4. `multi-agent-coordinator` produces final synthesis and readiness call.
+
+## Skills Catalog
+
+Project skills (invoke with `/skill:name`):
+
+- `/skill:wasm-policy-compile` — Compile and validate policy artifacts
+- `/skill:evidence-bundle-audit` — Audit evidence hash chaining and signatures
+- `/skill:k8s-sidecar-provision` — Kubernetes sidecar deployment validation
+- `/skill:regulatory-map-generator` — Map regulations to enforcement capabilities
+- `/skill:rust-skills` — 179-rule Rust best practices guide
+- `/skill:scan` — Full codebase scan for violations, security gaps, and architecture breaks
+- `/skill:emil-anim` — Tasteful, purposeful web animations (Emil Kowalski / animations.dev philosophy)
 
 ## Verification Gates
 
@@ -40,5 +76,6 @@ This file mirrors `CLAUDE.md` so Codex/OpenCode/Claude share one operating contr
 
 - CI workflow: `.github/workflows/ci-quality-security.yml`
 - Dependency automation: `renovate.json`
+- Local hooks: `.husky/` (canonical), `.claude/hooks/` (helper mirrors)
 
 If `AGENTS.md` and `CLAUDE.md` diverge, update both in the same change.
