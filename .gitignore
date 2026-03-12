@@ -29,6 +29,8 @@ dist/
 .claude/mcp/servers.local.json
 .claude/mcp/*.key
 .claude/mcp/*.pem
+.gsd/settings.local.json
+.pi/settings.local.json
 
 # Secrets and local certs
 *.pem
@@ -57,3 +59,15 @@ data/
 
 # Windows artifacts
 nul
+
+# Junction directories — point to .gsd/ canonical via Windows junctions.
+# Do not track here; files are tracked under .gsd/*.
+# Recreate junctions after a fresh clone using scripts/setup-junctions.sh
+.pi/agents/
+.claude/agents/
+.claude/skills/
+.claude/rules/
+.claude/hooks/
+
+# bg-shell runtime state
+.bg-shell/
