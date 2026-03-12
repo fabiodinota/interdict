@@ -21,3 +21,7 @@
 ## M005: Hardening & Release Readiness
 
 - Slices: 4/4
+
+## M006: Production Safety & Quality
+
+- Slices: 0/3
