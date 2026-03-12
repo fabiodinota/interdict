@@ -1,0 +1,56 @@
+{
+  "mcpServers": {
+    "interdict-filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/fabiodinota/Documents/interdict"
+      ]
+    },
+    "interdict-git": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@cyanheads/git-mcp-server"
+      ],
+      "env": {
+        "MCP_LOG_LEVEL": "error",
+        "MCP_TRANSPORT_TYPE": "stdio"
+      }
+    },
+    "interdict-docker": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-docker"
+      ],
+      "env": {
+        "ALLOWED_CONTAINERS": "kernel:interdict-kernel,control-plane:interdict-control-plane,dashboard:interdict-dashboard",
+        "DEFAULT_SERVICE": "kernel"
+      }
+    },
+    "interdict-kubernetes": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-kubernetes"
+      ]
+    },
+    "interdict-wasmtime": {
+      "command": "node",
+      "args": [
+        "/Users/fabiodinota/Documents/interdict/scripts/mcp/wasmtime_server.mjs"
+      ],
+      "env": {
+        "INTERDICT_ROOT": "/Users/fabiodinota/Documents/interdict"
+      }
+    },
+    "interdict-crypto": {
+      "command": "node",
+      "args": [
+        "/Users/fabiodinota/Documents/interdict/scripts/mcp/crypto_server.mjs"
+      ]
+    }
+  }
+}
