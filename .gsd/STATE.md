@@ -2,7 +2,7 @@
 
 **Active Milestone:** M006 — Production Safety & Quality
 **Active Slice:** S03 — Quality And Developer Experience
-**Phase:** executing
+**Phase:** complete
 **Requirements Status:** 0 active · 4 validated · 0 deferred · 0 out of scope
 
 ## Milestone Registry
@@ -11,13 +11,15 @@
 - ✅ **M003:** Trustworthiness & Hardening
 - ✅ **M004:** Scan Remediation
 - ✅ **M005:** Hardening & Release Readiness
-- 🔄 **M006:** Production Safety & Quality
+- ✅ **M006:** Production Safety & Quality
 
 ## Recent Decisions
-- None recorded
+- Extracted kernel bootstrapping from main.rs (533→132 lines) into bootstrap.rs
+- Added proptest property-based fuzzing for PII patterns (9 properties, 256+ cases)
+- Added cargo-llvm-cov coverage reporting to CI as non-blocking quality signal
 
 ## Blockers
 - None
 
 ## Next Action
-Execute T01: Extract main.rs bootstrapping into bootstrap.rs in slice S03.
+M006 complete. All 3 slices (S01–S03) delivered. Ready for next milestone planning.

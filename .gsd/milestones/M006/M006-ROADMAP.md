@@ -57,7 +57,7 @@ This milestone is complete only when all are true:
   > After this: All 12 Regex::new().unwrap() in default.rs use LazyLock, InjectionDetector::default() is infallible, and regorus.rs semaphore path returns fail-mode verdict instead of panicking. `cargo test --workspace` proves zero panic paths remain.
 - [x] **S02: Security And Dependency Hygiene** `risk:medium` `depends:[S01]`
   > After this: `cargo deny check` passes, rand versions are aligned to 0.9, workspace [lints] are centralized, all Dockerfiles run as non-root with read-only rootfs, and docker-compose has no hardcoded credentials.
-- [ ] **S03: Quality And Developer Experience** `risk:low` `depends:[S01]`
+- [x] **S03: Quality And Developer Experience** `risk:low` `depends:[S01]`
   > After this: main.rs bootstrapping is extracted to bootstrap.rs, proptest fuzzes PII patterns, CI reports coverage, CONTRIBUTING.md and CHANGELOG.md exist, and Windows ring build is documented.
 
 ## Boundary Map
