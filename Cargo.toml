@@ -1,3 +1,11 @@
 [workspace]
 members = ["crates/kernel", "crates/evidence-collector", "crates/interdict-verify"]
 resolver = "2"
+
+[workspace.lints.clippy]
+# Match CI: cargo clippy --workspace --all-targets -- -D warnings
+all = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+
+[workspace.lints.rust]
+unsafe_code = "warn"

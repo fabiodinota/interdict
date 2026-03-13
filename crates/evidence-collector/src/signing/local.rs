@@ -2,7 +2,7 @@ use super::{SigningError, SigningProvider};
 use async_trait::async_trait;
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey};
-use rand::rngs::OsRng;
+use rand_core::OsRng;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::Path;

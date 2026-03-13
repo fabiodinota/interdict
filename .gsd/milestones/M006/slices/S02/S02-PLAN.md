@@ -48,21 +48,21 @@
   - Verify: `cargo deny check` — passes locally
   - Done when: `cargo deny check` exits 0 and CI step is unconditional
 
-- [ ] **T02: Align rand 0.8 to 0.9 in evidence-collector and add workspace lints** `est:30m`
+- [x] **T02: Align rand 0.8 to 0.9 in evidence-collector and add workspace lints** `est:30m`
   - Why: ASSESSMENT §5 notes evidence-collector uses rand 0.8 while kernel uses 0.9, causing duplicate crate in Cargo.lock. Workspace lints centralize clippy/rustc configuration (ASSESSMENT §4 gap: "Clippy lint policy not declared in Cargo.toml — relies purely on CI flag").
   - Files: `crates/evidence-collector/Cargo.toml`, `Cargo.toml` (workspace root), `crates/kernel/Cargo.toml`, `crates/interdict-verify/Cargo.toml`
   - Do: Update `rand` from 0.8 to 0.9 in evidence-collector. Fix any API changes (rand 0.9 renamed `thread_rng()` to `rng()`, `Rng::gen()` to `Rng::random()`). Add `[workspace.lints.clippy]` and `[workspace.lints.rust]` to root Cargo.toml with deny-level warnings. Update each crate's Cargo.toml to inherit via `[lints] workspace = true`.
   - Verify: `cargo clippy --workspace --all-targets -- -D warnings` — clean; `rg 'rand.*0\.8' Cargo.lock` — zero matches
   - Done when: Single rand version in Cargo.lock and workspace lints active across all crates
 
-- [ ] **T03: Harden Dockerfiles with non-root user and read-only rootfs** `est:30m`
+- [x] **T03: Harden Dockerfiles with non-root user and read-only rootfs** `est:30m`
   - Why: MED-012 from security review — containers run as root with writable rootfs, which violates container security best practices and Kubernetes PodSecurityStandards.
   - Files: All Dockerfiles in the repo (kernel, evidence-collector, control-plane, dashboard)
   - Do: In each Dockerfile's final stage: add `RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot` (Alpine) or equivalent. Set `USER nonroot`. Ensure writable dirs (tmp, data) are created and chowned before USER switch. Add `read_only: true` and `tmpfs` mounts to docker-compose service definitions where needed.
   - Verify: `docker compose build` succeeds; `docker inspect <image> --format '{{.Config.User}}'` shows nonroot for each image
   - Done when: All images run as non-root; docker-compose services have read_only and tmpfs where needed
 
-- [ ] **T04: Parameterize default credentials in docker-compose** `est:20m`
+- [x] **T04: Parameterize default credentials in docker-compose** `est:20m`
   - Why: MED-007 from security review — docker-compose.yml contains hardcoded passwords (interdict/interdict noted in ASSESSMENT §3), which is a security risk if deployed without changing defaults.
   - Files: `docker-compose.yml`, `.env.example`
   - Do: Replace all literal passwords/secrets in docker-compose.yml with `${VAR_NAME}` references. Update `.env.example` with all required variables, placeholder values marked `# CHANGE_ME — generate with: openssl rand -base64 32`, and clear generation instructions. Ensure compose fails-fast if required vars are missing.

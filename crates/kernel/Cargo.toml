@@ -5,6 +5,9 @@ edition = "2024"
 license = "LicenseRef-Proprietary"
 publish = false
 
+[lints]
+workspace = true
+
 [dependencies]
 tokio = { version = "1.47", features = ["full"] }
 hyper = { version = "1.7", features = ["http1", "http2", "server", "client"] }

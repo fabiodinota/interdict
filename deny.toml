@@ -89,8 +89,12 @@ deny = [
 ]
 
 # Known transitive duplicates that are not actionable from our workspace.
-# The rand 0.8 → 0.9 split is tracked for resolution in S02/T02.
-skip = []
+# rand 0.8 is a transitive dep via tract-onnx-opl and rand_distr (from tract-onnx 0.22).
+# All workspace crates use rand 0.9 or rand_core 0.6 directly. Will resolve when
+# tract-onnx 0.23+ releases a stable version.
+skip = [
+    { crate = "rand@0.8.5", reason = "transitive via tract-onnx; no stable upgrade path" },
+]
 skip-tree = [
     # windows-sys bumps frequently; transitive deps lag behind
     { crate = "windows-sys@0.52.0", reason = "foundational crate that bumps too frequently for ecosystem alignment" },

@@ -27,3 +27,5 @@
 | D021 | Seed/bootstrap operators receive principal + key-prefix metadata only; no plaintext credential reveal | Eliminates secret leak path | 2026-03-11 |
 | D022 | Dashboard session cookies store exchanged opaque session tokens, not raw API keys | BFF cookie security | 2026-03-11 |
 | D023 | Evidence verification uses two-step bundle fetch plus adjacent-day predecessor window | Avoids ClickHouse partition pruning breaks | 2026-03-11 |
+| D024 | rand_core 0.6 direct dep (not rand 0.9) for crates using ed25519-dalek | rand 0.9 exports rand_core 0.9 traits incompatible with ed25519-dalek 2.x (rand_core 0.6 CryptoRngCore) | 2026-03-12 |
+| D025 | Workspace lints: clippy::all + suspicious at warn, unsafe_code warn | Codifies lint policy previously enforced only by CI -D warnings flag | 2026-03-12 |

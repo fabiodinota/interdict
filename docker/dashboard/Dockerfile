@@ -36,6 +36,9 @@ COPY --from=builder --chown=interdict:interdict /app/.next/standalone ./
 COPY --from=builder --chown=interdict:interdict /app/.next/static ./.next/static
 COPY --from=builder --chown=interdict:interdict /app/public ./public
 
+# Writable cache directory for ISR (read-only rootfs compatibility)
+RUN mkdir -p /app/.next/cache && chown interdict:interdict /app/.next/cache
+
 USER interdict
 
 EXPOSE 3001

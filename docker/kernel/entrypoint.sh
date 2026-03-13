@@ -5,7 +5,8 @@ set -e
 # Kernel Entrypoint
 # ---------------------------------------------------------------------------
 # 1. Set default env values for unset variables (used by envsubst)
-# 2. Generate interdict.toml from template via envsubst
+# 2. Generate interdict.toml from template via envsubst (into /tmp for
+#    read-only rootfs compatibility)
 # 3. Auto-generate CA cert/key on first boot
 # 4. Exec the kernel binary
 # ---------------------------------------------------------------------------
@@ -50,10 +51,11 @@ set -e
 : "${KERNEL_MTLS_CLIENT_CERT:=/certs/kernel-client.pem}"
 : "${KERNEL_MTLS_CLIENT_KEY:=/certs/kernel-client-key.pem}"
 
-# Generate interdict.toml from template if not mounted by user
-if [ ! -f /app/interdict.toml ] || [ "${KERNEL_FORCE_TEMPLATE}" = "true" ]; then
+# Generate interdict.toml from template into /tmp (rootfs may be read-only)
+CONFIG_PATH="/tmp/interdict.toml"
+if [ ! -f "${CONFIG_PATH}" ] || [ "${KERNEL_FORCE_TEMPLATE}" = "true" ]; then
     echo "[entrypoint] Generating interdict.toml from environment variables..."
-    envsubst < /app/interdict.toml.template > /app/interdict.toml
+    envsubst < /app/interdict.toml.template > "${CONFIG_PATH}"
 fi
 
 # Auto-generate CA cert/key if not present (pilot convenience)
@@ -69,4 +71,4 @@ if [ ! -f "${KERNEL_CA_CERT_PATH}" ]; then
 fi
 
 echo "[entrypoint] Starting Interdict kernel..."
-exec /usr/local/bin/interdict-kernel /app/interdict.toml
+exec /usr/local/bin/interdict-kernel "${CONFIG_PATH}"

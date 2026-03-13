@@ -164,7 +164,7 @@ mod tests {
     use crate::proto::EvidenceBundle;
     use ed25519_dalek::{Signer, SigningKey};
     use prost::Message;
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
     use sha2::{Digest, Sha256};
 
     fn make_signed_bundle(signing_key: &SigningKey, key_id: &str) -> EvidenceBundle {
