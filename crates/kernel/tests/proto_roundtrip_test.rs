@@ -56,7 +56,7 @@ fn test_subscribe_response_with_policies_roundtrip() {
             },
         ],
         removed_policy_ids: vec!["old-policy-1".to_string(), "old-policy-2".to_string()],
-        signature: vec![0xDE, 0xAD, 0xBE, 0xEF; 16], // 64 bytes
+        signature: vec![0xDE; 64], // 64 bytes dummy signature
         signing_key_id: "key-rotation-2024".to_string(),
     };
 
