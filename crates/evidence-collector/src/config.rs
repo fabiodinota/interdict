@@ -146,16 +146,23 @@ impl CollectorConfig {
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
 
-    /// SAFETY: These tests mutate environment variables and must run with
-    /// `--test-threads=1` to avoid data races between tests.
+    /// Mutex to serialize tests that mutate environment variables, since
+    /// cargo test runs them in parallel by default.
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
+
+    /// SAFETY: Caller must hold ENV_MUTEX to prevent concurrent env mutation.
     unsafe fn clear_collector_env() {
         unsafe {
             std::env::remove_var("COLLECTOR_GRPC_LISTEN_ADDR");
             std::env::remove_var("CLICKHOUSE_URL");
             std::env::remove_var("CLICKHOUSE_DATABASE");
+            std::env::remove_var("CLICKHOUSE_USER");
+            std::env::remove_var("CLICKHOUSE_PASSWORD");
             std::env::remove_var("COLLECTOR_S3_BUCKET");
             std::env::remove_var("COLLECTOR_S3_REGION");
             std::env::remove_var("COLLECTOR_SIGNING_MODE");
@@ -172,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_from_env_defaults() {
-        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        let _guard = ENV_MUTEX.lock().unwrap();
         unsafe { clear_collector_env() };
 
         let cfg = CollectorConfig::from_env().expect("config from env");
@@ -191,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_from_env_overrides() {
-        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        let _guard = ENV_MUTEX.lock().unwrap();
         unsafe {
             clear_collector_env();
             std::env::set_var("COLLECTOR_GRPC_LISTEN_ADDR", "[::]:50051");
@@ -216,13 +223,12 @@ mod tests {
         assert_eq!(cfg.merkle_window_secs, 1800);
         assert_eq!(cfg.merkle_max_leaves, 500_000);
 
-        // SAFETY: test-threads=1 prevents concurrent env mutation.
         unsafe { clear_collector_env() };
     }
 
     #[test]
     fn test_from_env_signing_mode_file() {
-        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        let _guard = ENV_MUTEX.lock().unwrap();
         unsafe {
             clear_collector_env();
             std::env::set_var("COLLECTOR_SIGNING_MODE", "file");
@@ -235,13 +241,12 @@ mod tests {
             other => panic!("expected SigningMode::File, got {:?}", other),
         }
 
-        // SAFETY: test-threads=1 prevents concurrent env mutation.
         unsafe { clear_collector_env() };
     }
 
     #[test]
     fn test_from_env_signing_mode_file_default_path() {
-        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        let _guard = ENV_MUTEX.lock().unwrap();
         unsafe {
             clear_collector_env();
             std::env::set_var("COLLECTOR_SIGNING_MODE", "file");
@@ -255,29 +260,25 @@ mod tests {
             other => panic!("expected SigningMode::File, got {:?}", other),
         }
 
-        // SAFETY: test-threads=1 prevents concurrent env mutation.
         unsafe { clear_collector_env() };
     }
 
     #[test]
     fn test_from_env_full_text_storage_variants() {
-        // SAFETY: test-threads=1 prevents concurrent env mutation.
+        let _guard = ENV_MUTEX.lock().unwrap();
         unsafe { clear_collector_env() };
 
         for val in &["1", "true", "yes", "TRUE", "Yes", "YES"] {
-            // SAFETY: test-threads=1 prevents concurrent env mutation.
             unsafe { std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", val) };
             let cfg = CollectorConfig::from_env().expect("config from env");
             assert!(cfg.full_text_storage, "expected true for '{}'", val);
         }
         for val in &["0", "false", "no", "anything"] {
-            // SAFETY: test-threads=1 prevents concurrent env mutation.
             unsafe { std::env::set_var("COLLECTOR_FULL_TEXT_STORAGE", val) };
             let cfg = CollectorConfig::from_env().expect("config from env");
             assert!(!cfg.full_text_storage, "expected false for '{}'", val);
         }
 
-        // SAFETY: test-threads=1 prevents concurrent env mutation.
         unsafe { clear_collector_env() };
     }
 }
