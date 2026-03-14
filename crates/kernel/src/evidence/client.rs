@@ -141,3 +141,49 @@ impl EvidenceGrpcClient {
         Ok(EvidenceCollectorServiceClient::new(channel))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_evidence_client_construction() {
+        let client = EvidenceGrpcClient::new("http://127.0.0.1:50051".to_string());
+        assert_eq!(client.collector_addr, "http://127.0.0.1:50051");
+        assert!(client.tls_ca_cert.is_none());
+    }
+
+    #[test]
+    fn test_evidence_client_with_mtls() {
+        let client = EvidenceGrpcClient::with_mtls(
+            "https://collector.internal:50051".to_string(),
+            b"ca-cert".to_vec(),
+            b"client-cert".to_vec(),
+            b"client-key".to_vec(),
+        );
+        assert!(client.tls_ca_cert.is_some());
+        assert!(client.tls_client_cert.is_some());
+        assert!(client.tls_client_key.is_some());
+        assert!(client.build_tls_config().is_some());
+    }
+
+    #[test]
+    fn test_evidence_client_no_mtls_no_tls_config() {
+        let client = EvidenceGrpcClient::new("http://127.0.0.1:50051".to_string());
+        assert!(client.build_tls_config().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_evidence_client_connect_failure() {
+        let mut client = EvidenceGrpcClient::new("http://127.0.0.1:1".to_string());
+        let result = client.connect().await;
+        assert!(result.is_err(), "connecting to invalid address should fail");
+    }
+
+    #[tokio::test]
+    async fn test_evidence_client_submit_batch_failure() {
+        let client = EvidenceGrpcClient::new("http://127.0.0.1:1".to_string());
+        let result = client.submit_batch("test-kernel", 0, vec![1, 2, 3]).await;
+        assert!(result.is_err(), "submitting to invalid address should fail");
+    }
+}

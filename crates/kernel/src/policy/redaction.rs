@@ -28,8 +28,8 @@ pub struct RedactionRule {
 pub struct AppliedRedaction {
     /// Category of the redacted content.
     pub category: String,
-    /// The original text that was matched.
-    pub matched_text: String,
+    /// SHA-256 hash of the matched text (prevents PII from persisting in structs).
+    pub matched_text_hash: String,
     /// The replacement string (e.g., `[REDACTED:SSN]`).
     pub replacement: String,
 }
@@ -114,7 +114,7 @@ impl RedactionEngine {
                 for matched_text in matches {
                     applied_redactions.push(AppliedRedaction {
                         category: rule.category.clone(),
-                        matched_text,
+                        matched_text_hash: crate::policy::verdict::hash_matched_text(&matched_text),
                         replacement: replacement.clone(),
                     });
                 }
@@ -158,7 +158,10 @@ mod tests {
         );
         assert_eq!(result.redactions.len(), 1);
         assert_eq!(result.redactions[0].category, "SSN");
-        assert_eq!(result.redactions[0].matched_text, "123-45-6789");
+        assert_eq!(
+            result.redactions[0].matched_text_hash,
+            crate::policy::verdict::hash_matched_text("123-45-6789")
+        );
         assert_eq!(result.redactions[0].replacement, "[REDACTED:SSN]");
     }
 
@@ -173,7 +176,10 @@ mod tests {
         );
         assert_eq!(result.redactions.len(), 1);
         assert_eq!(result.redactions[0].category, "EMAIL");
-        assert_eq!(result.redactions[0].matched_text, "user@example.com");
+        assert_eq!(
+            result.redactions[0].matched_text_hash,
+            crate::policy::verdict::hash_matched_text("user@example.com")
+        );
     }
 
     #[test]

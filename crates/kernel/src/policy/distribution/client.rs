@@ -54,6 +54,9 @@ pub struct DistributionClient {
     tls_client_key: Option<Vec<u8>>,
     /// Expected TLS server identity when mTLS is enabled.
     tls_server_name: Option<String>,
+    /// PEM-encoded Ed25519 public key for verifying policy signatures.
+    /// None means verification is disabled (with a warning log).
+    policy_signing_public_key: Option<String>,
 }
 
 impl DistributionClient {
@@ -82,7 +85,14 @@ impl DistributionClient {
             tls_client_cert: None,
             tls_client_key: None,
             tls_server_name: None,
+            policy_signing_public_key: None,
         }
+    }
+
+    /// Configure policy signature verification.
+    pub fn with_signing_key(mut self, public_key_pem: String) -> Self {
+        self.policy_signing_public_key = Some(public_key_pem);
+        self
     }
 
     /// Configure mTLS for this distribution client.
@@ -258,6 +268,27 @@ impl DistributionClient {
             removed_count = update.removed_policy_ids.len(),
             "received policy update"
         );
+
+        // Verify signature if signing key is configured
+        if let Some(ref public_key_pem) = self.policy_signing_public_key {
+            if let Err(e) = snapshot::verify_response_signature(&update, public_key_pem) {
+                tracing::error!(
+                    error = %e,
+                    version = update_version,
+                    "policy update signature verification failed, rejecting"
+                );
+                self.send_ack(
+                    update_version,
+                    false,
+                    &format!("signature verification failed: {}", e),
+                )
+                .await;
+                return;
+            }
+            tracing::debug!(version = update_version, "policy signature verified");
+        } else {
+            tracing::warn!("policy signing verification disabled — no public key configured");
+        }
 
         let result = match update_type {
             1 => {

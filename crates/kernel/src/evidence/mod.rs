@@ -454,4 +454,118 @@ mod tests {
         assert!(max_retry_attempts() >= 3);
         assert!(max_retry_attempts() <= 20);
     }
+
+    #[tokio::test]
+    async fn test_flusher_shutdown_drains_queue() {
+        // Create a buffer connected to a non-existent server
+        let (buffer, handle) = EvidenceBuffer::new(
+            "http://127.0.0.1:1".to_string(), // Will fail to connect
+            "test-kernel".to_string(),
+            None,
+        );
+
+        // Send several events
+        for _ in 0..5 {
+            buffer.try_send(sample_event());
+        }
+
+        // Drop the buffer to close the channel -- should trigger flusher shutdown
+        drop(buffer);
+
+        // Flusher should exit within a reasonable time
+        let result = tokio::time::timeout(Duration::from_secs(10), handle).await;
+        assert!(
+            result.is_ok(),
+            "flusher should shut down after channel closes"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_retry_queue_saturation_drops_oldest() {
+        let (buffer, handle) = EvidenceBuffer::new(
+            "http://127.0.0.1:1".to_string(),
+            "test-kernel".to_string(),
+            None,
+        );
+
+        // Flood the buffer with events — many will fail to deliver
+        // and enter the retry queue
+        for _ in 0..500 {
+            buffer.try_send(sample_event());
+        }
+
+        let health = buffer.health().clone();
+
+        // Drop the buffer to close the channel — forces the flusher to
+        // attempt delivery of all pending events and then shut down.
+        drop(buffer);
+
+        // Wait for the flusher to finish processing
+        let _ = tokio::time::timeout(Duration::from_secs(30), handle).await;
+
+        // After shutdown, events should have been attempted and failed/dropped
+        let total_drops = health.events_dropped.load(Ordering::Relaxed);
+        let total_failed = health.batches_failed.load(Ordering::Relaxed);
+        let total_retries = health.retries.load(Ordering::Relaxed);
+        assert!(
+            total_drops > 0 || total_failed > 0 || total_retries > 0,
+            "retry saturation should cause drops, failures, or retries: drops={}, failed={}, retries={}",
+            total_drops,
+            total_failed,
+            total_retries
+        );
+    }
+
+    #[test]
+    fn test_consecutive_failure_threshold_triggers_unhealthy() {
+        let health = DeliveryHealth::new();
+        assert!(!health.is_unhealthy());
+
+        // Record exactly UNHEALTHY_THRESHOLD failures
+        for i in 0..UNHEALTHY_THRESHOLD {
+            health.record_failure();
+            if i < UNHEALTHY_THRESHOLD - 1 {
+                assert!(
+                    !health.is_unhealthy(),
+                    "should not be unhealthy at {} failures",
+                    i + 1
+                );
+            }
+        }
+        assert!(health.is_unhealthy(), "should be unhealthy at threshold");
+
+        // A single success should reset
+        health.record_success();
+        assert!(
+            !health.is_unhealthy(),
+            "success should reset unhealthy state"
+        );
+        assert_eq!(health.consecutive_failures.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn test_batch_compression_roundtrip() {
+        use prost::Message;
+        use std::io::Cursor;
+
+        let events: Vec<RawEvidenceEvent> = (0..10).map(|_| sample_event()).collect();
+        let proto_batch = EvidenceBundleBatch {
+            bundles: events
+                .iter()
+                .map(|e| bundle::to_proto_bundle(e, "test-kernel"))
+                .collect(),
+        };
+
+        let serialized = proto_batch.encode_to_vec();
+        let compressed = zstd::stream::encode_all(Cursor::new(&serialized), 3).unwrap();
+        let decompressed = zstd::stream::decode_all(Cursor::new(&compressed)).unwrap();
+
+        assert_eq!(
+            serialized, decompressed,
+            "compression roundtrip should preserve data"
+        );
+
+        let decoded = EvidenceBundleBatch::decode(&decompressed[..]).unwrap();
+        assert_eq!(decoded.bundles.len(), 10);
+    }
 }

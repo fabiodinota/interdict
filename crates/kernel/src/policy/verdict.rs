@@ -5,6 +5,12 @@
 //! Full verdict traces are generated for every request for audit purposes.
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+
+/// Hash matched text with SHA-256 to prevent PII from persisting in verdict structs.
+pub fn hash_matched_text(text: &str) -> String {
+    format!("{:x}", Sha256::digest(text.as_bytes()))
+}
 
 /// Enforcement action that a policy can return.
 ///
@@ -30,8 +36,8 @@ pub struct Redaction {
     pub category: String,
     /// Regex pattern that matched the content.
     pub pattern: String,
-    /// The actual text that was matched.
-    pub matched_text: String,
+    /// SHA-256 hash of the matched text (prevents PII from persisting in structs).
+    pub matched_text_hash: String,
     /// The replacement string (e.g., "[REDACTED:SSN]").
     pub replacement: String,
 }
@@ -162,7 +168,7 @@ mod tests {
         Redaction {
             category: category.to_string(),
             pattern: format!(r"\b{}\b", category),
-            matched_text: format!("matched-{}", category),
+            matched_text_hash: hash_matched_text(&format!("matched-{}", category)),
             replacement: format!("[REDACTED:{}]", category),
         }
     }
@@ -262,5 +268,25 @@ mod tests {
         let json = serde_json::to_string(&merged).unwrap();
         let deserialized: MergedVerdict = serde_json::from_str(&json).unwrap();
         assert_eq!(merged, deserialized);
+    }
+
+    #[test]
+    fn test_redaction_serialization_contains_no_plaintext_pii() {
+        let sensitive = "123-45-6789";
+        let redaction = Redaction {
+            category: "SSN".to_string(),
+            pattern: r"\d{3}-\d{2}-\d{4}".to_string(),
+            matched_text_hash: hash_matched_text(sensitive),
+            replacement: "[REDACTED:SSN]".to_string(),
+        };
+        let json = serde_json::to_string(&redaction).unwrap();
+        assert!(
+            !json.contains("123-45-6789"),
+            "JSON must not contain plaintext PII"
+        );
+        assert!(
+            json.contains("matched_text_hash"),
+            "JSON should contain the hash field"
+        );
     }
 }

@@ -94,6 +94,12 @@ pub struct DistributionConfig {
     /// Expected TLS server identity for policy distribution mTLS.
     #[serde(default)]
     pub tls_server_name: Option<String>,
+
+    /// Path to Ed25519 public key (PEM) for verifying policy update signatures.
+    /// When set, all policy updates must include a valid signature.
+    /// When None, signature verification is skipped (with a warning).
+    #[serde(default)]
+    pub policy_signing_public_key_path: Option<String>,
 }
 
 impl Default for DistributionConfig {
@@ -113,6 +119,7 @@ impl Default for DistributionConfig {
             mtls_client_cert_path: std::env::var("KERNEL_MTLS_CLIENT_CERT").ok(),
             mtls_client_key_path: std::env::var("KERNEL_MTLS_CLIENT_KEY").ok(),
             tls_server_name: std::env::var("KERNEL_DISTRIBUTION_TLS_SERVER_NAME").ok(),
+            policy_signing_public_key_path: None,
         }
     }
 }

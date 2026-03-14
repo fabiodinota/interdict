@@ -427,6 +427,8 @@ async fn test_delta_add_policy() {
             0,
         )],
         removed_policy_ids: vec![],
+        signature: vec![],
+        signing_key_id: String::new(),
     };
 
     let updated = apply_delta(&initial, &update, &wasm, &hconfig)
@@ -465,6 +467,8 @@ async fn test_delta_remove_policy() {
         r#type: 2,
         policies: vec![],
         removed_policy_ids: vec!["pol1".to_string()],
+        signature: vec![],
+        signing_key_id: String::new(),
     };
 
     let updated = apply_delta(&initial, &update, &wasm, &hconfig)
@@ -494,6 +498,8 @@ async fn test_delta_version_gap_detection() {
         r#type: 2,
         policies: vec![],
         removed_policy_ids: vec![],
+        signature: vec![],
+        signing_key_id: String::new(),
     };
 
     let result = apply_delta(&initial, &update, &wasm, &hconfig).await;

@@ -77,8 +77,8 @@ impl WasmEngine {
     /// The bytes must have been produced by `Module::serialize` using the
     /// same engine configuration. Deserialization of untrusted bytes could
     /// lead to arbitrary code execution.
-    #[allow(unsafe_code)]
-    pub unsafe fn deserialize_module(
+    #[allow(unsafe_code, dead_code)]
+    pub(crate) unsafe fn deserialize_module(
         &self,
         compiled_bytes: &[u8],
     ) -> anyhow::Result<wasmtime::Module> {
@@ -86,6 +86,42 @@ impl WasmEngine {
         // engine version and configuration. Deserializing untrusted bytes is unsound;
         // see the `# Safety` section on the enclosing `unsafe fn`.
         Ok(unsafe { wasmtime::Module::deserialize(&self.engine, compiled_bytes) }?)
+    }
+
+    /// Deserialize a pre-compiled Wasm module after verifying its SHA-256 hash.
+    ///
+    /// This is the safe entry point for loading pre-compiled modules. It computes
+    /// the SHA-256 hash of the input bytes and compares it against the expected hash
+    /// before calling the underlying unsafe deserialization.
+    ///
+    /// # Arguments
+    /// * `compiled_bytes` - Pre-compiled module bytes from `Module::serialize`
+    /// * `expected_hash` - Expected SHA-256 hex digest of `compiled_bytes`
+    ///
+    /// # Errors
+    /// Returns error if the hash does not match or deserialization fails.
+    #[allow(dead_code)]
+    pub(crate) fn deserialize_verified_module(
+        &self,
+        compiled_bytes: &[u8],
+        expected_hash: &str,
+    ) -> anyhow::Result<wasmtime::Module> {
+        use sha2::{Digest, Sha256};
+        let actual_hash = format!("{:x}", Sha256::digest(compiled_bytes));
+        if actual_hash != expected_hash {
+            anyhow::bail!(
+                "wasm module hash mismatch: expected {}, got {}",
+                expected_hash,
+                actual_hash
+            );
+        }
+        // SAFETY: hash verification confirms bytes are the expected pre-compiled module.
+        // The caller is responsible for ensuring the bytes were originally produced by
+        // Module::serialize with the same engine configuration.
+        #[allow(unsafe_code)]
+        unsafe {
+            self.deserialize_module(compiled_bytes)
+        }
     }
 }
 
@@ -170,6 +206,51 @@ mod tests {
             instance.is_ok(),
             "Instance should create within pooling allocator: {:?}",
             instance.err()
+        );
+    }
+
+    #[test]
+    fn test_deserialize_verified_module_correct_hash() {
+        let config = PolicyEngineConfig::default();
+        let wasm = WasmEngine::new(&config).unwrap();
+
+        // Compile a minimal module, serialize it, then verify deserialization with correct hash
+        let wat = "(module)";
+        let wasm_bytes = wat::parse_str(wat).unwrap();
+        let module = wasm.load_module(&wasm_bytes).unwrap();
+        let serialized = module.serialize().unwrap();
+
+        // Compute the correct hash
+        use sha2::{Digest, Sha256};
+        let expected_hash = format!("{:x}", Sha256::digest(&serialized));
+
+        let result = wasm.deserialize_verified_module(&serialized, &expected_hash);
+        assert!(
+            result.is_ok(),
+            "correct hash should succeed: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_deserialize_verified_module_wrong_hash() {
+        let config = PolicyEngineConfig::default();
+        let wasm = WasmEngine::new(&config).unwrap();
+
+        // Compile a minimal module and serialize it
+        let wat = "(module)";
+        let wasm_bytes = wat::parse_str(wat).unwrap();
+        let module = wasm.load_module(&wasm_bytes).unwrap();
+        let serialized = module.serialize().unwrap();
+
+        let wrong_hash = "0000000000000000000000000000000000000000000000000000000000000000";
+        let result = wasm.deserialize_verified_module(&serialized, wrong_hash);
+        assert!(result.is_err(), "wrong hash should fail");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("hash mismatch"),
+            "error should mention hash mismatch: {}",
+            err_msg
         );
     }
 }

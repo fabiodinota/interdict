@@ -39,6 +39,12 @@ message SubscribeResponse {
   // Policy IDs removed in this update (delta only).
   repeated string removed_policy_ids = 4;
 
+  // Ed25519 signature over canonical serialization of policy entries.
+  // Empty when signing is not configured on the control plane.
+  bytes signature = 10;
+  // Identifier of the signing key used (for key rotation support).
+  string signing_key_id = 11;
+
   enum UpdateType {
     UPDATE_TYPE_UNSPECIFIED = 0;
     // Full replacement of all policies.

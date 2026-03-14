@@ -35,7 +35,7 @@ if $run_control_plane; then
   (cd control-plane && bun run typecheck)
 
   echo "[pre-commit] control-plane lint"
-  (cd control-plane && bun run lint 2>/dev/null || true)
+  (cd control-plane && bun run lint 2>/dev/null) || true
 fi
 
 if $run_dashboard; then
