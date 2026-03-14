@@ -1,0 +1,33 @@
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 2%
+    patch:
+      default:
+        target: 80%
+
+flags:
+  rust:
+    paths:
+      - crates/
+    carryforward: true
+  dashboard:
+    paths:
+      - dashboard/src/
+    carryforward: true
+  control-plane:
+    paths:
+      - control-plane/src/
+    carryforward: true
+
+ignore:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/tests/**"
+  - "**/benches/**"
+  - "crates/*/src/main.rs"

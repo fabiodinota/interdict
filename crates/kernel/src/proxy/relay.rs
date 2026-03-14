@@ -527,4 +527,88 @@ mod tests {
         assert_eq!(bytes, data_bytes.len() as u64);
         assert_eq!(output, data_bytes);
     }
+
+    #[tokio::test]
+    async fn test_inspecting_relay_inbound_allow() {
+        let inspector = make_inspector_with_patterns(vec![]);
+
+        let input_data = b"Hello world, this is safe response content";
+        let (mut reader, mut writer) = duplex(1024);
+        tokio::io::AsyncWriteExt::write_all(&mut writer, input_data)
+            .await
+            .unwrap();
+        drop(writer);
+
+        let mut output = Vec::new();
+        let bytes = inspecting_relay_inbound(&mut reader, &mut output, inspector)
+            .await
+            .unwrap();
+
+        assert_eq!(bytes, input_data.len() as u64);
+        assert_eq!(&output, input_data);
+    }
+
+    #[tokio::test]
+    async fn test_inspecting_relay_inbound_redact() {
+        use crate::policy::patterns::PatternRule;
+
+        let inspector = make_inspector_with_patterns(vec![PatternRule {
+            category: "EMAIL".to_string(),
+            pattern: regex::Regex::new(r"[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}").unwrap(),
+            validator: None,
+            base_confidence: 0.9,
+            context_boosters: vec![],
+        }]);
+
+        let input_data = b"Response contains user@example.com in it";
+        let (mut reader, mut writer) = duplex(1024);
+        tokio::io::AsyncWriteExt::write_all(&mut writer, input_data)
+            .await
+            .unwrap();
+        drop(writer);
+
+        let mut output = Vec::new();
+        let result = inspecting_relay_inbound(&mut reader, &mut output, inspector).await;
+
+        assert!(
+            result.is_ok(),
+            "email should be redacted not blocked: {:?}",
+            result.err()
+        );
+        let output_str = String::from_utf8_lossy(&output);
+        assert!(
+            !output_str.contains("user@example.com"),
+            "email should be redacted in output: {output_str}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_inspecting_relay_inbound_block() {
+        use crate::policy::patterns::PatternRule;
+
+        let inspector = make_inspector_with_patterns(vec![PatternRule {
+            category: "AWS_KEY".to_string(),
+            pattern: regex::Regex::new(r"AKIA[0-9A-Z]{16}").unwrap(),
+            validator: None,
+            base_confidence: 1.0,
+            context_boosters: vec![],
+        }]);
+
+        let input_data = b"Key: AKIAIOSFODNN7EXAMPLE";
+        let (mut reader, mut writer) = duplex(1024);
+        tokio::io::AsyncWriteExt::write_all(&mut writer, input_data)
+            .await
+            .unwrap();
+        drop(writer);
+
+        let mut output = Vec::new();
+        let result = inspecting_relay_inbound(&mut reader, &mut output, inspector).await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("blocked"),
+            "error should mention blocked: {err}"
+        );
+    }
 }

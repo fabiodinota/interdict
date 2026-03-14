@@ -86,3 +86,21 @@ async fn test_500_concurrent_relay_tasks_no_panics() {
         );
     }
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_10000_sequential_relay_requests_no_growth() {
+    let inspector = make_stress_inspector();
+
+    for i in 0..10_000 {
+        let data = format!("Request {} safe content. ", i);
+        let (reader, mut write_end) = duplex(4096);
+        tokio::io::AsyncWriteExt::write_all(&mut write_end, data.as_bytes())
+            .await
+            .unwrap();
+        drop(write_end);
+
+        let mut output = Vec::new();
+        let result = inspecting_relay_outbound(reader, &mut output, inspector.clone()).await;
+        assert!(result.is_ok(), "request {} failed: {:?}", i, result.err());
+    }
+}

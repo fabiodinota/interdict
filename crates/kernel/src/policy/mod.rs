@@ -898,4 +898,225 @@ mod tests {
         assert!(policy_ids.contains(&"policy-3-allow"));
         assert!(policy_ids.contains(&"builtin:vendor_allowlist"));
     }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_pipeline_empty_policy_set_allows() {
+        // No Rego policies configured — only the allowlist verdict is produced.
+        // With no Rego policies returning "no match", the pipeline treats this as
+        // an explicit L1 verdict and returns Allow (from the allowlist alone).
+        let engine = regorus::Engine::new();
+        let classifier = Arc::new(Classifier::stub(test_labels(), "allow".to_string()));
+        let policies: Vec<PolicyConfig> = vec![];
+
+        let pipeline = make_pipeline(&engine, policies, classifier, &["api.openai.com"]);
+        let ctx = make_ctx("api.openai.com");
+        let result = pipeline.evaluate(&ctx).await.unwrap();
+
+        assert_eq!(result.merged_verdict.final_action, VerdictAction::Allow);
+        assert!(result.merged_verdict.redactions.is_empty());
+        // Only allowlist verdict — no Rego policies evaluated
+        assert_eq!(result.trace.layer1_results.len(), 1);
+        assert_eq!(
+            result.trace.layer1_results[0].policy_id,
+            "builtin:vendor_allowlist"
+        );
+        // L2 and L3 should not have been invoked
+        assert!(result.trace.layer2_classification.is_none());
+        assert!(result.trace.layer3_decision.is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_pipeline_disabled_policy_skipped() {
+        // A policy with enabled=false should not appear in evaluation results.
+        let engine = create_block_engine();
+        let classifier = Arc::new(Classifier::stub(test_labels(), "allow".to_string()));
+        let policies = vec![PolicyConfig {
+            id: "disabled-block".to_string(),
+            name: "Disabled Block Policy".to_string(),
+            rego_source: Some("policies/block.rego".to_string()),
+            entrypoint: None,
+            fail_mode: FailMode::FailClosed,
+            block_response_detail: config::BlockResponseDetail::Opaque,
+            redaction_direction: config::RedactionDirection::Both,
+            background_l2: false,
+            enabled: false, // disabled
+        }];
+
+        let pipeline = make_pipeline(&engine, policies, classifier, &["evil-ai.com"]);
+        let ctx = make_ctx("evil-ai.com");
+        let result = pipeline.evaluate(&ctx).await.unwrap();
+
+        // The disabled policy should not produce a verdict.
+        // Only the allowlist verdict should be present.
+        let rego_verdicts: Vec<&PolicyVerdict> = result
+            .trace
+            .layer1_results
+            .iter()
+            .filter(|v| v.policy_id == "disabled-block")
+            .collect();
+        assert!(
+            rego_verdicts.is_empty(),
+            "disabled policy should not appear in results"
+        );
+
+        // With the evil vendor on the allowlist and the block policy disabled,
+        // the result should be Allow (only the allowlist verdict matters).
+        assert_eq!(result.merged_verdict.final_action, VerdictAction::Allow);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_pipeline_error_plus_allow_merges_to_block() {
+        // One policy errors (fail-closed -> Block) and another succeeds with Allow.
+        // Most-restrictive-wins: Block should win.
+        let mut engine = regorus::Engine::new();
+        engine
+            .add_policy(
+                "good.rego".to_string(),
+                r#"
+                package interdict.policy.good
+                import rego.v1
+
+                verdict := {"action": "allow", "reason": "explicitly_allowed"}
+                "#
+                .to_string(),
+            )
+            .unwrap();
+
+        let classifier = Arc::new(Classifier::stub(test_labels(), "allow".to_string()));
+        let policies = vec![
+            PolicyConfig {
+                id: "error-policy".to_string(),
+                name: "Error Policy".to_string(),
+                rego_source: Some("policies/nonexistent.rego".to_string()),
+                entrypoint: Some("data.interdict.policy.does_not_exist.verdict".to_string()),
+                fail_mode: FailMode::FailClosed,
+                block_response_detail: config::BlockResponseDetail::Opaque,
+                redaction_direction: config::RedactionDirection::Both,
+                background_l2: false,
+                enabled: true,
+            },
+            PolicyConfig {
+                id: "good-policy".to_string(),
+                name: "Good Policy".to_string(),
+                rego_source: Some("policies/good.rego".to_string()),
+                entrypoint: None,
+                fail_mode: FailMode::FailClosed,
+                block_response_detail: config::BlockResponseDetail::Opaque,
+                redaction_direction: config::RedactionDirection::Both,
+                background_l2: false,
+                enabled: true,
+            },
+        ];
+
+        let pipeline = make_pipeline(&engine, policies, classifier, &["api.openai.com"]);
+        let ctx = make_ctx("api.openai.com");
+        let result = pipeline.evaluate(&ctx).await.unwrap();
+
+        // The erroring policy should produce Block (fail-closed).
+        // The good policy should produce Allow.
+        // Most-restrictive-wins: Block should be the final action.
+        assert_eq!(result.merged_verdict.final_action, VerdictAction::Block);
+
+        // Verify both policy IDs appear in the trace
+        let policy_ids: Vec<&str> = result
+            .trace
+            .layer1_results
+            .iter()
+            .map(|v| v.policy_id.as_str())
+            .collect();
+        assert!(policy_ids.contains(&"error-policy"));
+        assert!(policy_ids.contains(&"good-policy"));
+
+        // The error-policy should have Block action
+        let error_v = result
+            .trace
+            .layer1_results
+            .iter()
+            .find(|v| v.policy_id == "error-policy")
+            .unwrap();
+        assert_eq!(error_v.action, VerdictAction::Block);
+
+        // The good-policy should have Allow action
+        let good_v = result
+            .trace
+            .layer1_results
+            .iter()
+            .find(|v| v.policy_id == "good-policy")
+            .unwrap();
+        assert_eq!(good_v.action, VerdictAction::Allow);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_pipeline_with_live_set_swaps_policies() {
+        // Create a pipeline with an allow-all policy, then swap to a block policy
+        // via with_live_set and verify the new evaluation uses the block policy.
+        let allow_engine = create_allow_engine();
+        let classifier = Arc::new(Classifier::stub(test_labels(), "allow".to_string()));
+        let allow_policies = vec![PolicyConfig {
+            id: "allow-original".to_string(),
+            name: "Original Allow".to_string(),
+            rego_source: Some("policies/allow_all.rego".to_string()),
+            entrypoint: None,
+            fail_mode: FailMode::FailClosed,
+            block_response_detail: config::BlockResponseDetail::Opaque,
+            redaction_direction: config::RedactionDirection::Both,
+            background_l2: false,
+            enabled: true,
+        }];
+
+        let pipeline = make_pipeline(&allow_engine, allow_policies, classifier, &["evil-ai.com"]);
+
+        // Verify baseline: allow-all should produce Allow
+        let ctx = make_ctx("evil-ai.com");
+        let result = pipeline.evaluate(&ctx).await.unwrap();
+        assert_eq!(result.merged_verdict.final_action, VerdictAction::Allow);
+
+        // Build a new PolicySet with a block policy
+        let block_engine = create_block_engine();
+        let block_pool = Arc::new(RegorusPool::new(&block_engine, 2));
+        let block_wasm = Arc::new(
+            WasmEngine::new(&crate::config::PolicyEngineConfig::default())
+                .expect("WasmEngine should create"),
+        );
+        let block_policies = vec![PolicyConfig {
+            id: "block-swapped".to_string(),
+            name: "Swapped Block".to_string(),
+            rego_source: Some("policies/block.rego".to_string()),
+            entrypoint: None,
+            fail_mode: FailMode::FailClosed,
+            block_response_detail: config::BlockResponseDetail::Opaque,
+            redaction_direction: config::RedactionDirection::Both,
+            background_l2: false,
+            enabled: true,
+        }];
+
+        let live_set = hot_reload::PolicySet {
+            regorus_pool: block_pool,
+            wasm_engine: block_wasm,
+            hierarchy: crate::policy::hierarchy::HierarchyResolver::new(vec![]),
+            policies: block_policies,
+            version: 2,
+            content_hashes: std::collections::HashMap::new(),
+        };
+
+        // Swap to the new policy set
+        let swapped_pipeline = pipeline.with_live_set(&live_set);
+
+        // Evaluate with the swapped pipeline — should now block evil-ai.com
+        let result2 = swapped_pipeline.evaluate(&ctx).await.unwrap();
+        assert_eq!(result2.merged_verdict.final_action, VerdictAction::Block);
+
+        // Verify the new policy ID appears in the trace
+        let policy_ids: Vec<&str> = result2
+            .trace
+            .layer1_results
+            .iter()
+            .map(|v| v.policy_id.as_str())
+            .collect();
+        assert!(policy_ids.contains(&"block-swapped"));
+        assert!(
+            !policy_ids.contains(&"allow-original"),
+            "old policy should not appear after swap"
+        );
+    }
 }

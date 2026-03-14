@@ -274,4 +274,125 @@ mod tests {
         let json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
         assert_eq!(json["error"], "service_overloaded");
     }
+
+    #[tokio::test]
+    async fn test_policy_blocked_response_opaque() {
+        use crate::policy::config::BlockResponseDetail;
+
+        let resp = policy_blocked_response(
+            "pol-42",
+            Some("secret detected"),
+            BlockResponseDetail::Opaque,
+        );
+        assert_eq!(resp.status(), http::StatusCode::FORBIDDEN);
+        assert_eq!(
+            resp.headers().get("content-type").unwrap(),
+            "application/json"
+        );
+
+        let body_bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+        assert_eq!(json["error"], "policy_blocked");
+        // Opaque mode must NOT include policy_id or reason
+        assert!(
+            json.get("policy_id").is_none(),
+            "opaque should omit policy_id"
+        );
+        assert!(json.get("reason").is_none(), "opaque should omit reason");
+        assert_eq!(json["message"], "Request blocked by policy");
+    }
+
+    #[tokio::test]
+    async fn test_policy_blocked_response_detailed() {
+        use crate::policy::config::BlockResponseDetail;
+
+        let resp = policy_blocked_response(
+            "pol-42",
+            Some("secret detected"),
+            BlockResponseDetail::Detailed,
+        );
+        assert_eq!(resp.status(), http::StatusCode::FORBIDDEN);
+
+        let body_bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+        assert_eq!(json["error"], "policy_blocked");
+        assert_eq!(json["policy_id"], "pol-42");
+        assert_eq!(json["reason"], "secret detected");
+        // Message should contain both the policy id and reason
+        let msg = json["message"].as_str().unwrap();
+        assert!(msg.contains("pol-42"), "message should mention policy id");
+        assert!(
+            msg.contains("secret detected"),
+            "message should mention reason"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_policy_blocked_response_detailed_no_reason() {
+        use crate::policy::config::BlockResponseDetail;
+
+        let resp = policy_blocked_response("pol-99", None, BlockResponseDetail::Detailed);
+        let body_bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+        assert_eq!(json["policy_id"], "pol-99");
+        assert!(
+            json.get("reason").is_none(),
+            "no reason was provided so it should be absent"
+        );
+    }
+
+    #[test]
+    fn test_proxy_error_config_display() {
+        let err = ProxyError::Config("bad toml".to_string());
+        let display = format!("{}", err);
+        assert!(display.contains("config error"), "display: {display}");
+        assert!(display.contains("bad toml"), "display: {display}");
+    }
+
+    #[test]
+    fn test_proxy_error_tls_display() {
+        // Create a TLS error via the From<rustls::Error> impl
+        let tls_err = rustls::Error::General("test tls failure".to_string());
+        let err = ProxyError::Tls(tls_err);
+        let display = format!("{}", err);
+        assert!(display.contains("TLS error"), "display: {display}");
+        assert!(display.contains("test tls failure"), "display: {display}");
+    }
+
+    #[test]
+    fn test_proxy_error_display_all_variants() {
+        // MissingAuthority
+        let e = ProxyError::MissingAuthority;
+        assert_eq!(format!("{e}"), "missing authority in CONNECT request");
+
+        // VendorBlocked
+        let e = ProxyError::VendorBlocked("evil.ai".to_string());
+        assert!(format!("{e}").contains("evil.ai"));
+
+        // BackpressureFull
+        let e = ProxyError::BackpressureFull;
+        assert_eq!(format!("{e}"), "request queue full");
+
+        // PoolExhausted
+        let e = ProxyError::PoolExhausted("openai.com".to_string());
+        let d = format!("{e}");
+        assert!(d.contains("connection pool exhausted"));
+        assert!(d.contains("openai.com"));
+
+        // StreamTimeout
+        let e = ProxyError::StreamTimeout(5000);
+        assert!(format!("{e}").contains("5000"));
+
+        // PolicyEvaluation
+        let e = ProxyError::PolicyEvaluation("rego panic".to_string());
+        assert!(format!("{e}").contains("rego panic"));
+
+        // PolicyBlocked
+        let e = ProxyError::PolicyBlocked {
+            policy_id: "p1".to_string(),
+            reason: Some("bad".to_string()),
+            detail: crate::policy::config::BlockResponseDetail::Opaque,
+        };
+        assert!(format!("{e}").contains("p1"));
+    }
 }

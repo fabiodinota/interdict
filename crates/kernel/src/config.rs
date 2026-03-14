@@ -684,6 +684,193 @@ mtls_client_key_path = "{}"
     }
 
     #[test]
+    fn test_load_nonexistent_config_file() {
+        let result = load("/tmp/definitely-does-not-exist-interdict.toml");
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("failed to read config file")
+        );
+    }
+
+    #[test]
+    fn test_load_invalid_toml_syntax() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad.toml");
+        std::fs::write(&path, "this is not [valid toml {{{}").unwrap();
+        let result = load(&path.display().to_string());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("failed to parse config file")
+        );
+    }
+
+    #[test]
+    fn test_validate_empty_listen_addr() {
+        let dir = tempfile::tempdir().unwrap();
+        let ca_cert = dir.path().join("ca.crt");
+        let ca_key = dir.path().join("ca.key");
+        std::fs::write(&ca_cert, "test").unwrap();
+        std::fs::write(&ca_key, "test").unwrap();
+        let to_toml_path = |p: &std::path::Path| p.display().to_string().replace('\\', "/");
+        let toml_str = format!(
+            r#"
+[proxy]
+listen_addr = ""
+[tls]
+ca_cert_path = "{}"
+ca_key_path = "{}"
+[pool]
+[allowlist]
+vendors = []
+[logging]
+"#,
+            to_toml_path(&ca_cert),
+            to_toml_path(&ca_key)
+        );
+        let config: Config = toml::from_str(&toml_str).unwrap();
+        let result = validate(&config);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("listen_addr must not be empty")
+        );
+    }
+
+    #[test]
+    fn test_validate_missing_ca_cert_file() {
+        let toml_str = r#"
+[proxy]
+listen_addr = "0.0.0.0:8443"
+[tls]
+ca_cert_path = "/tmp/nonexistent-ca.crt"
+ca_key_path = "/tmp/nonexistent-ca.key"
+[pool]
+[allowlist]
+vendors = []
+[logging]
+"#;
+        let config: Config = toml::from_str(toml_str).unwrap();
+        let result = validate(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
+    }
+
+    #[test]
+    fn test_validate_missing_ca_key_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let ca_cert = dir.path().join("ca.crt");
+        std::fs::write(&ca_cert, "test").unwrap();
+        let to_toml_path = |p: &std::path::Path| p.display().to_string().replace('\\', "/");
+        let toml_str = format!(
+            r#"
+[proxy]
+listen_addr = "0.0.0.0:8443"
+[tls]
+ca_cert_path = "{}"
+ca_key_path = "/tmp/nonexistent-ca.key"
+[pool]
+[allowlist]
+vendors = []
+[logging]
+"#,
+            to_toml_path(&ca_cert)
+        );
+        let config: Config = toml::from_str(&toml_str).unwrap();
+        let result = validate(&config);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("CA key file not found")
+        );
+    }
+
+    #[test]
+    fn test_missing_proxy_section_parse_error() {
+        let toml_str = r#"
+[tls]
+ca_cert_path = "/tmp/ca.crt"
+ca_key_path = "/tmp/ca.key"
+[pool]
+[allowlist]
+vendors = []
+[logging]
+"#;
+        let result: Result<Config, _> = toml::from_str(toml_str);
+        assert!(result.is_err(), "missing [proxy] should fail to parse");
+    }
+
+    #[test]
+    fn test_zero_pool_size_still_parses() {
+        let dir = tempfile::tempdir().unwrap();
+        let ca_cert = dir.path().join("ca.crt");
+        let ca_key = dir.path().join("ca.key");
+        std::fs::write(&ca_cert, "test").unwrap();
+        std::fs::write(&ca_key, "test").unwrap();
+        let to_toml_path = |p: &std::path::Path| p.display().to_string().replace('\\', "/");
+        let toml_str = format!(
+            r#"
+[proxy]
+listen_addr = "0.0.0.0:8443"
+[tls]
+ca_cert_path = "{}"
+ca_key_path = "{}"
+[pool]
+max_connections_per_vendor = 0
+max_streams_per_connection = 0
+[allowlist]
+vendors = []
+[logging]
+"#,
+            to_toml_path(&ca_cert),
+            to_toml_path(&ca_key)
+        );
+        let config: Config = toml::from_str(&toml_str).unwrap();
+        assert_eq!(config.pool.max_connections_per_vendor, 0);
+        assert_eq!(config.pool.max_streams_per_connection, 0);
+    }
+
+    #[test]
+    fn test_policy_engine_zero_values_parse() {
+        let dir = tempfile::tempdir().unwrap();
+        let ca_cert = dir.path().join("ca.crt");
+        let ca_key = dir.path().join("ca.key");
+        std::fs::write(&ca_cert, "test").unwrap();
+        std::fs::write(&ca_key, "test").unwrap();
+        let to_toml_path = |p: &std::path::Path| p.display().to_string().replace('\\', "/");
+        let toml_str = format!(
+            r#"
+[proxy]
+listen_addr = "0.0.0.0:8443"
+[tls]
+ca_cert_path = "{}"
+ca_key_path = "{}"
+[pool]
+[allowlist]
+vendors = []
+[logging]
+[policy]
+regorus_pool_size = 0
+wasm_max_instances = 0
+"#,
+            to_toml_path(&ca_cert),
+            to_toml_path(&ca_key)
+        );
+        let config: Config = toml::from_str(&toml_str).unwrap();
+        assert_eq!(config.policy.regorus_pool_size, 0);
+        assert_eq!(config.policy.wasm_max_instances, 0);
+    }
+
+    #[test]
     fn test_allowlist_to_set() {
         let config = AllowlistConfig {
             vendors: vec![
