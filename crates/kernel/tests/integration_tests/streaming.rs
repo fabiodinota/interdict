@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 /// The test verifies that the first chunk arrives well before all chunks are sent.
 ///
 /// Proves: The proxy does NOT buffer the full response body before forwarding.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_sse_streaming_incremental_delivery() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
 
@@ -102,7 +102,7 @@ async fn test_sse_streaming_incremental_delivery() {
 /// Test that large streaming responses (10,000 SSE events) work without issues.
 ///
 /// Proves: streaming works at scale without buffering or memory issues.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_large_streaming_response() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
 
@@ -151,7 +151,7 @@ async fn test_large_streaming_response() {
 ///
 /// Since the proxy relays raw bytes bidirectionally, HTTP/2 frames pass through
 /// transparently. This test validates that traffic works through the CONNECT tunnel.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_http2_relay_through_tunnel() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
 

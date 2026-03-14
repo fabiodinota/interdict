@@ -77,6 +77,7 @@ impl WasmEngine {
     /// The bytes must have been produced by `Module::serialize` using the
     /// same engine configuration. Deserialization of untrusted bytes could
     /// lead to arbitrary code execution.
+    #[allow(unsafe_code)]
     pub unsafe fn deserialize_module(
         &self,
         compiled_bytes: &[u8],

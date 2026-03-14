@@ -4,9 +4,9 @@
 //! policy evaluation. Each engine has policies pre-loaded and is reused
 //! across requests via a bounded `ArrayQueue` + `Semaphore` pattern.
 //!
-//! CRITICAL: Regorus evaluation is synchronous (CPU-bound). All eval calls
-//! MUST go through `tokio::task::spawn_blocking` to avoid starving the
-//! async runtime (Pitfall 2 from research).
+//! CRITICAL: Regorus evaluation is synchronous (CPU-bound). Eval calls use
+//! `tokio::task::block_in_place` to avoid starving the async runtime while
+//! keeping latency low (avoids thread pool scheduling overhead of spawn_blocking).
 
 use std::sync::Arc;
 
@@ -47,8 +47,8 @@ impl RegorusPool {
     /// Evaluate a Rego rule against the given input JSON.
     ///
     /// Acquires a semaphore permit, pops an engine from the pool, evaluates
-    /// the rule in a blocking thread (Regorus is sync), then returns the engine
-    /// to the pool.
+    /// the rule synchronously via `block_in_place` (avoids spawn_blocking
+    /// thread pool scheduling overhead), then returns the engine to the pool.
     ///
     /// # Arguments
     /// * `input_json` - JSON string representing the request context
@@ -77,55 +77,46 @@ impl RegorusPool {
         };
 
         // Pop an engine from the pool (semaphore guarantees availability)
-        let engine = self
-            .engines
-            .pop()
-            .expect("semaphore guarantees engine availability");
+        let mut engine = match self.engines.pop() {
+            Some(e) => e,
+            None => {
+                // Should never happen — semaphore should guarantee availability.
+                // Return fail-mode verdict instead of panicking.
+                drop(permit);
+                tracing::error!("regorus engine pool unexpectedly empty despite semaphore permit");
+                return PolicyVerdict {
+                    policy_id: policy_id.to_string(),
+                    action: fail_mode.default_action(),
+                    redactions: vec![],
+                    reason: Some("engine pool unexpectedly empty".to_string()),
+                };
+            }
+        };
 
-        let engines = self.engines.clone();
-        let input = input_json.to_string();
-        let rule_str = rule.to_string();
-        let pid = policy_id.to_string();
+        // Evaluate synchronously using block_in_place — avoids the thread pool
+        // scheduling overhead of spawn_blocking (~0.5-2ms jitter) while still
+        // signaling to tokio that this thread is doing blocking work.
+        let verdict = tokio::task::block_in_place(|| {
+            let eval_result = engine
+                .set_input_json(input_json)
+                .and_then(|()| engine.eval_rule(rule.to_string()));
 
-        // CRITICAL: Regorus eval is synchronous — use spawn_blocking
-        let result = tokio::task::spawn_blocking(move || {
-            let mut eng = engine;
-            let eval_result = (|| -> anyhow::Result<regorus::Value> {
-                eng.set_input_json(&input)?;
-                eng.eval_rule(rule_str)
-            })();
-
-            // CRITICAL: Always return engine to pool, even on error
-            let verdict = match eval_result {
-                Ok(value) => parse_rego_verdict(&pid, &value),
+            match eval_result {
+                Ok(value) => parse_rego_verdict(policy_id, &value),
                 Err(e) => PolicyVerdict {
-                    policy_id: pid,
+                    policy_id: policy_id.to_string(),
                     action: fail_mode.default_action(),
                     redactions: vec![],
                     reason: Some(format!("rego evaluation error: {}", e)),
                 },
-            };
+            }
+        });
 
-            let _ = engines.push(eng);
-            verdict
-        })
-        .await;
-
+        // CRITICAL: Always return engine to pool, even on error
+        let _ = self.engines.push(engine);
         drop(permit);
 
-        match result {
-            Ok(verdict) => verdict,
-            Err(e) => {
-                // spawn_blocking panicked — engine may be lost
-                tracing::error!(error = %e, "regorus spawn_blocking panicked");
-                PolicyVerdict {
-                    policy_id: policy_id.to_string(),
-                    action: fail_mode.default_action(),
-                    redactions: vec![],
-                    reason: Some(format!("engine panicked: {}", e)),
-                }
-            }
-        }
+        verdict
     }
 
     /// Load a policy into a fresh engine template.
@@ -136,6 +127,19 @@ impl RegorusPool {
         let mut engine = regorus::Engine::new();
         engine.add_policy(policy_id.to_string(), rego_source.to_string())?;
         Ok(engine)
+    }
+
+    /// Create a pool with semaphore permits but no engines (test-only).
+    ///
+    /// Used to exercise the pool-exhaustion fail-mode path.
+    #[cfg(test)]
+    fn new_empty_for_test(size: usize) -> Self {
+        let queue = ArrayQueue::new(size.max(1));
+        Self {
+            engines: Arc::new(queue),
+            semaphore: Arc::new(Semaphore::new(size)),
+            pool_size: size,
+        }
     }
 
     /// Returns the configured pool size.
@@ -309,7 +313,7 @@ mod tests {
         engine
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_regorus_evaluate_allow_verdict() {
         let engine = create_allow_engine();
         let pool = RegorusPool::new(&engine, 2);
@@ -327,7 +331,7 @@ mod tests {
         assert_eq!(verdict.policy_id, "test-allow-policy");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_regorus_evaluate_block_verdict() {
         let engine = create_block_engine();
         let pool = RegorusPool::new(&engine, 2);
@@ -345,7 +349,7 @@ mod tests {
         assert_eq!(verdict.reason, Some("prohibited_vendor".to_string()));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_regorus_evaluate_redact_verdict() {
         let engine = create_redact_engine();
         let pool = RegorusPool::new(&engine, 2);
@@ -365,7 +369,7 @@ mod tests {
         assert_eq!(verdict.redactions[0].replacement, "[REDACTED:SSN]");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_regorus_pool_concurrent_evaluations() {
         let engine = create_allow_engine();
         let pool = Arc::new(RegorusPool::new(&engine, 4));
@@ -399,7 +403,7 @@ mod tests {
         assert_eq!(pool.available(), 4);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_regorus_pool_returns_engine_on_error() {
         let engine = create_allow_engine();
         let pool = RegorusPool::new(&engine, 2);
@@ -449,5 +453,51 @@ mod tests {
     fn test_load_policy_invalid_rego_returns_error() {
         let engine = RegorusPool::load_policy("bad.rego", "this is not valid rego at all!!!");
         assert!(engine.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_pool_exhaustion_returns_fail_closed_verdict() {
+        // Create a pool with semaphore permits but no engines — simulates
+        // a pool-empty state that would have panicked before this fix.
+        let pool = RegorusPool::new_empty_for_test(2);
+
+        let verdict = pool
+            .evaluate(
+                r#"{"vendor": "test"}"#,
+                "data.interdict.policy.test.verdict",
+                "exhaustion-policy",
+                FailMode::FailClosed,
+            )
+            .await;
+
+        // Should get fail-closed Block action instead of a panic
+        assert_eq!(verdict.action, VerdictAction::Block);
+        assert_eq!(verdict.policy_id, "exhaustion-policy");
+        assert_eq!(
+            verdict.reason,
+            Some("engine pool unexpectedly empty".to_string())
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_pool_exhaustion_returns_fail_open_verdict() {
+        let pool = RegorusPool::new_empty_for_test(2);
+
+        let verdict = pool
+            .evaluate(
+                r#"{"vendor": "test"}"#,
+                "data.interdict.policy.test.verdict",
+                "exhaustion-policy-open",
+                FailMode::FailOpen,
+            )
+            .await;
+
+        // Should get fail-open Allow action instead of a panic
+        assert_eq!(verdict.action, VerdictAction::Allow);
+        assert_eq!(verdict.policy_id, "exhaustion-policy-open");
+        assert_eq!(
+            verdict.reason,
+            Some("engine pool unexpectedly empty".to_string())
+        );
     }
 }

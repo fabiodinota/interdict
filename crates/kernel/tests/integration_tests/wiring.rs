@@ -24,7 +24,7 @@ use super::helpers::{TestProxy, TestProxyConfig};
 ///
 /// Requirements: PII-01 (names/emails/phones), PII-06 (category-tagged placeholders),
 /// KERN-05 (sliding window active), PLCY-11 (injection detection active)
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_pii_inspection_wired_through_proxy() {
     // 1. Build ContentInspector with default patterns
     let pattern_registry = Arc::new(kernel::policy::patterns::PatternRegistry {
@@ -122,7 +122,7 @@ async fn test_pii_inspection_wired_through_proxy() {
 
 /// INT-01 negative control: Without content_inspector, the proxy uses the
 /// zero-copy relay::bidirectional path. This test validates the control case.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_proxy_without_inspector_uses_raw_relay() {
     let proxy = TestProxy::with_config(TestProxyConfig {
         allowlist: vec!["127.0.0.1".to_string()],
@@ -158,7 +158,7 @@ async fn test_proxy_without_inspector_uses_raw_relay() {
 /// Swapping a blocking policy into the PSM causes the next request to be blocked.
 ///
 /// Requirements: PLCY-06 (hot-reload without restart), CTRL-03 (distribution drives enforcement)
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_hot_reload_enforcement() {
     // 1. Create empty PolicySetManager (version 0 = no distributed policies)
     let wasm_engine =

@@ -8,18 +8,76 @@
 //! All patterns are Unicode-aware and include validators where appropriate
 //! to reduce false positives.
 //!
+//! All regexes are compiled once at first access via `LazyLock<Regex>`,
+//! eliminating per-call `Regex::new().unwrap()` panic paths.
+//!
 //! Source: Phase 3 research + PII detection best practices
 
 use regex::Regex;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use super::PatternRule;
 use super::validators::{luhn_check, validate_iban};
 
+// ═══════════════════════════════════════════════════════════════════════
+// Static regex compilation via LazyLock — compiled once, &'static lifetime
+// ═══════════════════════════════════════════════════════════════════════
+
+static RE_EMAIL: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}").expect("constant regex"));
+
+static RE_PHONE_US: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\b(\(\d{3}\)\s?|\d{3}[-.])?\d{3}[-.]\d{4}\b").expect("constant regex")
+});
+
+static RE_PHONE_INTL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\+\d{1,3}[\s.-]+(\(\d{1,4}\)|\d{1,4})[\s.-]+\d{2,4}[\s.-]*\d{2,4}[\s.-]*\d{0,4}\b")
+        .expect("constant regex")
+});
+
+static RE_PHONE_INTL_00: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b00\d{10,14}\b").expect("constant regex"));
+
+static RE_PHONE_LOCAL: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b0\d{9,10}\b").expect("constant regex"));
+
+static RE_SSN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b\d{3}-\d{2}-\d{4}\b").expect("constant regex"));
+
+static RE_ADDRESS: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\d+\s+[\w\s]+,\s+[\w\s]+,\s+[A-Z]{2}\s+\d{5}(-\d{4})?").expect("constant regex")
+});
+
+static RE_CREDIT_CARD: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{1,7}\b").expect("constant regex")
+});
+
+static RE_IBAN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\b[A-Z]{2}\d{2}[\s]?[A-Z0-9]{4}(?:[\s]?[A-Z0-9]{4}){1,7}(?:[\s]?[A-Z0-9]{1,4})?\b")
+        .expect("constant regex")
+});
+
+static RE_SWIFT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?\b").expect("constant regex"));
+
+static RE_AWS_KEY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\bAKIA[0-9A-Z]{16}\b").expect("constant regex"));
+
+static RE_OPENAI_KEY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\bsk-[a-zA-Z0-9\-]{48,}\b").expect("constant regex"));
+
+static RE_GITHUB_TOKEN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\bgh[ps]_[a-zA-Z0-9]{36,}\b").expect("constant regex"));
+
+static RE_PRIVATE_KEY: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----").expect("constant regex")
+});
+
 /// Build the comprehensive default pattern library.
 ///
 /// Returns a vector of all default patterns covering common PII, financial
-/// data, and secrets detection use cases.
+/// data, and secrets detection use cases. All regexes are compiled once via
+/// LazyLock and cloned (cheap — Regex is internally Arc'd).
 pub fn default_patterns() -> Vec<PatternRule> {
     vec![
         // ═══════════════════════════════════════════════════════════════
@@ -58,7 +116,7 @@ pub fn default_patterns() -> Vec<PatternRule> {
 fn email_pattern() -> PatternRule {
     PatternRule {
         category: "EMAIL".to_string(),
-        pattern: Regex::new(r"[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}").unwrap(),
+        pattern: RE_EMAIL.clone(),
         validator: None,
         base_confidence: 0.95,
         context_boosters: vec![
@@ -75,7 +133,7 @@ fn email_pattern() -> PatternRule {
 fn phone_us_pattern() -> PatternRule {
     PatternRule {
         category: "PHONE".to_string(),
-        pattern: Regex::new(r"\b(\(\d{3}\)\s?|\d{3}[-.])?\d{3}[-.]\d{4}\b").unwrap(),
+        pattern: RE_PHONE_US.clone(),
         validator: None,
         base_confidence: 0.85,
         context_boosters: vec![
@@ -93,10 +151,7 @@ fn phone_us_pattern() -> PatternRule {
 fn phone_international_pattern() -> PatternRule {
     PatternRule {
         category: "PHONE".to_string(),
-        pattern: Regex::new(
-            r"\+\d{1,3}[\s.-]+(\(\d{1,4}\)|\d{1,4})[\s.-]+\d{2,4}[\s.-]*\d{2,4}[\s.-]*\d{0,4}\b",
-        )
-        .unwrap(),
+        pattern: RE_PHONE_INTL.clone(),
         validator: None,
         base_confidence: 0.9,
         context_boosters: vec![
@@ -115,7 +170,7 @@ fn phone_international_pattern() -> PatternRule {
 fn phone_international_00_pattern() -> PatternRule {
     PatternRule {
         category: "PHONE".to_string(),
-        pattern: Regex::new(r"\b00\d{10,14}\b").unwrap(),
+        pattern: RE_PHONE_INTL_00.clone(),
         validator: None,
         base_confidence: 0.88,
         context_boosters: vec![
@@ -136,7 +191,7 @@ fn phone_international_00_pattern() -> PatternRule {
 fn phone_local_pattern() -> PatternRule {
     PatternRule {
         category: "PHONE".to_string(),
-        pattern: Regex::new(r"\b0\d{9,10}\b").unwrap(),
+        pattern: RE_PHONE_LOCAL.clone(),
         validator: None,
         base_confidence: 0.80,
         context_boosters: vec![
@@ -156,7 +211,7 @@ fn phone_local_pattern() -> PatternRule {
 fn ssn_pattern() -> PatternRule {
     PatternRule {
         category: "SSN".to_string(),
-        pattern: Regex::new(r"\b\d{3}-\d{2}-\d{4}\b").unwrap(),
+        pattern: RE_SSN.clone(),
         validator: None,
         base_confidence: 0.95,
         context_boosters: vec![
@@ -173,7 +228,7 @@ fn ssn_pattern() -> PatternRule {
 fn address_pattern() -> PatternRule {
     PatternRule {
         category: "ADDRESS".to_string(),
-        pattern: Regex::new(r"\d+\s+[\w\s]+,\s+[\w\s]+,\s+[A-Z]{2}\s+\d{5}(-\d{4})?").unwrap(),
+        pattern: RE_ADDRESS.clone(),
         validator: None,
         base_confidence: 0.8,
         context_boosters: vec![
@@ -195,7 +250,7 @@ fn address_pattern() -> PatternRule {
 fn credit_card_pattern() -> PatternRule {
     PatternRule {
         category: "CREDIT_CARD".to_string(),
-        pattern: Regex::new(r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{1,7}\b").unwrap(),
+        pattern: RE_CREDIT_CARD.clone(),
         validator: Some(Arc::new(|text: &str| luhn_check(text))),
         base_confidence: 0.9,
         context_boosters: vec![
@@ -216,10 +271,7 @@ fn credit_card_pattern() -> PatternRule {
 fn iban_pattern() -> PatternRule {
     PatternRule {
         category: "IBAN".to_string(),
-        pattern: Regex::new(
-            r"\b[A-Z]{2}\d{2}[\s]?[A-Z0-9]{4}(?:[\s]?[A-Z0-9]{4}){1,7}(?:[\s]?[A-Z0-9]{1,4})?\b",
-        )
-        .unwrap(),
+        pattern: RE_IBAN.clone(),
         validator: Some(Arc::new(|text: &str| validate_iban(text))),
         base_confidence: 0.95,
         context_boosters: vec![
@@ -236,7 +288,7 @@ fn iban_pattern() -> PatternRule {
 fn swift_pattern() -> PatternRule {
     PatternRule {
         category: "SWIFT".to_string(),
-        pattern: Regex::new(r"\b[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?\b").unwrap(),
+        pattern: RE_SWIFT.clone(),
         validator: None,
         base_confidence: 0.85,
         context_boosters: vec!["swift".to_string(), "bic".to_string(), "bank".to_string()],
@@ -253,7 +305,7 @@ fn swift_pattern() -> PatternRule {
 fn aws_access_key_pattern() -> PatternRule {
     PatternRule {
         category: "AWS_KEY".to_string(),
-        pattern: Regex::new(r"\bAKIA[0-9A-Z]{16}\b").unwrap(),
+        pattern: RE_AWS_KEY.clone(),
         validator: None,
         base_confidence: 1.0,
         context_boosters: vec!["aws".to_string(), "access".to_string(), "key".to_string()],
@@ -267,7 +319,7 @@ fn aws_access_key_pattern() -> PatternRule {
 fn openai_key_pattern() -> PatternRule {
     PatternRule {
         category: "OPENAI_KEY".to_string(),
-        pattern: Regex::new(r"\bsk-[a-zA-Z0-9\-]{48,}\b").unwrap(),
+        pattern: RE_OPENAI_KEY.clone(),
         validator: None,
         base_confidence: 1.0,
         context_boosters: vec!["openai".to_string(), "api".to_string(), "key".to_string()],
@@ -280,7 +332,7 @@ fn openai_key_pattern() -> PatternRule {
 fn github_token_pattern() -> PatternRule {
     PatternRule {
         category: "GITHUB_TOKEN".to_string(),
-        pattern: Regex::new(r"\bgh[ps]_[a-zA-Z0-9]{36,}\b").unwrap(),
+        pattern: RE_GITHUB_TOKEN.clone(),
         validator: None,
         base_confidence: 1.0,
         context_boosters: vec!["github".to_string(), "token".to_string(), "pat".to_string()],
@@ -293,7 +345,7 @@ fn github_token_pattern() -> PatternRule {
 fn private_key_pattern() -> PatternRule {
     PatternRule {
         category: "PRIVATE_KEY".to_string(),
-        pattern: Regex::new(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----").unwrap(),
+        pattern: RE_PRIVATE_KEY.clone(),
         validator: None,
         base_confidence: 1.0,
         context_boosters: vec!["private".to_string(), "key".to_string(), "pem".to_string()],

@@ -1,4 +1,10 @@
 //! Heuristic prompt injection and jailbreak detection (PLCY-11).
+//!
+//! All injection/jailbreak regex patterns are compiled once at first access
+//! via `LazyLock<Vec<Regex>>`, eliminating per-call panic paths from
+//! `InjectionDetector::default()`.
+
+use std::sync::LazyLock;
 
 use anyhow::{Context, Result};
 use regex::{Regex, RegexBuilder};
@@ -28,39 +34,56 @@ pub struct InjectionDetection {
     pub matched_text: String,
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Static pattern compilation via LazyLock — compiled once, &'static lifetime
+// ═══════════════════════════════════════════════════════════════════════
+
+static DIRECT_INJECTION: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    compile_patterns(&[
+        r"ignore\s+(all\s+)?(previous|prior|above|earlier)\s+instructions?",
+        r"disregard\s+(your\s+)?(system\s+prompt|previous\s+instructions?|all\s+instructions?)",
+        r"forget\s+(everything|all)\s+(you('ve| have)\s+been\s+told|previous)",
+        r"forget\s+(previous|prior|all)\s+(context|instructions?|rules?|guidelines?)",
+        r"override\s+(your\s+)?(previous\s+instructions?|system\s+prompt|constraints?)",
+        r"new\s+instructions?\s*[:;]",
+        r"from\s+now\s+on,?\s+you\s+(must|will|should|are\s+to)\s+ignore",
+    ])
+    .expect("constant direct-injection regex patterns")
+});
+
+static JAILBREAK: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    compile_patterns(&[
+        r"\bDAN\b",
+        r"act\s+as\s+(if\s+you\s+(are|were)|an?\s+AI\s+with\s+no)\s+(restrictions?|limitations?|filters?)",
+        r"pretend\s+(you\s+have\s+no\s+|you('re| are)\s+)(restrictions?|limitations?|guidelines?|ethics?)",
+        r"you\s+are\s+now\s+(in\s+)?(jailbreak|developer|admin|unrestricted|DAN)\s+mode",
+        r"(hypothetically|in\s+a\s+fictional\s+scenario),?\s+how\s+(would|could)\s+(you|one)\s+(harm|attack|exploit|bypass)",
+        r"do\s+anything\s+now",
+    ])
+    .expect("constant jailbreak regex patterns")
+});
+
+static INDIRECT_INJECTION: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    compile_patterns(&[
+        r"(your|the)\s+(new|updated|real|actual|true)\s+instructions?\s+(are|is|say|state)\s*[:;]",
+        r"the\s+(admin|developer|owner|creator)\s+(says?|told|instructed|wants)\s+(you\s+to\s+)?(ignore|forget|bypass)",
+        r"\[INST(RUCTION)?\]\s*ignore",
+        r"<\s*system\s*>\s*(ignore|forget|override)",
+    ])
+    .expect("constant indirect-injection regex patterns")
+});
+
 impl InjectionDetector {
-    /// Create a new detector with compiled case-insensitive regex patterns.
+    /// Create a new detector from the statically-compiled regex patterns.
+    ///
+    /// The patterns are compiled once via `LazyLock` on first access.
+    /// This method always succeeds; the `Result` return type is retained
+    /// for API compatibility.
     pub fn new() -> Result<Self> {
-        let direct_injection = compile_patterns(&[
-            r"ignore\s+(all\s+)?(previous|prior|above|earlier)\s+instructions?",
-            r"disregard\s+(your\s+)?(system\s+prompt|previous\s+instructions?|all\s+instructions?)",
-            r"forget\s+(everything|all)\s+(you('ve| have)\s+been\s+told|previous)",
-            r"forget\s+(previous|prior|all)\s+(context|instructions?|rules?|guidelines?)",
-            r"override\s+(your\s+)?(previous\s+instructions?|system\s+prompt|constraints?)",
-            r"new\s+instructions?\s*[:;]",
-            r"from\s+now\s+on,?\s+you\s+(must|will|should|are\s+to)\s+ignore",
-        ])?;
-
-        let jailbreak = compile_patterns(&[
-            r"\bDAN\b",
-            r"act\s+as\s+(if\s+you\s+(are|were)|an?\s+AI\s+with\s+no)\s+(restrictions?|limitations?|filters?)",
-            r"pretend\s+(you\s+have\s+no\s+|you('re| are)\s+)(restrictions?|limitations?|guidelines?|ethics?)",
-            r"you\s+are\s+now\s+(in\s+)?(jailbreak|developer|admin|unrestricted|DAN)\s+mode",
-            r"(hypothetically|in\s+a\s+fictional\s+scenario),?\s+how\s+(would|could)\s+(you|one)\s+(harm|attack|exploit|bypass)",
-            r"do\s+anything\s+now",
-        ])?;
-
-        let indirect_injection = compile_patterns(&[
-            r"(your|the)\s+(new|updated|real|actual|true)\s+instructions?\s+(are|is|say|state)\s*[:;]",
-            r"the\s+(admin|developer|owner|creator)\s+(says?|told|instructed|wants)\s+(you\s+to\s+)?(ignore|forget|bypass)",
-            r"\[INST(RUCTION)?\]\s*ignore",
-            r"<\s*system\s*>\s*(ignore|forget|override)",
-        ])?;
-
         Ok(Self {
-            direct_injection,
-            jailbreak,
-            indirect_injection,
+            direct_injection: DIRECT_INJECTION.clone(),
+            jailbreak: JAILBREAK.clone(),
+            indirect_injection: INDIRECT_INJECTION.clone(),
         })
     }
 
@@ -98,7 +121,11 @@ impl InjectionDetector {
 
 impl Default for InjectionDetector {
     fn default() -> Self {
-        Self::new().expect("static injection regexes should compile")
+        Self {
+            direct_injection: DIRECT_INJECTION.clone(),
+            jailbreak: JAILBREAK.clone(),
+            indirect_injection: INDIRECT_INJECTION.clone(),
+        }
     }
 }
 

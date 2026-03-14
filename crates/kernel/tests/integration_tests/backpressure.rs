@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 /// Test that the proxy recovers after a period of errors.
 ///
 /// Proves: the proxy does not get stuck in a failed state after errors.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_recovery_after_errors() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
 
@@ -78,7 +78,7 @@ async fn test_recovery_after_errors() {
 /// With very restrictive pool settings (max_conns=1, max_streams=1),
 /// rapid concurrent requests should trigger pool exhaustion.
 /// The proxy should return errors rather than hanging.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_pool_exhaustion_under_load() {
     let proxy = TestProxy::with_config(TestProxyConfig {
         allowlist: vec!["127.0.0.1".to_string()],

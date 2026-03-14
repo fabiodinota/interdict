@@ -6,6 +6,7 @@
 //!
 //! KERN-13: All channels in this project MUST be bounded. Zero unbounded_channel() allowed.
 
+pub mod bootstrap;
 pub mod config;
 pub mod error;
 pub mod evidence;

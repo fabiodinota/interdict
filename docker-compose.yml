@@ -15,7 +15,7 @@ services:
     image: postgres:17-bookworm
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-interdict}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interdict}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — generate with openssl rand -base64 32}"
       POSTGRES_DB: ${POSTGRES_DB:-interdict}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -32,7 +32,7 @@ services:
     environment:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-interdict}
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD in .env — generate with openssl rand -base64 32}"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     healthcheck:
@@ -48,7 +48,7 @@ services:
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-interdict}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-interdict-minio-secret}
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env — generate with openssl rand -base64 32}"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -67,13 +67,13 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-interdict} $${MINIO_ROOT_PASSWORD:-interdict-minio-secret} &&
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
       mc mb --ignore-existing local/interdict-evidence &&
       echo 'Bucket interdict-evidence ready'
       "
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-interdict}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-interdict-minio-secret}
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}"
     restart: "no"
 
   # ---------------------------------------------------------------------------
@@ -106,12 +106,17 @@ services:
         condition: service_healthy
       cert-init:
         condition: service_completed_successfully
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=128M
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgres://interdict:interdict@postgres:5432/interdict}
+      DATABASE_URL: "${DATABASE_URL:?Set DATABASE_URL in .env — must contain postgres connection string with password}"
       CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
       CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-interdict}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-interdict}
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD in .env}"
       PORT: ${PORT:-3000}
       WASM_STORAGE_DIR: ${WASM_STORAGE_DIR:-./data/wasm}
       OPA_BINARY_PATH: ${OPA_BINARY_PATH:-opa}
@@ -133,6 +138,7 @@ services:
       - certs:/certs:ro
       - signing_keys:/data/keys
       - ./config:/config:ro
+      - wasm_data:/app/data/wasm
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
@@ -157,12 +163,17 @@ services:
         condition: service_completed_successfully
       cert-init:
         condition: service_completed_successfully
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64M
     environment:
       COLLECTOR_GRPC_LISTEN_ADDR: ${COLLECTOR_GRPC_LISTEN_ADDR:-[::]:50051}
       CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
       CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-interdict}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-interdict}
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD in .env}"
       COLLECTOR_S3_BUCKET: ${COLLECTOR_S3_BUCKET:-interdict-evidence}
       COLLECTOR_S3_REGION: ${COLLECTOR_S3_REGION:-us-east-1}
       COLLECTOR_SIGNING_MODE: ${COLLECTOR_SIGNING_MODE:-dev}
@@ -174,8 +185,8 @@ services:
       COLLECTOR_RETENTION_DAYS: ${COLLECTOR_RETENTION_DAYS:-2555}
       COLLECTOR_REQUIRE_OBJECT_LOCK: ${COLLECTOR_REQUIRE_OBJECT_LOCK:-true}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://minio:9000}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-interdict}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-interdict-minio-secret}
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:?Set AWS_ACCESS_KEY_ID in .env — must match MINIO_ROOT_USER}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:?Set AWS_SECRET_ACCESS_KEY in .env — must match MINIO_ROOT_PASSWORD}"
       AWS_REGION: ${AWS_REGION:-us-east-1}
       MTLS_ENABLED: ${MTLS_ENABLED:-true}
       MTLS_CA_CERT_PATH: ${MTLS_CA_CERT_PATH:-/certs/internal-ca.pem}
@@ -207,6 +218,11 @@ services:
         condition: service_healthy
       cert-init:
         condition: service_completed_successfully
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64M
     environment:
       KERNEL_LISTEN_ADDR: ${KERNEL_LISTEN_ADDR:-0.0.0.0:8443}
       KERNEL_CONNECT_TIMEOUT_MS: ${KERNEL_CONNECT_TIMEOUT_MS:-10000}
@@ -235,7 +251,8 @@ services:
     ports:
       - "8443:8443"
     volumes:
-      - ca_certs:/data/certs
+      - kernel_data:/data
+      - kernel_policies:/app/policies
       - certs:/certs:ro
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "8443"]
@@ -260,6 +277,11 @@ services:
     depends_on:
       control-plane:
         condition: service_healthy
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64M
     environment:
       CONTROL_PLANE_URL: ${CONTROL_PLANE_URL:-http://control-plane:3000}
       NODE_ENV: production
@@ -267,6 +289,8 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     ports:
       - "8080:3001"
+    volumes:
+      - dashboard_cache:/app/.next/cache
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3001/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
@@ -291,9 +315,15 @@ volumes:
     driver: local
   minio_data:
     driver: local
-  ca_certs:
+  kernel_data:
+    driver: local
+  kernel_policies:
     driver: local
   signing_keys:
     driver: local
   certs:
+    driver: local
+  wasm_data:
+    driver: local
+  dashboard_cache:
     driver: local

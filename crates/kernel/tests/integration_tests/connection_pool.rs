@@ -16,7 +16,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 /// Test that the pool reuses connections when under stream limits.
 ///
 /// Proves: 5 sequential requests to the same vendor use only 1 connection.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_pool_reuses_connections() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
 
@@ -50,7 +50,7 @@ async fn test_pool_reuses_connections() {
 ///
 /// Validates Phase 1 success criterion #4: "sustaining 200+ concurrent streams"
 /// Uses a larger connection/stream limit to handle the load.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_concurrent_streams() {
     let proxy = TestProxy::with_config(TestProxyConfig {
         allowlist: vec!["127.0.0.1".to_string()],
@@ -123,7 +123,7 @@ async fn test_concurrent_streams() {
 ///
 /// Uses max_streams=2 and max_conns=4 with 8 concurrent requests.
 /// The pool should create multiple connections as stream limits are reached.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_pool_distributes_load() {
     let proxy = TestProxy::with_config(TestProxyConfig {
         allowlist: vec!["127.0.0.1".to_string()],

@@ -640,6 +640,8 @@ tls_server_name = "control-plane.internal"
             std::fs::write(path, "test").unwrap();
         }
 
+        // Use forward slashes to avoid TOML interpreting backslashes as escapes on Windows.
+        let to_toml_path = |p: &std::path::Path| p.display().to_string().replace('\\', "/");
         let toml_str = format!(
             r#"
 [proxy]
@@ -662,11 +664,11 @@ mtls_ca_cert_path = "{}"
 mtls_client_cert_path = "{}"
 mtls_client_key_path = "{}"
 "#,
-            ca_cert_path.display(),
-            ca_key_path.display(),
-            mtls_ca_path.display(),
-            mtls_cert_path.display(),
-            mtls_key_path.display()
+            to_toml_path(&ca_cert_path),
+            to_toml_path(&ca_key_path),
+            to_toml_path(&mtls_ca_path),
+            to_toml_path(&mtls_cert_path),
+            to_toml_path(&mtls_key_path)
         );
 
         let config: Config = toml::from_str(&toml_str).unwrap();

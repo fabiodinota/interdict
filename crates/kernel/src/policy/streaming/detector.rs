@@ -117,8 +117,11 @@ impl StreamingDetector {
             return false;
         }
 
-        // Get the tail of the content
-        let tail_start = content.len().saturating_sub(20);
+        // Get the tail of the content, ensuring we land on a char boundary.
+        let mut tail_start = content.len().saturating_sub(20);
+        while tail_start > 0 && !content.is_char_boundary(tail_start) {
+            tail_start -= 1;
+        }
         let tail = &content[tail_start..];
 
         // For email patterns, check if we have partial structure like "user@" or "user@ex"
