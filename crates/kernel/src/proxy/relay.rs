@@ -54,11 +54,18 @@ where
 /// all standard PII patterns (SSNs, emails, API keys, credit cards).
 const OVERLAP_WINDOW: usize = 256;
 
+/// How long to wait for more data before flushing the accumulator.
+/// In CONNECT tunnels the client keeps the connection open bidirectionally,
+/// so we cannot wait for EOF to flush small requests. 50ms balances
+/// cross-chunk detection accuracy with proxy latency.
+const FLUSH_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(50);
+
 /// Relay bytes from `reader` to `writer` with cross-chunk content inspection.
 ///
 /// Accumulates read chunks in a buffer and inspects content with an overlap
 /// window so that patterns split across TCP reads (e.g., `AKIA|IOSFODNN7EXAMPLE`)
-/// are still detected.
+/// are still detected. Uses a short read timeout to flush accumulated data
+/// in bidirectional tunnels where EOF may not arrive until session end.
 ///
 /// Returns bytes forwarded, or Err with reason on block/io-error.
 pub async fn inspecting_relay_outbound<R, W>(
@@ -78,31 +85,50 @@ where
         read_buf.clear();
         read_buf.resize(8192, 0);
 
-        let n = reader
-            .read(&mut read_buf)
-            .await
-            .map_err(|e| format!("read error: {}", e))?;
+        // Read with a short timeout so we flush accumulated data promptly
+        // in bidirectional tunnels (CONNECT) where EOF may never arrive.
+        let read_result = tokio::time::timeout(FLUSH_TIMEOUT, reader.read(&mut read_buf)).await;
 
-        if n == 0 {
-            // EOF — inspect and flush remaining accumulated content
-            if !accum.is_empty() {
-                total_forwarded += inspect_and_forward(&accum, &inspector, &mut writer).await?;
+        match read_result {
+            Ok(Ok(0)) => {
+                // EOF — inspect and flush remaining accumulated content
+                if !accum.is_empty() {
+                    total_forwarded += inspect_and_forward(&accum, &inspector, &mut writer).await?;
+                }
+                break;
             }
-            break;
-        }
+            Ok(Ok(n)) => {
+                accum.extend_from_slice(&read_buf[..n]);
 
-        accum.extend_from_slice(&read_buf[..n]);
+                // When we have enough accumulated data, inspect the safe prefix
+                // (everything except the overlap window) and forward it.
+                if accum.len() > OVERLAP_WINDOW {
+                    let safe_end = accum.len() - OVERLAP_WINDOW;
+                    let safe_prefix = &accum[..safe_end];
 
-        // When we have enough accumulated data, inspect the safe prefix
-        // (everything except the overlap window) and forward it.
-        if accum.len() > OVERLAP_WINDOW {
-            let safe_end = accum.len() - OVERLAP_WINDOW;
-            let safe_prefix = &accum[..safe_end];
+                    total_forwarded +=
+                        inspect_and_forward(safe_prefix, &inspector, &mut writer).await?;
 
-            total_forwarded += inspect_and_forward(safe_prefix, &inspector, &mut writer).await?;
-
-            // Keep only the overlap window for the next iteration
-            accum.drain(..safe_end);
+                    // Keep only the overlap window for the next iteration
+                    accum.drain(..safe_end);
+                }
+            }
+            Ok(Err(e)) => {
+                return Err(format!("read error: {}", e));
+            }
+            Err(_) => {
+                // Read timeout — no more data arriving soon, flush what we have.
+                // This handles bidirectional tunnels where the client waits for
+                // a response after sending its request.
+                if !accum.is_empty() {
+                    total_forwarded += inspect_and_forward(&accum, &inspector, &mut writer).await?;
+                    accum.clear();
+                    writer
+                        .flush()
+                        .await
+                        .map_err(|e| format!("flush error: {}", e))?;
+                }
+            }
         }
     }
 
