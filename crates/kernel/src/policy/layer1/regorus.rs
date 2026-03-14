@@ -225,13 +225,14 @@ fn parse_redactions(
             let category = get_str_field(item_obj, "category")?;
             let pattern = get_str_field(item_obj, "pattern").unwrap_or_default();
             let matched_text = get_str_field(item_obj, "matched_text").unwrap_or_default();
+            let matched_text_hash = crate::policy::verdict::hash_matched_text(&matched_text);
             let replacement = get_str_field(item_obj, "replacement")
                 .unwrap_or_else(|| format!("[REDACTED:{}]", category));
 
             Some(Redaction {
                 category,
                 pattern,
-                matched_text,
+                matched_text_hash,
                 replacement,
             })
         })

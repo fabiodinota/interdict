@@ -9,6 +9,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use sha2::{Digest, Sha256};
+
 use crate::policy::config::{BlockResponseDetail, FailMode, PolicyConfig, RedactionDirection};
 use crate::policy::distribution::proto;
 use crate::policy::hierarchy::{HierarchyConfig, HierarchyResolver, PolicyScope, ScopedPolicy};
@@ -228,6 +230,98 @@ pub async fn apply_delta(
     })
 }
 
+/// Verify the Ed25519 signature over a policy update response.
+///
+/// The canonical message is constructed by concatenating:
+/// - The version as little-endian u64 bytes
+/// - For each policy entry (sorted by policy_id):
+///   - policy_id UTF-8 bytes
+///   - SHA-256 of rego_source (if non-empty)
+///   - wasm_hash (if non-empty)
+///
+/// Also verifies that each entry's `wasm_hash` matches the SHA-256 of its
+/// `wasm_bytes` (if wasm_bytes is non-empty).
+pub fn verify_response_signature(
+    response: &proto::SubscribeResponse,
+    public_key_pem: &str,
+) -> anyhow::Result<()> {
+    use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+
+    // Parse the public key from PEM
+    let public_key = parse_ed25519_public_key(public_key_pem)?;
+
+    // Verify wasm_hash integrity for each entry
+    for entry in &response.policies {
+        if !entry.wasm_bytes.is_empty() && !entry.wasm_hash.is_empty() {
+            let computed = format!("{:x}", Sha256::digest(&entry.wasm_bytes));
+            if computed != entry.wasm_hash {
+                anyhow::bail!(
+                    "wasm_hash mismatch for policy '{}': expected {}, got {}",
+                    entry.policy_id,
+                    entry.wasm_hash,
+                    computed
+                );
+            }
+        }
+    }
+
+    // Check signature presence
+    if response.signature.is_empty() {
+        anyhow::bail!("policy update missing required signature");
+    }
+
+    // Build canonical message
+    let canonical = build_canonical_message(response);
+
+    // Parse signature
+    let sig_bytes: [u8; 64] = response.signature.as_slice().try_into().map_err(|_| {
+        anyhow::anyhow!(
+            "invalid signature length: expected 64 bytes, got {}",
+            response.signature.len()
+        )
+    })?;
+    let signature = Signature::from_bytes(&sig_bytes);
+
+    // Verify
+    public_key
+        .verify(&canonical, &signature)
+        .map_err(|e| anyhow::anyhow!("policy signature verification failed: {}", e))?;
+
+    Ok(())
+}
+
+/// Build the canonical byte representation of a SubscribeResponse for signing.
+fn build_canonical_message(response: &proto::SubscribeResponse) -> Vec<u8> {
+    let mut message = Vec::new();
+
+    // Version as LE u64
+    message.extend_from_slice(&response.version.to_le_bytes());
+
+    // Sort entries by policy_id for deterministic ordering
+    let mut entries: Vec<&proto::PolicyEntry> = response.policies.iter().collect();
+    entries.sort_by(|a, b| a.policy_id.cmp(&b.policy_id));
+
+    for entry in entries {
+        message.extend_from_slice(entry.policy_id.as_bytes());
+        if !entry.rego_source.is_empty() {
+            let hash = Sha256::digest(entry.rego_source.as_bytes());
+            message.extend_from_slice(&hash);
+        }
+        if !entry.wasm_hash.is_empty() {
+            message.extend_from_slice(entry.wasm_hash.as_bytes());
+        }
+    }
+
+    message
+}
+
+/// Parse an Ed25519 public key from PEM format.
+fn parse_ed25519_public_key(pem: &str) -> anyhow::Result<ed25519_dalek::VerifyingKey> {
+    use ed25519_dalek::pkcs8::DecodePublicKey;
+    ed25519_dalek::VerifyingKey::from_public_key_pem(pem)
+        .map_err(|e| anyhow::anyhow!("failed to parse Ed25519 public key: {}", e))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -368,6 +462,8 @@ default verdict := {{"action": "allow"}}
                 0,
             )],
             removed_policy_ids: vec![],
+            signature: vec![],
+            signing_key_id: String::new(),
         };
 
         let updated = apply_delta(&initial, &update, &wasm, &hconfig)
@@ -404,6 +500,8 @@ default verdict := {{"action": "allow"}}
             r#type: 2,
             policies: vec![],
             removed_policy_ids: vec!["pol1".to_string()],
+            signature: vec![],
+            signing_key_id: String::new(),
         };
 
         let updated = apply_delta(&initial, &update, &wasm, &hconfig)
@@ -429,6 +527,8 @@ default verdict := {{"action": "allow"}}
             r#type: 2,
             policies: vec![],
             removed_policy_ids: vec![],
+            signature: vec![],
+            signing_key_id: String::new(),
         };
 
         let result = apply_delta(&initial, &update, &wasm, &hconfig).await;
@@ -471,6 +571,8 @@ default verdict := {{"action": "allow"}}
                 2,
             )],
             removed_policy_ids: vec![],
+            signature: vec![],
+            signing_key_id: String::new(),
         };
 
         let updated = apply_delta(&initial, &update, &wasm, &hconfig)
@@ -519,5 +621,153 @@ default verdict := {{"action": "allow"}}
         assert_eq!(sp.config.id, "test");
         assert!(sp.scope.org_id.is_empty());
         assert!(sp.config.rego_source.is_none());
+    }
+
+    #[test]
+    fn test_verify_response_signature_valid() {
+        use ed25519_dalek::{Signer, SigningKey};
+        use rand::rngs::OsRng;
+
+        let signing_key = SigningKey::generate(&mut OsRng);
+        let verifying_key = signing_key.verifying_key();
+
+        // Export public key as PEM
+        use ed25519_dalek::pkcs8::EncodePublicKey;
+        let public_key_pem = verifying_key
+            .to_public_key_pem(ed25519_dalek::pkcs8::spki::der::pem::LineEnding::LF)
+            .unwrap();
+
+        let mut response = proto::SubscribeResponse {
+            version: 1,
+            r#type: 1,
+            policies: vec![make_policy_entry(
+                "pol1",
+                "Policy 1",
+                &sample_rego("pol1"),
+                0,
+            )],
+            removed_policy_ids: vec![],
+            signature: vec![],
+            signing_key_id: "key-1".to_string(),
+        };
+
+        // Sign the canonical message
+        let canonical = build_canonical_message(&response);
+        let signature = signing_key.sign(&canonical);
+        response.signature = signature.to_bytes().to_vec();
+
+        let result = verify_response_signature(&response, &public_key_pem);
+        assert!(
+            result.is_ok(),
+            "valid signature should pass: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_verify_response_signature_tampered() {
+        use ed25519_dalek::{Signer, SigningKey};
+        use rand::rngs::OsRng;
+
+        let signing_key = SigningKey::generate(&mut OsRng);
+        let verifying_key = signing_key.verifying_key();
+
+        use ed25519_dalek::pkcs8::EncodePublicKey;
+        let public_key_pem = verifying_key
+            .to_public_key_pem(ed25519_dalek::pkcs8::spki::der::pem::LineEnding::LF)
+            .unwrap();
+
+        let mut response = proto::SubscribeResponse {
+            version: 1,
+            r#type: 1,
+            policies: vec![make_policy_entry(
+                "pol1",
+                "Policy 1",
+                &sample_rego("pol1"),
+                0,
+            )],
+            removed_policy_ids: vec![],
+            signature: vec![],
+            signing_key_id: "key-1".to_string(),
+        };
+
+        // Sign the canonical message
+        let canonical = build_canonical_message(&response);
+        let signature = signing_key.sign(&canonical);
+        response.signature = signature.to_bytes().to_vec();
+
+        // Tamper: change the version
+        response.version = 999;
+
+        let result = verify_response_signature(&response, &public_key_pem);
+        assert!(result.is_err(), "tampered signature should fail");
+    }
+
+    #[test]
+    fn test_verify_response_signature_missing() {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let signing_key = SigningKey::generate(&mut OsRng);
+        let verifying_key = signing_key.verifying_key();
+
+        use ed25519_dalek::pkcs8::EncodePublicKey;
+        let public_key_pem = verifying_key
+            .to_public_key_pem(ed25519_dalek::pkcs8::spki::der::pem::LineEnding::LF)
+            .unwrap();
+
+        let response = proto::SubscribeResponse {
+            version: 1,
+            r#type: 1,
+            policies: vec![],
+            removed_policy_ids: vec![],
+            signature: vec![], // Empty signature
+            signing_key_id: String::new(),
+        };
+
+        let result = verify_response_signature(&response, &public_key_pem);
+        assert!(result.is_err(), "missing signature should fail");
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("missing required signature")
+        );
+    }
+
+    #[test]
+    fn test_verify_wasm_hash_mismatch() {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let signing_key = SigningKey::generate(&mut OsRng);
+        let verifying_key = signing_key.verifying_key();
+
+        use ed25519_dalek::pkcs8::EncodePublicKey;
+        let public_key_pem = verifying_key
+            .to_public_key_pem(ed25519_dalek::pkcs8::spki::der::pem::LineEnding::LF)
+            .unwrap();
+
+        let mut entry = make_policy_entry("pol1", "Policy 1", &sample_rego("pol1"), 0);
+        entry.wasm_bytes = vec![1, 2, 3, 4]; // Some bytes
+        entry.wasm_hash = "wrong_hash".to_string(); // Mismatched hash
+
+        let response = proto::SubscribeResponse {
+            version: 1,
+            r#type: 1,
+            policies: vec![entry],
+            removed_policy_ids: vec![],
+            signature: vec![0u8; 64], // Dummy signature (won't get to verify)
+            signing_key_id: String::new(),
+        };
+
+        let result = verify_response_signature(&response, &public_key_pem);
+        assert!(result.is_err(), "wasm hash mismatch should fail");
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("wasm_hash mismatch")
+        );
     }
 }

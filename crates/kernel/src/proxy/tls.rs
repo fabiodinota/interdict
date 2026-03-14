@@ -11,7 +11,10 @@
 use crate::config::TlsConfig;
 use crate::error::ProxyError;
 use dashmap::DashMap;
-use std::sync::Arc;
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+use zeroize::Zeroizing;
 
 /// Load the CA certificate and key pair from PEM files.
 ///
@@ -49,52 +52,77 @@ pub fn load_ca(config: &TlsConfig) -> Result<(rcgen::Certificate, rcgen::KeyPair
     Ok((ca_cert, key_pair))
 }
 
+/// Cached certificate with creation timestamp for TTL enforcement.
+struct CachedCert {
+    config: Arc<rustls::ServerConfig>,
+    created_at: Instant,
+}
+
 /// Thread-safe TLS certificate cache with on-demand generation.
 ///
 /// Caches `rustls::ServerConfig` per domain in a `DashMap` for
 /// sub-microsecond lookups after initial generation.
 ///
-/// Uses `DashMap::entry()` to prevent thundering herd: only one
-/// task generates a cert per domain at a time (Pitfall 4).
+/// Bounded to `max_entries` with FIFO eviction, and entries expire
+/// after `ttl`. The CA private key is wrapped in `Zeroizing` so it
+/// is securely erased from memory on drop.
 pub struct CertCache {
-    /// Cached ServerConfig per domain.
-    cache: DashMap<String, Arc<rustls::ServerConfig>>,
+    /// Cached ServerConfig per domain with TTL.
+    cache: DashMap<String, CachedCert>,
     /// CA certificate PEM for re-parsing in spawn_blocking context.
     ca_cert_pem: String,
-    /// CA key PEM for re-parsing in spawn_blocking context.
-    ca_key_pem: String,
+    /// CA key PEM wrapped in Zeroizing for secure memory cleanup.
+    ca_key_pem: Zeroizing<String>,
+    /// Maximum number of cached certificates.
+    max_entries: usize,
+    /// Certificate time-to-live.
+    ttl: Duration,
+    /// Insertion order for FIFO eviction when cache is full.
+    insertion_order: Mutex<VecDeque<String>>,
 }
 
 impl CertCache {
     /// Create a new certificate cache with the given CA certificate and key.
     ///
     /// Stores PEM representations for use in spawn_blocking cert generation.
+    /// The CA key PEM is wrapped in `Zeroizing` for secure memory cleanup.
     pub fn new(ca_cert: rcgen::Certificate, ca_key: rcgen::KeyPair) -> Self {
         let ca_cert_pem = ca_cert.pem();
-        let ca_key_pem = ca_key.serialize_pem();
+        let ca_key_pem = Zeroizing::new(ca_key.serialize_pem());
 
         Self {
             cache: DashMap::new(),
             ca_cert_pem,
             ca_key_pem,
+            max_entries: 1000,
+            ttl: Duration::from_secs(86400), // 24 hours
+            insertion_order: Mutex::new(VecDeque::new()),
         }
     }
 
     /// Get or create a TLS `ServerConfig` for the given domain.
     ///
-    /// Fast path: returns cached config (sub-microsecond).
+    /// Fast path: returns cached config if present and not expired.
     /// Slow path: generates a new certificate signed by the CA,
     /// wraps it in a `ServerConfig`, caches it, and returns it.
     ///
-    /// Uses `DashMap::entry()` to prevent thundering herd on cache miss.
+    /// The cache is bounded to `max_entries`; when full, the oldest
+    /// entry is evicted (FIFO). Entries that exceed `ttl` are treated
+    /// as cache misses and regenerated.
+    ///
     /// CPU-bound cert generation runs in `spawn_blocking` (Pitfall 5).
     pub async fn get_or_create(
         &self,
         domain: &str,
     ) -> Result<Arc<rustls::ServerConfig>, ProxyError> {
-        // Fast path: cached
-        if let Some(config) = self.cache.get(domain) {
-            return Ok(config.clone());
+        // Fast path: cached and not expired
+        if let Some(entry) = self.cache.get(domain) {
+            if entry.created_at.elapsed() < self.ttl {
+                return Ok(entry.config.clone());
+            }
+            // TTL expired, drop the ref and remove below
+            drop(entry);
+            self.cache.remove(domain);
         }
 
         // Slow path: generate cert in blocking context
@@ -110,10 +138,27 @@ impl CertCache {
 
         let server_config = Arc::new(server_config);
 
-        // Use entry API to avoid duplicate insertion (thundering herd prevention)
-        self.cache
-            .entry(domain.to_string())
-            .or_insert(server_config.clone());
+        // Evict oldest if at capacity
+        {
+            let mut order = self
+                .insertion_order
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if self.cache.len() >= self.max_entries {
+                if let Some(oldest) = order.pop_front() {
+                    self.cache.remove(&oldest);
+                }
+            }
+            // Remove any existing entry for this domain from insertion order
+            order.retain(|d| d != domain);
+            order.push_back(domain.to_string());
+        }
+
+        // Insert with TTL tracking
+        self.cache.entry(domain.to_string()).or_insert(CachedCert {
+            config: server_config.clone(),
+            created_at: Instant::now(),
+        });
 
         Ok(server_config)
     }
@@ -280,5 +325,46 @@ mod tests {
 
         assert_eq!(cache.len(), 2);
         assert!(!Arc::ptr_eq(&config1, &config2));
+    }
+
+    #[tokio::test]
+    async fn test_cert_cache_evicts_beyond_max_entries() {
+        let (ca_cert, ca_key) = generate_test_ca();
+        let mut cache = CertCache::new(ca_cert, ca_key);
+        cache.max_entries = 5; // Low limit for testing
+
+        // Insert more domains than max_entries
+        for i in 0..15 {
+            cache
+                .get_or_create(&format!("domain-{}.example.com", i))
+                .await
+                .expect("cert generation should succeed");
+        }
+
+        assert!(
+            cache.len() <= 5,
+            "cache should not exceed max_entries, got {}",
+            cache.len()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cert_cache_ttl_expiration() {
+        let (ca_cert, ca_key) = generate_test_ca();
+        let mut cache = CertCache::new(ca_cert, ca_key);
+        cache.ttl = Duration::from_millis(1); // Very short TTL for testing
+
+        let config1 = cache.get_or_create("test.example.com").await.unwrap();
+
+        // Wait for TTL to expire
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        // Should generate a new cert (different Arc)
+        let config2 = cache.get_or_create("test.example.com").await.unwrap();
+
+        assert!(
+            !Arc::ptr_eq(&config1, &config2),
+            "expired cert should be regenerated"
+        );
     }
 }

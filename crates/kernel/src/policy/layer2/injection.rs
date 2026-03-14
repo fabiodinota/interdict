@@ -31,7 +31,7 @@ pub enum InjectionKind {
 #[derive(Debug, Clone)]
 pub struct InjectionDetection {
     pub kind: InjectionKind,
-    pub matched_text: String,
+    pub matched_text_hash: String,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -151,7 +151,9 @@ fn collect_matches(
         for found in pattern.find_iter(text) {
             detections.push(InjectionDetection {
                 kind: kind.clone(),
-                matched_text: truncate_100(found.as_str()),
+                matched_text_hash: crate::policy::verdict::hash_matched_text(&truncate_100(
+                    found.as_str(),
+                )),
             });
         }
     }
@@ -235,8 +237,8 @@ mod tests {
         let detections = detector.detect(&payload);
         assert!(!detections.is_empty());
         assert!(
-            detections.iter().all(|d| d.matched_text.len() <= 100),
-            "matched text should be truncated to <= 100 chars"
+            detections.iter().all(|d| d.matched_text_hash.len() == 64),
+            "matched text hash should be 64 chars (SHA-256 hex)"
         );
     }
 }

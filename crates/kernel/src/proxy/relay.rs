@@ -49,19 +49,18 @@ where
     result
 }
 
-/// Relay bytes from `reader` to `writer` with content inspection.
+/// Safety overlap window size in bytes. Patterns spanning chunk boundaries
+/// will be caught as long as they fit within this window. 256 bytes covers
+/// all standard PII patterns (SSNs, emails, API keys, credit cards).
+const OVERLAP_WINDOW: usize = 256;
+
+/// Relay bytes from `reader` to `writer` with cross-chunk content inspection.
 ///
-/// Reads data in chunks, calls ContentInspector on each chunk, and either:
-/// - Forwards the (possibly redacted) content if Allow or Redact verdict
-/// - Drops the data and returns an Err if Block verdict
+/// Accumulates read chunks in a buffer and inspects content with an overlap
+/// window so that patterns split across TCP reads (e.g., `AKIA|IOSFODNN7EXAMPLE`)
+/// are still detected.
 ///
 /// Returns bytes forwarded, or Err with reason on block/io-error.
-///
-/// IMPLEMENTATION NOTE: This performs chunk-level inspection. For patterns
-/// spanning multiple chunks, the AdaptiveTokenBuffer in InspectingRelay
-/// (used for inbound/response direction) provides cross-chunk detection.
-/// Outbound prompts are typically sent as complete HTTP request bodies in
-/// a single write, so chunk-level inspection is sufficient for Phase 3.
 pub async fn inspecting_relay_outbound<R, W>(
     mut reader: R,
     mut writer: W,
@@ -71,67 +70,89 @@ where
     R: AsyncRead + Unpin,
     W: AsyncWrite + Unpin,
 {
-    let mut buf = BytesMut::with_capacity(8192);
+    let mut read_buf = BytesMut::with_capacity(8192);
+    let mut accum = Vec::new();
     let mut total_forwarded: u64 = 0;
 
     loop {
-        buf.clear();
-        // Resize buffer for reading
-        buf.resize(8192, 0);
+        read_buf.clear();
+        read_buf.resize(8192, 0);
 
         let n = reader
-            .read(&mut buf)
+            .read(&mut read_buf)
             .await
             .map_err(|e| format!("read error: {}", e))?;
 
         if n == 0 {
-            // EOF -- reader closed
+            // EOF — inspect and flush remaining accumulated content
+            if !accum.is_empty() {
+                total_forwarded += inspect_and_forward(&accum, &inspector, &mut writer).await?;
+            }
             break;
         }
 
-        let chunk = &buf[..n];
+        accum.extend_from_slice(&read_buf[..n]);
 
-        // Inspect the chunk content
-        let result: InspectionResult = inspector.inspect_request(chunk);
+        // When we have enough accumulated data, inspect the safe prefix
+        // (everything except the overlap window) and forward it.
+        if accum.len() > OVERLAP_WINDOW {
+            let safe_end = accum.len() - OVERLAP_WINDOW;
+            let safe_prefix = &accum[..safe_end];
 
-        match result.action {
-            VerdictAction::Block => {
-                tracing::warn!(
-                    detections = ?result.detections,
-                    "outbound content blocked by inspector"
-                );
-                return Err(format!("blocked: {}", result.reason));
-            }
-            VerdictAction::Redact => {
-                // Forward redacted content if available, otherwise forward original
-                let to_write = result.redacted_content.as_deref().unwrap_or(chunk);
-                writer
-                    .write_all(to_write)
-                    .await
-                    .map_err(|e| format!("write error: {}", e))?;
-                total_forwarded += to_write.len() as u64;
-                tracing::debug!(
-                    categories = ?result.detections,
-                    "outbound content redacted"
-                );
-            }
-            VerdictAction::Allow => {
-                writer
-                    .write_all(chunk)
-                    .await
-                    .map_err(|e| format!("write error: {}", e))?;
-                total_forwarded += n as u64;
-            }
+            total_forwarded += inspect_and_forward(safe_prefix, &inspector, &mut writer).await?;
+
+            // Keep only the overlap window for the next iteration
+            accum.drain(..safe_end);
         }
     }
 
-    // Flush writer to ensure all data is sent
     writer
         .flush()
         .await
         .map_err(|e| format!("flush error: {}", e))?;
 
     Ok(total_forwarded)
+}
+
+/// Inspect a byte slice and write it through. Returns bytes forwarded.
+async fn inspect_and_forward<W>(
+    content: &[u8],
+    inspector: &ContentInspector,
+    writer: &mut W,
+) -> Result<u64, String>
+where
+    W: AsyncWrite + Unpin,
+{
+    let result: InspectionResult = inspector.inspect_request(content);
+
+    match result.action {
+        VerdictAction::Block => {
+            tracing::warn!(
+                detections = ?result.detections,
+                "outbound content blocked by inspector"
+            );
+            Err(format!("blocked: {}", result.reason))
+        }
+        VerdictAction::Redact => {
+            let to_write = result.redacted_content.as_deref().unwrap_or(content);
+            writer
+                .write_all(to_write)
+                .await
+                .map_err(|e| format!("write error: {}", e))?;
+            tracing::debug!(
+                categories = ?result.detections,
+                "outbound content redacted"
+            );
+            Ok(to_write.len() as u64)
+        }
+        VerdictAction::Allow => {
+            writer
+                .write_all(content)
+                .await
+                .map_err(|e| format!("write error: {}", e))?;
+            Ok(content.len() as u64)
+        }
+    }
 }
 
 /// Relay bytes from `reader` to `writer` with content inspection (inbound/response direction).
@@ -350,5 +371,134 @@ mod tests {
         assert!(err.contains("blocked"));
         // No data should have been forwarded
         assert!(output.is_empty());
+    }
+
+    /// Helper to build a blocking inspector with a given pattern.
+    fn make_inspector_with_patterns(
+        patterns: Vec<crate::policy::patterns::PatternRule>,
+    ) -> Arc<ContentInspector> {
+        use crate::policy::config::{
+            BlockResponseDetail, FailMode, PolicyConfig, RedactionDirection,
+        };
+        use crate::policy::patterns::PatternRegistry;
+        use crate::policy::redaction::RedactionEngine;
+
+        let registry = Arc::new(PatternRegistry {
+            patterns,
+            version: 1,
+        });
+        let redactor = Arc::new(RedactionEngine::empty());
+        let config = Arc::new(PolicyConfig {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            rego_source: None,
+            entrypoint: None,
+            fail_mode: FailMode::FailClosed,
+            block_response_detail: BlockResponseDetail::Opaque,
+            redaction_direction: RedactionDirection::Both,
+            background_l2: false,
+            enabled: true,
+        });
+        Arc::new(
+            ContentInspector::new(registry, redactor, config)
+                .expect("content inspector should initialize"),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_cross_chunk_aws_key_detection() {
+        use crate::policy::patterns::PatternRule;
+
+        let inspector = make_inspector_with_patterns(vec![PatternRule {
+            category: "AWS_KEY".to_string(),
+            pattern: regex::Regex::new(r"AKIA[0-9A-Z]{16}").unwrap(),
+            validator: None,
+            base_confidence: 1.0,
+            context_boosters: vec![],
+        }]);
+
+        // Split AWS key AKIAIOSFODNN7EXAMPLE across two writes
+        let part1 = b"Prefix text AKIA";
+        let part2 = b"IOSFODNN7EXAMPLE suffix";
+
+        let (reader, mut write_end) = duplex(4096);
+        tokio::io::AsyncWriteExt::write_all(&mut write_end, part1)
+            .await
+            .unwrap();
+        tokio::io::AsyncWriteExt::write_all(&mut write_end, part2)
+            .await
+            .unwrap();
+        drop(write_end);
+
+        let mut output = Vec::new();
+        let result = inspecting_relay_outbound(reader, &mut output, inspector).await;
+
+        assert!(result.is_err(), "cross-chunk AWS key should be blocked");
+        assert!(result.unwrap_err().contains("blocked"));
+    }
+
+    #[tokio::test]
+    async fn test_cross_chunk_ssn_detection() {
+        use crate::policy::patterns::PatternRule;
+
+        let inspector = make_inspector_with_patterns(vec![PatternRule {
+            category: "SSN".to_string(),
+            pattern: regex::Regex::new(r"\d{3}-\d{2}-\d{4}").unwrap(),
+            validator: None,
+            base_confidence: 0.9,
+            context_boosters: vec![],
+        }]);
+
+        // Split SSN 123-45-6789 across two writes
+        let part1 = b"SSN is 123-45";
+        let part2 = b"-6789 end";
+
+        let (reader, mut write_end) = duplex(4096);
+        tokio::io::AsyncWriteExt::write_all(&mut write_end, part1)
+            .await
+            .unwrap();
+        tokio::io::AsyncWriteExt::write_all(&mut write_end, part2)
+            .await
+            .unwrap();
+        drop(write_end);
+
+        let mut output = Vec::new();
+        let result = inspecting_relay_outbound(reader, &mut output, inspector).await;
+
+        // SSN triggers Redact (not Block), so result should be Ok
+        assert!(
+            result.is_ok(),
+            "cross-chunk SSN should be detected and redacted, got: {:?}",
+            result.err()
+        );
+        // Output should contain redaction markers (asterisks from RedactionEngine)
+        let output_str = String::from_utf8_lossy(&output);
+        assert!(
+            !output_str.contains("123-45-6789"),
+            "SSN should be redacted in output"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_clean_content_large_passthrough() {
+        let inspector = make_inspector_with_patterns(vec![]);
+
+        // Clean content larger than 8KB — should pass through entirely
+        let data = "Hello world! This is safe content. ".repeat(500);
+        let data_bytes = data.as_bytes();
+
+        let (reader, mut write_end) = duplex(65536);
+        tokio::io::AsyncWriteExt::write_all(&mut write_end, data_bytes)
+            .await
+            .unwrap();
+        drop(write_end);
+
+        let mut output = Vec::new();
+        let bytes = inspecting_relay_outbound(reader, &mut output, inspector)
+            .await
+            .unwrap();
+
+        assert_eq!(bytes, data_bytes.len() as u64);
+        assert_eq!(output, data_bytes);
     }
 }

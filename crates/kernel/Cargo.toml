@@ -50,6 +50,8 @@ zstd = "0.13"
 tokio-stream = "0.1"
 tokio-util = "0.7"
 rand = "0.9"
+zeroize = "1"
+ed25519-dalek = { version = "2", features = ["pkcs8", "pem"] }
 
 [target.'cfg(not(target_os = "windows"))'.dependencies.tikv-jemallocator]
 version = "0.6"
