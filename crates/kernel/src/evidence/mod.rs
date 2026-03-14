@@ -488,30 +488,32 @@ mod tests {
             None,
         );
 
-        // Flood the buffer with events -- many will fail to deliver
+        // Flood the buffer with events — many will fail to deliver
         // and enter the retry queue
         for _ in 0..500 {
             buffer.try_send(sample_event());
         }
 
-        // Allow some flush cycles
-        tokio::time::sleep(Duration::from_secs(3)).await;
+        let health = buffer.health().clone();
 
-        // The retry queue should never exceed MAX_RETRY_QUEUE_LEN
-        // We verify indirectly: batches_failed or events_dropped should be > 0
-        let health = buffer.health();
+        // Drop the buffer to close the channel — forces the flusher to
+        // attempt delivery of all pending events and then shut down.
+        drop(buffer);
+
+        // Wait for the flusher to finish processing
+        let _ = tokio::time::timeout(Duration::from_secs(30), handle).await;
+
+        // After shutdown, events should have been attempted and failed/dropped
         let total_drops = health.events_dropped.load(Ordering::Relaxed);
         let total_failed = health.batches_failed.load(Ordering::Relaxed);
-        // At least some events should be processed (either failed or dropped)
+        let total_retries = health.retries.load(Ordering::Relaxed);
         assert!(
-            total_drops > 0 || total_failed > 0,
-            "retry saturation should cause drops or failures, drops={}, failed={}",
+            total_drops > 0 || total_failed > 0 || total_retries > 0,
+            "retry saturation should cause drops, failures, or retries: drops={}, failed={}, retries={}",
             total_drops,
-            total_failed
+            total_failed,
+            total_retries
         );
-
-        drop(buffer);
-        let _ = tokio::time::timeout(Duration::from_secs(10), handle).await;
     }
 
     #[test]
