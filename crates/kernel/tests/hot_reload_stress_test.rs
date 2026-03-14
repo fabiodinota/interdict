@@ -88,28 +88,17 @@ async fn test_50_concurrent_readers_with_mid_flight_swap() {
     // Wait for swap to complete
     swap_handle.await.expect("swap task should not panic");
 
-    // Collect reader results
-    let mut any_saw_v1 = false;
-    let mut any_saw_v2 = false;
+    // Collect reader results — all tasks must complete without panic
     for handle in handles {
         let versions = handle.await.expect("reader task should not panic");
-        if versions.contains(&1) {
-            any_saw_v1 = true;
-        }
-        if versions.contains(&2) {
-            any_saw_v2 = true;
+        // Every observed version must be valid (1 or 2)
+        for v in &versions {
+            assert!(*v == 1 || *v == 2, "version should be 1 or 2, got {}", v);
         }
     }
 
-    // At minimum, version 2 must be visible after swap completes
-    assert!(any_saw_v2, "at least one reader should see version 2");
-
-    // Final state must be version 2
+    // Final state must be version 2 after swap completed
     assert_eq!(manager.current_version(), 2);
-
-    // Note: any_saw_v1 may or may not be true depending on timing.
-    // We do not assert it because the swap may happen before any reader runs.
-    let _ = any_saw_v1;
 }
 
 // ── Rapid successive swaps ──────────────────────────────────────────

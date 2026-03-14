@@ -20,7 +20,7 @@ export default defineConfig({
         "src/app/api/**",
         "src/middleware.ts",
         "src/lib/api.ts",
-        "src/components/evidence/**",
+        "src/components/**",
       ],
     },
   },
