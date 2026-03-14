@@ -219,13 +219,14 @@ fn build_policy_pipeline(
     );
 
     let review_store = Arc::new(
-        policy::layer3::store::ReviewQueueStore::new(&config.policy.review_db_path)
-            .with_context(|| {
+        policy::layer3::store::ReviewQueueStore::new(&config.policy.review_db_path).with_context(
+            || {
                 format!(
                     "failed to open review queue store at {}",
                     config.policy.review_db_path
                 )
-            })?,
+            },
+        )?,
     );
     let review_queue = Arc::new(policy::layer3::queue::ReviewQueue::new(
         review_store,
@@ -253,8 +254,7 @@ fn build_policy_pipeline(
     )))
 }
 
-fn build_content_inspector(
-) -> anyhow::Result<Arc<policy::content_inspection::ContentInspector>> {
+fn build_content_inspector() -> anyhow::Result<Arc<policy::content_inspection::ContentInspector>> {
     let pattern_registry = Arc::new(policy::patterns::PatternRegistry {
         patterns: policy::patterns::default::default_patterns(),
         version: 1,
@@ -376,7 +376,12 @@ async fn init_evidence_pipeline(
         "evidence pipeline initialized"
     );
 
-    Ok((evidence_buffer, evidence_flusher_handle, kernel_id, mtls_certs))
+    Ok((
+        evidence_buffer,
+        evidence_flusher_handle,
+        kernel_id,
+        mtls_certs,
+    ))
 }
 
 fn spawn_distribution_client(
@@ -405,7 +410,7 @@ fn spawn_distribution_client(
             cancel_token,
         );
 
-        if let Some(ref certs) = mtls_certs {
+        if let Some(certs) = mtls_certs {
             client = client.with_mtls(
                 certs.ca_cert.clone(),
                 certs.client_cert.clone(),

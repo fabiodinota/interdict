@@ -51,7 +51,7 @@ tokio-stream = "0.1"
 tokio-util = "0.7"
 rand = "0.9"
 
-[dependencies.tikv-jemallocator]
+[target.'cfg(not(target_os = "windows"))'.dependencies.tikv-jemallocator]
 version = "0.6"
 
 [dev-dependencies]

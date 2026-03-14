@@ -18,6 +18,7 @@ use kernel::middleware;
 
 /// Use jemalloc for predictable memory behavior required for the
 /// 128MB steady-state target (KERN-09).
+#[cfg(not(target_os = "windows"))]
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 

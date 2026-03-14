@@ -8,8 +8,8 @@
 
 use kernel::policy::config::{BlockResponseDetail, FailMode, PolicyConfig, RedactionDirection};
 use kernel::policy::content_inspection::ContentInspector;
-use kernel::policy::patterns::default::default_patterns;
 use kernel::policy::patterns::PatternRegistry;
+use kernel::policy::patterns::default::default_patterns;
 use kernel::policy::redaction::RedactionEngine;
 use kernel::policy::verdict::VerdictAction;
 use proptest::prelude::*;
