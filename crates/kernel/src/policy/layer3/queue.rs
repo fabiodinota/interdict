@@ -432,4 +432,73 @@ mod tests {
         assert_eq!(item.content_hash, "hash-persist");
         assert_eq!(item.fail_mode, "closed");
     }
+
+    #[tokio::test]
+    async fn test_escalate_at_capacity_returns_fail_closed_immediately() {
+        // Queue with max_pending=1. First escalation acquires the permit,
+        // second should immediately return fail-mode default without blocking.
+        let queue = Arc::new(make_queue(5000, 1)); // max 1 concurrent
+
+        let request_id_1 = uuid::Uuid::new_v4();
+        let trace_1 = make_test_trace(request_id_1);
+        let queue_clone = queue.clone();
+
+        // Fill the single permit slot.
+        let _handle = tokio::spawn(async move {
+            queue_clone
+                .escalate(request_id_1, &trace_1, "hash-1", FailMode::FailClosed)
+                .await
+                .unwrap()
+        });
+
+        // Give the first escalation time to acquire the permit.
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // Second escalation with fail-closed: should get Block immediately.
+        let request_id_2 = uuid::Uuid::new_v4();
+        let trace_2 = make_test_trace(request_id_2);
+        let action = queue
+            .escalate(request_id_2, &trace_2, "hash-2", FailMode::FailClosed)
+            .await
+            .unwrap();
+        assert_eq!(action, VerdictAction::Block);
+
+        // Pending count should be 1 (only the first request is actually held).
+        assert_eq!(queue.get_pending_count(), 1);
+
+        // Clean up: drop queue to unblock the background task.
+        drop(queue);
+        let _ = _handle.await;
+    }
+
+    #[tokio::test]
+    async fn test_escalate_at_capacity_returns_fail_open_immediately() {
+        // Same as above but with fail-open: should get Allow immediately.
+        let queue = Arc::new(make_queue(5000, 1)); // max 1 concurrent
+
+        let request_id_1 = uuid::Uuid::new_v4();
+        let trace_1 = make_test_trace(request_id_1);
+        let queue_clone = queue.clone();
+
+        let _handle = tokio::spawn(async move {
+            queue_clone
+                .escalate(request_id_1, &trace_1, "hash-1", FailMode::FailClosed)
+                .await
+                .unwrap()
+        });
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // Second escalation with fail-open: should get Allow immediately.
+        let request_id_2 = uuid::Uuid::new_v4();
+        let trace_2 = make_test_trace(request_id_2);
+        let action = queue
+            .escalate(request_id_2, &trace_2, "hash-2", FailMode::FailOpen)
+            .await
+            .unwrap();
+        assert_eq!(action, VerdictAction::Allow);
+
+        drop(queue);
+        let _ = _handle.await;
+    }
 }

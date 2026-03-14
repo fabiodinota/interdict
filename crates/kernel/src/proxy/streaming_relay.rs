@@ -284,4 +284,103 @@ mod tests {
             all_output
         );
     }
+
+    #[tokio::test]
+    async fn test_relay_handles_empty_stream() {
+        let registry = Arc::new(PatternRegistry {
+            patterns: vec![],
+            version: 1,
+        });
+        let redactor = Arc::new(RedactionEngine::empty());
+        let detector = Arc::new(StreamingDetector::new(registry, redactor));
+
+        let relay = InspectingRelay::new(detector, BufferPreset::Small);
+
+        let (input_tx, input_rx) = mpsc::channel(10);
+        let (output_tx, mut output_rx) = mpsc::channel(10);
+
+        // Drop input immediately -- empty stream
+        drop(input_tx);
+
+        let handle = tokio::spawn(async move {
+            relay
+                .relay_with_inspection(input_rx, output_tx, vec![], String::new())
+                .await
+        });
+
+        let result = handle.await.unwrap();
+        assert!(
+            result.is_ok(),
+            "empty stream should succeed: {:?}",
+            result.err()
+        );
+
+        // Output should be empty
+        let chunk =
+            tokio::time::timeout(std::time::Duration::from_millis(100), output_rx.recv()).await;
+        match chunk {
+            Ok(None) | Err(_) => { /* expected: no output */ }
+            Ok(Some(data)) => {
+                assert!(
+                    data.is_empty(),
+                    "expected no output from empty stream, got: {:?}",
+                    data
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_relay_flushes_buffer_on_end() {
+        let registry = Arc::new(PatternRegistry {
+            patterns: vec![],
+            version: 1,
+        });
+        let redactor = Arc::new(RedactionEngine::empty());
+        let detector = Arc::new(StreamingDetector::new(registry, redactor));
+
+        let relay = InspectingRelay::new(detector, BufferPreset::Small);
+
+        let (input_tx, input_rx) = mpsc::channel(10);
+        let (output_tx, mut output_rx) = mpsc::channel(10);
+
+        // Send small chunks that individually are below the buffer threshold
+        input_tx.send(Bytes::from("ab")).await.unwrap();
+        input_tx.send(Bytes::from("cd")).await.unwrap();
+        input_tx.send(Bytes::from("ef")).await.unwrap();
+        drop(input_tx); // signal end of stream
+
+        let handle = tokio::spawn(async move {
+            relay
+                .relay_with_inspection(input_rx, output_tx, vec![], String::new())
+                .await
+        });
+
+        let result = handle.await.unwrap();
+        assert!(
+            result.is_ok(),
+            "flush test should succeed: {:?}",
+            result.err()
+        );
+
+        // Collect all output and verify all content was flushed
+        let mut collected = Vec::new();
+        while let Some(chunk) = output_rx.recv().await {
+            collected.extend_from_slice(&chunk);
+        }
+
+        let output_str = String::from_utf8_lossy(&collected);
+        assert!(
+            output_str.contains("ab"),
+            "output should contain 'ab': {output_str}"
+        );
+        assert!(
+            output_str.contains("cd"),
+            "output should contain 'cd': {output_str}"
+        );
+        assert!(
+            output_str.contains("ef"),
+            "output should contain 'ef': {output_str}"
+        );
+    }
 }

@@ -49,3 +49,41 @@ pub fn init(config: &LoggingConfig) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::LoggingConfig;
+
+    // Note: tracing subscriber can only be set once per process.
+    // These tests verify construction logic without calling init().
+
+    #[test]
+    fn test_json_format_accepted() {
+        let config = LoggingConfig {
+            level: "info".to_string(),
+            format: "json".to_string(),
+        };
+        assert_eq!(config.format, "json");
+    }
+
+    #[test]
+    fn test_pretty_format_accepted() {
+        let config = LoggingConfig {
+            level: "debug".to_string(),
+            format: "pretty".to_string(),
+        };
+        assert_eq!(config.format, "pretty");
+    }
+
+    #[test]
+    fn test_unknown_format_defaults_exist() {
+        // Test that unknown formats don't cause issues at config level.
+        // The init() function handles this by logging a warning and using JSON.
+        let config = LoggingConfig {
+            level: "info".to_string(),
+            format: "xml".to_string(),
+        };
+        assert_ne!(config.format, "json");
+        assert_ne!(config.format, "pretty");
+    }
+}

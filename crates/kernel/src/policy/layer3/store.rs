@@ -443,4 +443,55 @@ mod tests {
         let result = store.enqueue(item2).await;
         assert!(result.is_err());
     }
+
+    #[tokio::test]
+    async fn test_store_get_pending_empty_returns_empty_vec() {
+        // A fresh store with no enqueued items should return an empty vec.
+        let store = ReviewQueueStore::new(":memory:").unwrap();
+        let pending = store.get_pending().await.unwrap();
+        assert!(pending.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_store_expire_removes_only_timed_out_entries() {
+        // Add two expired items and one active item.
+        // expire_timed_out should only mark the expired ones.
+        let store = ReviewQueueStore::new(":memory:").unwrap();
+
+        let expired_1 = make_expired_item("req-exp-1");
+        let expired_2 = make_expired_item("req-exp-2");
+        let active = make_test_item("req-active");
+
+        store.enqueue(expired_1).await.unwrap();
+        store.enqueue(expired_2).await.unwrap();
+        store.enqueue(active).await.unwrap();
+
+        // Before expiration: 3 pending items.
+        let pending_before = store.get_pending().await.unwrap();
+        assert_eq!(pending_before.len(), 3);
+
+        // Expire timed-out entries.
+        let expired_count = store.expire_timed_out().await.unwrap();
+        assert_eq!(expired_count, 2);
+
+        // After expiration: only the active item remains pending.
+        let pending_after = store.get_pending().await.unwrap();
+        assert_eq!(pending_after.len(), 1);
+        assert_eq!(pending_after[0].request_id, "req-active");
+
+        // Verify both expired items have status='expired'.
+        let exp1 = store.get_by_request_id("req-exp-1").await.unwrap().unwrap();
+        assert_eq!(exp1.status, "expired");
+
+        let exp2 = store.get_by_request_id("req-exp-2").await.unwrap().unwrap();
+        assert_eq!(exp2.status, "expired");
+
+        // Verify active item is still pending.
+        let act = store
+            .get_by_request_id("req-active")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(act.status, "pending");
+    }
 }

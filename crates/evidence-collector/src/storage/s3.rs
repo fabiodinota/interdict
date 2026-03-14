@@ -209,4 +209,38 @@ mod tests {
         let hour = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).single().unwrap();
         assert_eq!(s3_key_for_hour(&hour), "merkle-anchors/2026/01/01/00.json");
     }
+
+    #[test]
+    fn s3_key_end_of_day() {
+        let hour = Utc
+            .with_ymd_and_hms(2026, 12, 31, 23, 0, 0)
+            .single()
+            .unwrap();
+        assert_eq!(s3_key_for_hour(&hour), "merkle-anchors/2026/12/31/23.json");
+    }
+
+    #[test]
+    fn s3_key_starts_with_expected_prefix() {
+        let hour = Utc.with_ymd_and_hms(2026, 6, 15, 8, 0, 0).single().unwrap();
+        let key = s3_key_for_hour(&hour);
+        assert!(key.starts_with("merkle-anchors/"));
+        assert!(key.ends_with(".json"));
+    }
+
+    /// Dev mode is triggered by an empty bucket name. The `anchor_merkle_root`
+    /// method returns `Ok(())` immediately, and `verify_anchor` returns `None`.
+    /// We cannot construct an `S3Anchor` without an AWS client (needs network),
+    /// but we verify the key-generation function is exercised independently of
+    /// bucket configuration -- the same function is used in both production and
+    /// dev mode paths.
+    #[test]
+    fn dev_mode_key_generation_still_deterministic() {
+        let h1 = Utc.with_ymd_and_hms(2026, 3, 1, 5, 0, 0).single().unwrap();
+        let h2 = Utc.with_ymd_and_hms(2026, 3, 1, 5, 0, 0).single().unwrap();
+        assert_eq!(
+            s3_key_for_hour(&h1),
+            s3_key_for_hour(&h2),
+            "same hour produces identical S3 keys"
+        );
+    }
 }

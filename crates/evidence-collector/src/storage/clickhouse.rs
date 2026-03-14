@@ -299,4 +299,104 @@ mod tests {
         assert!(ddl.contains("ORDER BY (kernel_id, sequence_number)"));
         assert!(ddl.contains("content_bytes String DEFAULT ''"));
     }
+
+    #[test]
+    fn schema_ddl_contains_all_required_columns() {
+        let ddl = table_ddl();
+        let required_columns = [
+            "event_date",
+            "timestamp",
+            "bundle_id",
+            "kernel_id",
+            "actor_identity",
+            "department",
+            "vendor",
+            "model",
+            "prompt_hash",
+            "response_hash",
+            "prompt_text",
+            "response_text",
+            "policy_action",
+            "policy_rules_json",
+            "token_count",
+            "enforcement_latency_us",
+            "chain_hash",
+            "previous_hash",
+            "sequence_number",
+            "signature",
+            "signing_key_id",
+            "dev_signed",
+            "schema_version",
+            "content_bytes",
+        ];
+        for col in &required_columns {
+            assert!(ddl.contains(col), "DDL missing required column: {col}");
+        }
+    }
+
+    #[test]
+    fn from_timestamp_formats_correctly() {
+        let ts = Utc
+            .with_ymd_and_hms(2026, 1, 5, 12, 30, 0)
+            .single()
+            .expect("timestamp");
+        assert_eq!(EvidenceRow::from_timestamp(ts), "2026-01-05");
+    }
+
+    #[test]
+    fn from_timestamp_handles_leap_day() {
+        let ts = Utc
+            .with_ymd_and_hms(2028, 2, 29, 0, 0, 0)
+            .single()
+            .expect("leap day");
+        assert_eq!(EvidenceRow::from_timestamp(ts), "2028-02-29");
+    }
+
+    #[test]
+    fn validate_identifier_rejects_empty() {
+        assert!(super::validate_clickhouse_identifier("").is_err());
+    }
+
+    #[test]
+    fn validate_identifier_rejects_special_chars() {
+        assert!(super::validate_clickhouse_identifier("db; DROP TABLE").is_err());
+        assert!(super::validate_clickhouse_identifier("db-name").is_err());
+        assert!(super::validate_clickhouse_identifier("db.name").is_err());
+    }
+
+    #[test]
+    fn validate_identifier_accepts_valid_names() {
+        assert!(super::validate_clickhouse_identifier("evidence_db").is_ok());
+        assert!(super::validate_clickhouse_identifier("DB_2026").is_ok());
+        assert!(super::validate_clickhouse_identifier("a").is_ok());
+    }
+
+    #[test]
+    fn validate_identifier_rejects_too_long() {
+        let long = "a".repeat(129);
+        assert!(super::validate_clickhouse_identifier(&long).is_err());
+        // Exactly 128 is ok
+        let max = "b".repeat(128);
+        assert!(super::validate_clickhouse_identifier(&max).is_ok());
+    }
+
+    #[test]
+    fn migration_ddls_are_idempotent() {
+        for ddl in super::migration_ddls() {
+            assert!(
+                ddl.contains("IF NOT EXISTS"),
+                "migration DDL must be idempotent: {ddl}"
+            );
+        }
+    }
+
+    #[test]
+    fn materialized_views_are_idempotent() {
+        for ddl in super::materialized_view_ddls() {
+            assert!(
+                ddl.contains("IF NOT EXISTS"),
+                "materialized view DDL must be idempotent: {ddl}"
+            );
+        }
+    }
 }
