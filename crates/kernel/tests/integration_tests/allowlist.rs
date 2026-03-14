@@ -14,7 +14,7 @@ use http_body_util::Full;
 /// Test that requests to an allowed vendor pass through successfully.
 ///
 /// Proves: allowlist correctly permits configured vendors.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_allowed_vendor_passes() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
 
@@ -47,7 +47,7 @@ async fn test_allowed_vendor_passes() {
 ///
 /// Proves: deny-by-default blocks non-allowlisted vendors with correct JSON structure.
 /// Validates exact JSON error structure from CONTEXT.md: error=vendor_blocked, vendor field.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_blocked_vendor_gets_403() {
     // Only allow "allowed-vendor.test" -- "blocked-vendor.test" is not on the list
     let proxy = TestProxy::new(vec!["allowed-vendor.test".to_string()]).await;
@@ -67,7 +67,7 @@ async fn test_blocked_vendor_gets_403() {
 /// Test that an empty allowlist blocks everything (deny-by-default).
 ///
 /// Proves: with no vendors configured, all traffic is blocked.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_empty_allowlist_blocks_everything() {
     let proxy = TestProxy::new(vec![]).await;
 
@@ -85,7 +85,7 @@ async fn test_empty_allowlist_blocks_everything() {
 /// Test that allowlist uses exact domain matching, not substring matching.
 ///
 /// Proves: "api.openai.com" on the allowlist does NOT match "openai.com".
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_allowlist_exact_match_only() {
     let proxy = TestProxy::new(vec!["api.openai.com".to_string()]).await;
 

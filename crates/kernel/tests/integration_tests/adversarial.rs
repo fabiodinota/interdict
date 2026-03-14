@@ -515,7 +515,7 @@ fn test_banking_customer_data_redaction() {
 // SECTION 6: Full proxy tunnel tests — content inspection through CONNECT
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_proxy_redacts_pii_in_outbound_request() {
     let proxy = proxy_with_inspection().await;
     let backend = proxy
@@ -541,7 +541,7 @@ async fn test_proxy_redacts_pii_in_outbound_request() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_proxy_blocks_aws_key_in_outbound() {
     let proxy = proxy_with_inspection().await;
     let backend = proxy
@@ -564,7 +564,7 @@ async fn test_proxy_blocks_aws_key_in_outbound() {
     // Err(_) => Connection error = blocked at tunnel level
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_proxy_blocks_injection_in_outbound() {
     let proxy = proxy_with_inspection().await;
     let backend = proxy
@@ -587,7 +587,7 @@ async fn test_proxy_blocks_injection_in_outbound() {
     // Err(_) => Expected
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_proxy_passes_clean_request_through() {
     let proxy = proxy_with_inspection().await;
     let expected =
@@ -614,7 +614,7 @@ async fn test_proxy_passes_clean_request_through() {
 // SECTION 7: Streaming response inspection (SSE with PII)
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_streaming_redacts_ssn_across_chunks() {
     let registry = Arc::new(PatternRegistry {
         patterns: default_patterns(),
@@ -660,7 +660,7 @@ async fn test_streaming_redacts_ssn_across_chunks() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_streaming_severs_on_leaked_aws_key() {
     let registry = Arc::new(PatternRegistry {
         patterns: default_patterns(),
@@ -717,7 +717,7 @@ async fn test_streaming_severs_on_leaked_aws_key() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_streaming_redacts_credit_card_in_response() {
     let registry = Arc::new(PatternRegistry {
         patterns: default_patterns(),
@@ -765,7 +765,7 @@ async fn test_streaming_redacts_credit_card_in_response() {
 // SECTION 8: SSE streaming through the full proxy tunnel
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_sse_response_flows_through_proxy_tunnel() {
     let proxy = proxy_with_inspection().await;
 
@@ -815,7 +815,7 @@ async fn test_sse_response_flows_through_proxy_tunnel() {
 // SECTION 9: Vendor allowlist enforcement
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_non_allowlisted_vendor_forbidden() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
 
@@ -829,7 +829,7 @@ async fn test_non_allowlisted_vendor_forbidden() {
     assert_eq!(resp["error"], "vendor_blocked");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_allowlisted_vendor_succeeds() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
     let backend = proxy
@@ -850,7 +850,7 @@ async fn test_allowlisted_vendor_succeeds() {
     assert_eq!(status, StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_multi_vendor_allowlist() {
     let proxy = TestProxy::new(vec![
         "127.0.0.1".to_string(),
@@ -887,7 +887,7 @@ async fn test_multi_vendor_allowlist() {
 // SECTION 10: Policy pipeline with Rego (hot-reload)
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_hot_reload_block_all_then_allow() {
     let wasm_engine =
         Arc::new(
@@ -991,7 +991,7 @@ async fn test_hot_reload_block_all_then_allow() {
 // SECTION 11: Rego policy evaluation — realistic scenarios
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rego_vendor_restriction() {
     let mut engine = regorus::Engine::new();
     engine
@@ -1034,7 +1034,7 @@ async fn test_rego_vendor_restriction() {
     assert_eq!(allowed.action, VerdictAction::Allow);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rego_pii_category_policy() {
     let mut engine = regorus::Engine::new();
     engine
@@ -1092,7 +1092,7 @@ async fn test_rego_pii_category_policy() {
     assert_eq!(clean.action, VerdictAction::Allow);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rego_department_scoping() {
     let mut engine = regorus::Engine::new();
     engine
@@ -1258,7 +1258,7 @@ fn test_all_pii_types_redacted_in_one_request() {
 // SECTION 14: Concurrent load — 20 parallel requests
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_20_concurrent_requests_all_inspected() {
     let proxy = proxy_with_inspection().await;
     let backend = proxy
@@ -1349,7 +1349,7 @@ async fn test_20_concurrent_requests_all_inspected() {
 // SECTION 15: Fail-closed vs fail-open
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_fail_closed_blocks_on_error() {
     let engine = regorus::Engine::new();
     let classifier = Arc::new(kernel::policy::layer2::classifier::Classifier::stub(
@@ -1419,7 +1419,7 @@ async fn test_fail_closed_blocks_on_error() {
     assert_eq!(result.merged_verdict.final_action, VerdictAction::Block);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_fail_open_allows_on_error() {
     let engine = regorus::Engine::new();
     let classifier = Arc::new(kernel::policy::layer2::classifier::Classifier::stub(
@@ -1574,7 +1574,7 @@ fn test_ai_leaks_banking_wire_details() {
 // SECTION 17: Enterprise patterns through full proxy tunnel
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_enterprise_patterns_through_tunnel() {
     let proxy = proxy_with_enterprise_inspection().await;
     let backend = proxy
@@ -1604,7 +1604,7 @@ async fn test_enterprise_patterns_through_tunnel() {
 // SECTION 18: Non-CONNECT request rejection
 // ═════════════════════════════════════════════════════════════════════════════
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_get_request_rejected() {
     let proxy = TestProxy::new(vec!["api.openai.com".to_string()]).await;
     let (status, body) = proxy.send_direct(Method::GET, "/v1/chat").await.unwrap();
@@ -1613,7 +1613,7 @@ async fn test_get_request_rejected() {
     assert_eq!(json["error"], "method_not_supported");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_post_request_rejected() {
     let proxy = TestProxy::new(vec!["api.openai.com".to_string()]).await;
     let (status, _) = proxy.send_direct(Method::POST, "/v1/chat").await.unwrap();

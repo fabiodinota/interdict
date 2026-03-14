@@ -529,7 +529,7 @@ mod tests {
         ]
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_pipeline_l1_block_enforced_immediately() {
         let engine = create_block_engine();
         let classifier = Arc::new(Classifier::stub(test_labels(), "allow".to_string()));
@@ -555,7 +555,7 @@ mod tests {
         assert!(result.trace.layer3_decision.is_none());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_pipeline_l1_allow_with_background_l2() {
         let engine = create_allow_engine();
         let classifier = Arc::new(Classifier::stub(test_labels(), "allow".to_string()));
@@ -605,7 +605,7 @@ mod tests {
         assert!(result.trace.layer2_classification.is_none());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_pipeline_l1_no_match_escalates_to_l2() {
         // Use an engine that returns allow with no reason (indicating "no match")
         let mut engine = regorus::Engine::new();
@@ -645,7 +645,7 @@ mod tests {
         assert_eq!(result.merged_verdict.final_action, VerdictAction::Block);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_pipeline_l2_uncertain_escalates_to_l3() {
         // L1 returns no match, L2 returns uncertain → L3
         let mut engine = regorus::Engine::new();
@@ -692,7 +692,7 @@ mod tests {
         assert_eq!(result.merged_verdict.final_action, VerdictAction::Block);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_pipeline_fail_closed_on_error() {
         // Use an engine but call with a bad rule path to trigger evaluation error
         let _engine = create_broken_engine();
@@ -751,7 +751,7 @@ mod tests {
         assert!(broken.unwrap().reason.is_some());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_pipeline_fail_open_on_error() {
         let empty_engine = regorus::Engine::new();
         let classifier = Arc::new(Classifier::stub(test_labels(), "allow".to_string()));
@@ -797,7 +797,7 @@ mod tests {
         assert_eq!(result.merged_verdict.final_action, VerdictAction::Allow);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_pipeline_all_policies_evaluated_no_shortcircuit() {
         // Load 3 policies into the same engine: allow, block, and allow again
         // All 3 should appear in the verdict trace (no short-circuit)

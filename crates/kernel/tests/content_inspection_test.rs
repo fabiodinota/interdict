@@ -312,7 +312,7 @@ fn test_sc2_private_key_blocks_stream() {
 // before reaching the client."
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_sc3_streaming_redacts_email_across_chunks() {
     let registry = Arc::new(PatternRegistry {
         patterns: default_patterns(),
@@ -359,7 +359,7 @@ async fn test_sc3_streaming_redacts_email_across_chunks() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_sc3_streaming_passes_clean_content() {
     let registry = Arc::new(PatternRegistry {
         patterns: default_patterns(),
@@ -412,7 +412,7 @@ async fn test_sc3_streaming_passes_clean_content() {
 // violation is detected in the response stream."
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_sc4_stream_severed_on_aws_key() {
     let registry = Arc::new(PatternRegistry {
         patterns: default_patterns(),
@@ -484,7 +484,7 @@ async fn test_sc4_stream_severed_on_aws_key() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_sc4_non_severe_categories_do_not_sever() {
     let registry = Arc::new(PatternRegistry {
         patterns: default_patterns(),

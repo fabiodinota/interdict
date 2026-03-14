@@ -15,7 +15,7 @@ use http_body_util::Full;
 ///
 /// Proves: CONNECT handshake works, TLS interception generates valid cert,
 /// upstream TLS connection established, response bytes relayed correctly.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_connect_tunnel_basic() {
     let expected_body = serde_json::json!({
         "id": "chatcmpl-123",
@@ -54,7 +54,7 @@ async fn test_connect_tunnel_basic() {
 ///
 /// Proves: header relay is transparent -- Authorization, Content-Type,
 /// and custom headers pass through intact.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_connect_tunnel_preserves_headers() {
     // Create a mock that echoes received headers in the response body
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
@@ -86,7 +86,7 @@ async fn test_connect_tunnel_preserves_headers() {
 /// Test that large responses (1MB) are relayed correctly through the tunnel.
 ///
 /// Proves: streaming works for large payloads without truncation or buffering issues.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_connect_tunnel_large_response() {
     let proxy = TestProxy::new(vec!["127.0.0.1".to_string()]).await;
 
@@ -127,7 +127,7 @@ async fn test_connect_tunnel_large_response() {
 /// Proves: only CONNECT is accepted -- this is an explicit forward proxy.
 /// Note: The proxy must allow the host in the request for the allowlist
 /// middleware to pass it through to ProxyService.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_non_connect_rejected() {
     // Allow "api.openai.com" so the request passes the allowlist middleware
     // and reaches ProxyService which rejects non-CONNECT with 400.

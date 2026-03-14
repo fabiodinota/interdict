@@ -150,7 +150,7 @@ fn make_scoped(
 
 // ── SC1: Push-based distribution — full snapshot updates PolicySet ────
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_sc1_full_snapshot_updates_policy_set() {
     // Start with empty PolicySetManager at version 0
     let manager = PolicySetManager::new(make_empty_policy_set(0));
@@ -188,7 +188,7 @@ async fn test_sc1_full_snapshot_updates_policy_set() {
 
 // ── SC2: Hot-reload — new policy evaluated without restart ──────────
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_sc2_hot_reload_new_policy_evaluated() {
     // Create initial PolicySet with allow-all Rego policy
     let allow_rego = sample_rego("allow_all");
@@ -395,7 +395,7 @@ fn test_sc3_hierarchy_per_vendor_scoping() {
 
 // ── Delta: Add policy ───────────────────────────────────────────────
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_delta_add_policy() {
     let wasm = test_wasm_engine();
     let hconfig = test_hierarchy_config();
@@ -440,7 +440,7 @@ async fn test_delta_add_policy() {
 
 // ── Delta: Remove policy ────────────────────────────────────────────
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_delta_remove_policy() {
     let wasm = test_wasm_engine();
     let hconfig = test_hierarchy_config();
@@ -479,7 +479,7 @@ async fn test_delta_remove_policy() {
 
 // ── Delta: Version gap detection ────────────────────────────────────
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_delta_version_gap_detection() {
     let wasm = test_wasm_engine();
     let hconfig = test_hierarchy_config();
@@ -508,7 +508,7 @@ async fn test_delta_version_gap_detection() {
 
 // ── Snapshot with Rego sources builds functional RegorusPool ────────
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_snapshot_rebuild_regorus() {
     let wasm = test_wasm_engine();
     let hconfig = test_hierarchy_config();
