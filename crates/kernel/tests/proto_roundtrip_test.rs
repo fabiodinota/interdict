@@ -170,7 +170,7 @@ fn test_acknowledge_request_accepted_roundtrip() {
 
     assert_eq!(decoded.kernel_id, original.kernel_id);
     assert_eq!(decoded.version, original.version);
-    assert_eq!(decoded.accepted, true);
+    assert!(decoded.accepted);
     assert!(decoded.error_message.is_empty());
 }
 
@@ -189,7 +189,7 @@ fn test_acknowledge_request_nack_roundtrip() {
 
     assert_eq!(decoded.kernel_id, "kernel-node-7");
     assert_eq!(decoded.version, 55);
-    assert_eq!(decoded.accepted, false);
+    assert!(!decoded.accepted);
     assert_eq!(
         decoded.error_message,
         "Rego compilation failed: syntax error at line 3"
@@ -251,7 +251,7 @@ fn test_acknowledge_response_roundtrip() {
     let decoded =
         proto::AcknowledgeResponse::decode(buf.as_slice()).expect("decode should succeed");
 
-    assert_eq!(decoded.acknowledged, true);
+    assert!(decoded.acknowledged);
 }
 
 // ── Edge cases ──────────────────────────────────────────────────────
