@@ -245,7 +245,7 @@ pub fn verify_response_signature(
     response: &proto::SubscribeResponse,
     public_key_pem: &str,
 ) -> anyhow::Result<()> {
-    use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+    use ed25519_dalek::{Signature, Verifier};
 
     // Parse the public key from PEM
     let public_key = parse_ed25519_public_key(public_key_pem)?;
@@ -623,19 +623,31 @@ default verdict := {{"action": "allow"}}
         assert!(sp.config.rego_source.is_none());
     }
 
+    /// Create a deterministic Ed25519 signing key for tests.
+    fn test_signing_key() -> ed25519_dalek::SigningKey {
+        // Fixed 32-byte seed for deterministic test keys
+        let seed: [u8; 32] = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        ];
+        ed25519_dalek::SigningKey::from_bytes(&seed)
+    }
+
+    /// Get PEM-encoded public key from a signing key.
+    fn test_public_key_pem(signing_key: &ed25519_dalek::SigningKey) -> String {
+        use ed25519_dalek::pkcs8::EncodePublicKey;
+        signing_key
+            .verifying_key()
+            .to_public_key_pem(ed25519_dalek::pkcs8::spki::der::pem::LineEnding::LF)
+            .unwrap()
+    }
+
     #[test]
     fn test_verify_response_signature_valid() {
-        use ed25519_dalek::{Signer, SigningKey};
-        use rand::rngs::OsRng;
+        use ed25519_dalek::Signer;
 
-        let signing_key = SigningKey::generate(&mut OsRng);
-        let verifying_key = signing_key.verifying_key();
-
-        // Export public key as PEM
-        use ed25519_dalek::pkcs8::EncodePublicKey;
-        let public_key_pem = verifying_key
-            .to_public_key_pem(ed25519_dalek::pkcs8::spki::der::pem::LineEnding::LF)
-            .unwrap();
+        let signing_key = test_signing_key();
+        let public_key_pem = test_public_key_pem(&signing_key);
 
         let mut response = proto::SubscribeResponse {
             version: 1,
@@ -666,16 +678,10 @@ default verdict := {{"action": "allow"}}
 
     #[test]
     fn test_verify_response_signature_tampered() {
-        use ed25519_dalek::{Signer, SigningKey};
-        use rand::rngs::OsRng;
+        use ed25519_dalek::Signer;
 
-        let signing_key = SigningKey::generate(&mut OsRng);
-        let verifying_key = signing_key.verifying_key();
-
-        use ed25519_dalek::pkcs8::EncodePublicKey;
-        let public_key_pem = verifying_key
-            .to_public_key_pem(ed25519_dalek::pkcs8::spki::der::pem::LineEnding::LF)
-            .unwrap();
+        let signing_key = test_signing_key();
+        let public_key_pem = test_public_key_pem(&signing_key);
 
         let mut response = proto::SubscribeResponse {
             version: 1,
@@ -705,16 +711,8 @@ default verdict := {{"action": "allow"}}
 
     #[test]
     fn test_verify_response_signature_missing() {
-        use ed25519_dalek::SigningKey;
-        use rand::rngs::OsRng;
-
-        let signing_key = SigningKey::generate(&mut OsRng);
-        let verifying_key = signing_key.verifying_key();
-
-        use ed25519_dalek::pkcs8::EncodePublicKey;
-        let public_key_pem = verifying_key
-            .to_public_key_pem(ed25519_dalek::pkcs8::spki::der::pem::LineEnding::LF)
-            .unwrap();
+        let signing_key = test_signing_key();
+        let public_key_pem = test_public_key_pem(&signing_key);
 
         let response = proto::SubscribeResponse {
             version: 1,
@@ -737,16 +735,8 @@ default verdict := {{"action": "allow"}}
 
     #[test]
     fn test_verify_wasm_hash_mismatch() {
-        use ed25519_dalek::SigningKey;
-        use rand::rngs::OsRng;
-
-        let signing_key = SigningKey::generate(&mut OsRng);
-        let verifying_key = signing_key.verifying_key();
-
-        use ed25519_dalek::pkcs8::EncodePublicKey;
-        let public_key_pem = verifying_key
-            .to_public_key_pem(ed25519_dalek::pkcs8::spki::der::pem::LineEnding::LF)
-            .unwrap();
+        let signing_key = test_signing_key();
+        let public_key_pem = test_public_key_pem(&signing_key);
 
         let mut entry = make_policy_entry("pol1", "Policy 1", &sample_rego("pol1"), 0);
         entry.wasm_bytes = vec![1, 2, 3, 4]; // Some bytes

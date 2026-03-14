@@ -144,10 +144,10 @@ impl CertCache {
                 .insertion_order
                 .lock()
                 .unwrap_or_else(|e| e.into_inner());
-            if self.cache.len() >= self.max_entries {
-                if let Some(oldest) = order.pop_front() {
-                    self.cache.remove(&oldest);
-                }
+            if self.cache.len() >= self.max_entries
+                && let Some(oldest) = order.pop_front()
+            {
+                self.cache.remove(&oldest);
             }
             // Remove any existing entry for this domain from insertion order
             order.retain(|d| d != domain);

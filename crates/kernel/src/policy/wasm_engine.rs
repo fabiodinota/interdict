@@ -77,7 +77,7 @@ impl WasmEngine {
     /// The bytes must have been produced by `Module::serialize` using the
     /// same engine configuration. Deserialization of untrusted bytes could
     /// lead to arbitrary code execution.
-    #[allow(unsafe_code)]
+    #[allow(unsafe_code, dead_code)]
     pub(crate) unsafe fn deserialize_module(
         &self,
         compiled_bytes: &[u8],
@@ -100,6 +100,7 @@ impl WasmEngine {
     ///
     /// # Errors
     /// Returns error if the hash does not match or deserialization fails.
+    #[allow(dead_code)]
     pub(crate) fn deserialize_verified_module(
         &self,
         compiled_bytes: &[u8],
