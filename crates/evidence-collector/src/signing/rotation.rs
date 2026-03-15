@@ -217,4 +217,78 @@ mod tests {
         rotating.rotate(key_b);
         assert_eq!(rotating.current().key_id(), id_b);
     }
+
+    #[tokio::test]
+    async fn reload_from_file_swaps_key() {
+        use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+        use std::io::Write;
+
+        // Start with a generated key
+        let initial = Arc::new(LocalSigningProvider::generate()) as Arc<dyn SigningProvider>;
+        let initial_key_id = initial.key_id().to_string();
+        let rotating = RotatingSigningProvider::new(initial);
+
+        // Write a raw 32-byte key to a temp file
+        let mut tmp = tempfile::NamedTempFile::new().expect("create tempfile");
+        let key_bytes: [u8; 32] = [0xBBu8; 32];
+        tmp.write_all(&key_bytes).expect("write key");
+        tmp.flush().expect("flush");
+
+        // Reload from file — this should swap the active key
+        rotating
+            .reload_from_file(tmp.path())
+            .expect("reload_from_file succeeds");
+
+        let new_key_id = rotating.current().key_id().to_string();
+        assert_ne!(
+            initial_key_id, new_key_id,
+            "key_id must change after reload"
+        );
+
+        // Verify signing with the new key works
+        let msg = b"post-reload-event";
+        let sig = rotating.current().sign(msg).await.expect("sign");
+
+        let pub_key = rotating.current().public_key().to_vec();
+        let vk =
+            VerifyingKey::from_bytes(&<[u8; 32]>::try_from(pub_key.as_slice()).expect("32 bytes"))
+                .expect("valid pubkey");
+        let sig_arr: [u8; 64] = sig.as_slice().try_into().expect("64-byte sig");
+        let signature = Signature::from_bytes(&sig_arr);
+        assert!(
+            vk.verify(msg, &signature).is_ok(),
+            "signature from reloaded key must verify"
+        );
+    }
+
+    #[tokio::test]
+    async fn reload_from_file_nonexistent_preserves_active() {
+        // Start with a generated key
+        let initial = Arc::new(LocalSigningProvider::generate()) as Arc<dyn SigningProvider>;
+        let initial_key_id = initial.key_id().to_string();
+        let rotating = RotatingSigningProvider::new(initial);
+
+        // Try to reload from a nonexistent file — should return error
+        let bad_path = std::path::Path::new("/tmp/interdict-nonexistent-rotation-key-xyz.key");
+        let result = rotating.reload_from_file(bad_path);
+        assert!(
+            result.is_err(),
+            "reload from nonexistent file must return error"
+        );
+
+        // Verify original key is still active
+        assert_eq!(
+            rotating.current().key_id(),
+            initial_key_id,
+            "original key must remain active after failed reload"
+        );
+
+        // Verify signing still works with original key
+        let sig = rotating
+            .current()
+            .sign(b"still-works")
+            .await
+            .expect("sign with original key");
+        assert!(!sig.is_empty(), "signature from original key must be valid");
+    }
 }

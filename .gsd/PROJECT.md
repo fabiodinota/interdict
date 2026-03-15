@@ -98,6 +98,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
+**M007 S02 (Layer 3 Queue + Evidence Signing Tests) complete 2026-03-15.** Added 17 new tests (3 store, 14 evidence-collector) covering cleanup_old() semantics, get_pending() ordering, from_file() key loading (raw/PEM/error), KMS trait-boundary mock signing, key rotation reload, and sign_bundle error propagation. All untested code paths in queue/store and evidence signing now covered. 22 kernel queue/store tests pass, 31 evidence-collector signing/chain tests pass.
+
 **M007 S01 (Hot-Path Relay Testing) complete 2026-03-15.** Added 11 unit tests and 1 integration test across relay.rs (flush-timeout, read/write error, outbound redaction), streaming_relay.rs (partial-match boundary-split, multi-redaction, channel-drop), and tls.rs (load_ca valid/missing/invalid PEM, concurrent cache). Integration test proves PII redaction through full CONNECT tunnel. Total hot-path unit tests: 32 (was 21). 88 integration tests pass. Established ErrorReader/ErrorWriter and echo backend test patterns for downstream slices.
 
 **M006 (Production Safety & Quality) complete 2026-03-13.** 3 slices across 3 sessions. Eliminated all runtime panic paths in hot-path pattern initialization (14 Regex unwraps → LazyLock, InjectionDetector infallible, regorus fail-mode verdict). Added cargo-deny supply-chain gate, hardened all 4 Docker images (non-root, read-only rootfs, no-new-privileges), parameterized docker-compose credentials, added proptest PII fuzzing, CI coverage reporting, CONTRIBUTING.md/CHANGELOG.md, and workspace [lints]. 2 new decisions (D024–D025).

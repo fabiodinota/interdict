@@ -217,7 +217,11 @@ async fn test_connect_tunnel_with_content_inspection() {
         .await
         .expect("tunnel request should succeed");
 
-    assert_eq!(status, StatusCode::OK, "request through tunnel should succeed");
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "request through tunnel should succeed"
+    );
 
     let response_text = String::from_utf8_lossy(&body);
     println!("Response body: {}", response_text);

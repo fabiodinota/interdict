@@ -66,7 +66,7 @@ This milestone is complete only when all are true:
 
 - [x] **S01: Hot-Path Relay Testing** `risk:high` `depends:[]`
   > After this: proxy/relay.rs, proxy/streaming_relay.rs, and proxy/tls.rs have ≥80% line coverage with unit tests covering bidirectional relay, cross-chunk pattern detection, connection failure handling, and evidence collection. Integration test proves full proxy relay flow end-to-end. `cargo test -p kernel relay streaming_relay tls --nocapture` passes.
-- [ ] **S02: Layer 3 Queue + Evidence Signing Tests** `risk:high` `depends:[]`
+- [x] **S02: Layer 3 Queue + Evidence Signing Tests** `risk:high` `depends:[]`
   > After this: Layer 3 queue/store modules and all evidence signing providers (local Ed25519, KMS mock, key rotation, chain management) are fully tested. `cargo test -p kernel queue store && cargo test -p evidence-collector signing chain` passes with ≥80% coverage.
 - [ ] **S03: Dependency Cleanup + Constructor Safety** `risk:low` `depends:[]`
   > After this: All 4 unused dependencies removed (tower-http, uuid if unused, @sinclair/typebox, drizzle-typebox). ProxyService::new() has danger-doc, runtime warning, and per-request logging when pipeline is None. `cargo build --workspace && bun install && bun test` pass with fewer dependencies.

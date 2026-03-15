@@ -630,7 +630,9 @@ mod tests {
 
         // Spawn relay in background — it will block waiting for more reads.
         let relay_handle = tokio::spawn(async move {
-            inspecting_relay_outbound(reader, &mut output, inspector).await.map(|bytes| (bytes, output))
+            inspecting_relay_outbound(reader, &mut output, inspector)
+                .await
+                .map(|bytes| (bytes, output))
         });
 
         // Advance time past FLUSH_TIMEOUT (50ms) so the timeout branch fires.

@@ -373,7 +373,10 @@ mod tests {
         };
 
         let result = load_ca(&config);
-        assert!(result.is_ok(), "load_ca should succeed with valid PEM files");
+        assert!(
+            result.is_ok(),
+            "load_ca should succeed with valid PEM files"
+        );
 
         // Verify we got usable CA components back
         let (loaded_cert, _loaded_key) = result.unwrap();
@@ -470,11 +473,7 @@ mod tests {
             .get_or_create("concurrent.example.com")
             .await
             .expect("cached lookup should succeed");
-        assert_eq!(
-            cache.len(),
-            1,
-            "cache should still contain exactly 1 entry"
-        );
+        assert_eq!(cache.len(), 1, "cache should still contain exactly 1 entry");
         // The cached config should match at least one of the results
         // (the one that won the or_insert race)
         assert!(

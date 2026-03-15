@@ -67,4 +67,62 @@ mod tests {
         assert!(signed.signature.starts_with(b"mock-signature:"));
         assert!(signed.signature.ends_with(payload));
     }
+
+    // --- Error propagation and dev_signed=false tests ---
+
+    /// A mock that always returns an error from `sign()`.
+    struct FailingMockProvider;
+
+    #[async_trait]
+    impl SigningProvider for FailingMockProvider {
+        async fn sign(&self, _message: &[u8]) -> Result<Vec<u8>, SigningError> {
+            Err(SigningError::KmsError(
+                "ThrottlingException: simulated KMS failure".to_string(),
+            ))
+        }
+
+        fn public_key(&self) -> &[u8] {
+            &[]
+        }
+
+        fn key_id(&self) -> &str {
+            "failing-mock"
+        }
+
+        fn is_dev_key(&self) -> bool {
+            false
+        }
+    }
+
+    #[tokio::test]
+    async fn sign_bundle_propagates_provider_error() {
+        let provider = FailingMockProvider;
+        let result = sign_bundle(&provider, b"evidence-payload").await;
+        assert!(
+            result.is_err(),
+            "sign_bundle must propagate provider errors"
+        );
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("ThrottlingException"),
+            "error message should propagate through, got: {err_msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn sign_bundle_reports_non_dev_key() {
+        let provider = MockSigningProvider {
+            key_id: "prod-key-id".to_string(),
+            dev: false,
+            public_key: vec![9, 8, 7],
+        };
+        let signed = sign_bundle(&provider, b"production-bundle")
+            .await
+            .expect("signs");
+        assert!(
+            !signed.dev_signed,
+            "dev_signed must be false when provider is not a dev key"
+        );
+        assert_eq!(signed.signing_key_id, "prod-key-id");
+    }
 }

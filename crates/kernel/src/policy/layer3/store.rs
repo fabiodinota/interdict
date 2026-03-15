@@ -494,4 +494,140 @@ mod tests {
             .unwrap();
         assert_eq!(act.status, "pending");
     }
+
+    /// Helper: create a test item with a specific `created_at` timestamp.
+    fn make_item_at(request_id: &str, created_at: &str) -> QueueItem {
+        QueueItem {
+            id: format!("id-{request_id}"),
+            request_id: request_id.to_string(),
+            pipeline_trace: r#"{"request_id":"test","merged_verdict":{}}"#.to_string(),
+            content_hash: "sha256-abc123".to_string(),
+            fail_mode: "closed".to_string(),
+            status: "pending".to_string(),
+            created_at: created_at.to_string(),
+            timeout_at: "2099-12-31T23:59:59Z".to_string(),
+            verdict: None,
+            reviewer_id: None,
+            reviewer_reason: None,
+            reviewed_at: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_old_deletes_reviewed_and_expired() {
+        let store = ReviewQueueStore::new(":memory:").unwrap();
+
+        // Enqueue two old items (created_at 2020) and one recent pending item.
+        let old_1 = make_expired_item("req-old-reviewed");
+        let old_2 = make_expired_item("req-old-expired");
+        let recent = make_test_item("req-recent-pending");
+        store.enqueue(old_1).await.unwrap();
+        store.enqueue(old_2).await.unwrap();
+        store.enqueue(recent).await.unwrap();
+
+        // Mark old_1 as reviewed via submit_verdict.
+        let reviewed = store
+            .submit_verdict("req-old-reviewed", "allow", "reviewer-1", "ok")
+            .await
+            .unwrap();
+        assert!(reviewed);
+
+        // Mark old_2 as expired via expire_timed_out (its timeout_at is 2020).
+        let expired_count = store.expire_timed_out().await.unwrap();
+        assert_eq!(expired_count, 1);
+
+        // Verify we have 1 reviewed, 1 expired, 1 pending before cleanup.
+        let old_reviewed = store
+            .get_by_request_id("req-old-reviewed")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(old_reviewed.status, "reviewed");
+        let old_expired = store
+            .get_by_request_id("req-old-expired")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(old_expired.status, "expired");
+
+        // cleanup_old(1) — delete reviewed/expired items older than 1 day.
+        // The old items (created_at 2020) are well past 1 day; the pending
+        // item is recent but wouldn't be deleted regardless (wrong status).
+        let deleted = store.cleanup_old(1).await.unwrap();
+        assert_eq!(
+            deleted, 2,
+            "should delete both old reviewed and old expired items"
+        );
+
+        // Pending item survives.
+        let pending = store.get_pending().await.unwrap();
+        assert_eq!(pending.len(), 1);
+        assert_eq!(pending[0].request_id, "req-recent-pending");
+
+        // Old items are gone.
+        let gone_reviewed = store.get_by_request_id("req-old-reviewed").await.unwrap();
+        assert!(
+            gone_reviewed.is_none(),
+            "old reviewed item should be deleted"
+        );
+        let gone_expired = store.get_by_request_id("req-old-expired").await.unwrap();
+        assert!(gone_expired.is_none(), "old expired item should be deleted");
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_old_preserves_recent_reviewed() {
+        let store = ReviewQueueStore::new(":memory:").unwrap();
+
+        // Enqueue a recent item (created_at 2026) and review it.
+        let item = make_test_item("req-recent");
+        store.enqueue(item).await.unwrap();
+        let reviewed = store
+            .submit_verdict("req-recent", "block", "reviewer-1", "policy violation")
+            .await
+            .unwrap();
+        assert!(reviewed);
+
+        // cleanup_old(9999) — huge threshold; the item (created_at 2026)
+        // is far too recent to be older than 9999 days from now.
+        let deleted = store.cleanup_old(9999).await.unwrap();
+        assert_eq!(deleted, 0, "recent reviewed item should NOT be deleted");
+
+        // Verify the item still exists.
+        let still_there = store.get_by_request_id("req-recent").await.unwrap();
+        assert!(
+            still_there.is_some(),
+            "recent reviewed item should survive cleanup"
+        );
+        assert_eq!(still_there.unwrap().status, "reviewed");
+    }
+
+    #[tokio::test]
+    async fn test_get_pending_returns_oldest_first() {
+        let store = ReviewQueueStore::new(":memory:").unwrap();
+
+        // Enqueue 3 items with distinct created_at timestamps, inserted
+        // out of order to ensure the query sorts, not insertion order.
+        let middle = make_item_at("req-middle", "2025-06-15T12:00:00Z");
+        let oldest = make_item_at("req-oldest", "2024-01-01T00:00:00Z");
+        let newest = make_item_at("req-newest", "2026-03-01T08:00:00Z");
+
+        store.enqueue(middle).await.unwrap();
+        store.enqueue(oldest).await.unwrap();
+        store.enqueue(newest).await.unwrap();
+
+        let pending = store.get_pending().await.unwrap();
+        assert_eq!(pending.len(), 3);
+        assert_eq!(
+            pending[0].request_id, "req-oldest",
+            "first item should be the oldest (2024)"
+        );
+        assert_eq!(
+            pending[1].request_id, "req-middle",
+            "second item should be the middle (2025)"
+        );
+        assert_eq!(
+            pending[2].request_id, "req-newest",
+            "third item should be the newest (2026)"
+        );
+    }
 }

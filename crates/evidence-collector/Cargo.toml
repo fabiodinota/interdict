@@ -44,6 +44,7 @@ base64 = "0.22"
 [dev-dependencies]
 interdict-verify = { path = "../interdict-verify" }
 kernel = { path = "../kernel" }
+tempfile = "3"
 tokio = { version = "1", features = ["full", "test-util"] }
 
 [build-dependencies]
