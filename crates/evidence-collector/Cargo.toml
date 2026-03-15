@@ -28,7 +28,6 @@ zstd = "0.13"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1", features = ["v4", "serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"

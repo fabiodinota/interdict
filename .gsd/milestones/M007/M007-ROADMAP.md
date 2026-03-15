@@ -68,7 +68,7 @@ This milestone is complete only when all are true:
   > After this: proxy/relay.rs, proxy/streaming_relay.rs, and proxy/tls.rs have ≥80% line coverage with unit tests covering bidirectional relay, cross-chunk pattern detection, connection failure handling, and evidence collection. Integration test proves full proxy relay flow end-to-end. `cargo test -p kernel relay streaming_relay tls --nocapture` passes.
 - [x] **S02: Layer 3 Queue + Evidence Signing Tests** `risk:high` `depends:[]`
   > After this: Layer 3 queue/store modules and all evidence signing providers (local Ed25519, KMS mock, key rotation, chain management) are fully tested. `cargo test -p kernel queue store && cargo test -p evidence-collector signing chain` passes with ≥80% coverage.
-- [ ] **S03: Dependency Cleanup + Constructor Safety** `risk:low` `depends:[]`
+- [x] **S03: Dependency Cleanup + Constructor Safety** `risk:low` `depends:[]`
   > After this: All 4 unused dependencies removed (tower-http, uuid if unused, @sinclair/typebox, drizzle-typebox). ProxyService::new() has danger-doc, runtime warning, and per-request logging when pipeline is None. `cargo build --workspace && bun install && bun test` pass with fewer dependencies.
 - [ ] **S04: Expanded Test Coverage** `risk:medium` `depends:[S01,S02]`
   > After this: Dashboard coverage expands from 9→40+ components, control-plane from 18→27+ modules, negative/adversarial tests cover all services, E2E smoke test (Playwright + docker-compose) passes in CI, and coverage thresholds are enforced as hard CI gates.

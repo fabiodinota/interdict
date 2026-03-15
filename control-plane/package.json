@@ -19,6 +19,9 @@
     "check:fix": "biome check --fix ./src",
     "typecheck": "bunx tsc --noEmit"
   },
+  "//dependencies-notes": {
+    "@sinclair/typebox": "Required peer dependency of Elysia — do not remove"
+  },
   "dependencies": {
     "@authenio/samlify-xsd-schema-validator": "1.0.5",
     "@clickhouse/client": "^1.8.0",
@@ -26,7 +29,6 @@
     "@grpc/proto-loader": "^0.7.0",
     "@sinclair/typebox": "^0.34.0",
     "drizzle-orm": "^0.45.0",
-    "drizzle-typebox": "^0.2.0",
     "elysia": "^1.4.0",
     "pdfkit": "0.17.2",
     "postgres": "^3.4.0",

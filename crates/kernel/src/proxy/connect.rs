@@ -36,6 +36,7 @@ use sha2::{Digest, Sha256};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::task::{Context, Poll};
 use std::time::Duration;
 use tokio::net::TcpStream;
@@ -412,7 +413,22 @@ pub struct ProxyService {
 
 impl ProxyService {
     /// Create a new ProxyService with shared state.
+    ///
+    /// # ⚠️ Safety
+    ///
+    /// This constructor creates a `ProxyService` with `pipeline: None`, meaning
+    /// **all requests will bypass policy enforcement**. No OPA/Wasm/ML policy
+    /// evaluation occurs and no evidence events are generated for policy decisions.
+    ///
+    /// This is intended **only for tests** where policy enforcement is not under test.
+    /// Production code should use [`with_pipeline()`] or [`with_distribution()`] to
+    /// ensure every request passes through the policy pipeline.
     pub fn new(cert_cache: Arc<CertCache>, pool: Arc<ConnectionPool>, config: Arc<Config>) -> Self {
+        #[cfg(not(test))]
+        tracing::warn!(
+            "ProxyService created without policy pipeline — all requests will bypass enforcement"
+        );
+
         Self {
             cert_cache,
             pool,
@@ -593,6 +609,16 @@ impl Service<Request<Incoming>> for ProxyService {
             };
 
             if req.method() == Method::CONNECT {
+                // One-time warning when serving requests without a policy pipeline.
+                static NO_PIPELINE_WARNED: AtomicBool = AtomicBool::new(false);
+                if effective_pipeline.is_none()
+                    && !NO_PIPELINE_WARNED.swap(true, Ordering::Relaxed)
+                {
+                    tracing::warn!(
+                        "ProxyService handling request with no policy pipeline — enforcement bypassed"
+                    );
+                }
+
                 match handle_connect(
                     req,
                     cert_cache,
