@@ -111,6 +111,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
+**M007 (Production Readiness v1.5) COMPLETE 2026-03-15.** All 8 slices delivered across a single day. 17 decisions (D027–D043). 12 new requirements validated (PR-TEST-01 through PR-A11Y-01). Total test suite: 32 hot-path unit + 88 integration + 370 dashboard + 308 control-plane tests. Complete CI/CD release pipeline with cosign-signed images. CSP nonce-hardened dashboard with WCAG AA accessibility. Multi-platform Docker builds, monitoring stack, backup scripts, environment validation. Full documentation suite: operator guide, troubleshooting reference, REST API (53 endpoints), gRPC API (2 services). Project is at v1.5 Production Readiness — all 7 milestones complete, ready for GA release.
+
 **M007 S08 (Documentation, Accessibility & Polish) complete 2026-03-15.** Added WCAG AA accessibility to dashboard: aria-label on 4 icon buttons (3 planned + 1 discovered), vitest-axe assertions on 6 component tests, @axe-core/playwright WCAG AA check in Playwright smoke test. Created 578-line operator guide and 417-line troubleshooting reference. Created REST API reference (53 endpoints, 13 modules) and gRPC API reference (2 proto services). Updated PROJECT.md to v1.5, README.md with documentation links, STATE.md with M007 complete.
 
 **M007 S07 (DevOps & Deployment Maturity) complete 2026-03-15.** Hardened .dockerignore with ~25 exclusions + 7 allowlist entries. Added multi-platform Docker builds (amd64+arm64) via QEMU for all 4 services. Control-plane Dockerfile uses TARGETARCH for OPA binary. Added startupProbe to all 4 Helm deployments (150s window). kube-score v1.18.0 integrated in CI infra-quality job and local infra-check.sh with 13 ignore flags for bitnami subchart issues. All 9 Docker Compose services have json-file log rotation (10m×3). Created Prometheus+Grafana monitoring profile overlay. Created backup script (Postgres pg_dump + ClickHouse table-by-table, --dry-run). Created validate-env.sh pre-flight script catching CHANGE_ME placeholders, missing vars, malformed URLs — wired into smoke-test.sh. 5 decisions (D037–D041).
@@ -177,4 +179,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Workspace lints: clippy::all + suspicious (D025) | Codifies lint policy previously enforced only by CI flag | ✓ Good — workspace-wide consistency |
 
 ---
-*Last updated: 2026-03-15 after completing M007/S08 (Documentation, Accessibility & Polish) — v1.5 Production Readiness milestone complete*
+*Last updated: 2026-03-15 after completing M007 (Production Readiness v1.5) — all milestones complete, project at v1.5*
