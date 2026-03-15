@@ -22,6 +22,12 @@ export default defineConfig({
         "src/lib/api.ts",
         "src/components/**",
       ],
+      thresholds: {
+        lines: 60,
+        branches: 50,
+        functions: 55,
+        statements: 60,
+      },
     },
   },
 });

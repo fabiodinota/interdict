@@ -98,6 +98,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
+**M007 S04 (Expanded Test Coverage) complete 2026-03-15.** Dashboard test coverage expanded from 8→46 component test files (370 test cases, 0 failures) via 38 new vitest files covering all presentational, stateful, chart, table, form, dialog, and wizard components. Control-plane expanded from 18→26 test files (308 pass) with new coverage for anomaly severity, ClickHouse query builders, kernel tracker, auth middleware, CSV/PDF generators, cursor encoding, and config validation. Playwright E2E smoke test created with 3 test cases. Vitest coverage thresholds set (60/50/55/60). CI coverage job hardened from advisory to blocking gate. 2 new decisions (D029–D030).
+
 **M007 S02 (Layer 3 Queue + Evidence Signing Tests) complete 2026-03-15.** Added 17 new tests (3 store, 14 evidence-collector) covering cleanup_old() semantics, get_pending() ordering, from_file() key loading (raw/PEM/error), KMS trait-boundary mock signing, key rotation reload, and sign_bundle error propagation. All untested code paths in queue/store and evidence signing now covered. 22 kernel queue/store tests pass, 31 evidence-collector signing/chain tests pass.
 
 **M007 S01 (Hot-Path Relay Testing) complete 2026-03-15.** Added 11 unit tests and 1 integration test across relay.rs (flush-timeout, read/write error, outbound redaction), streaming_relay.rs (partial-match boundary-split, multi-redaction, channel-drop), and tls.rs (load_ca valid/missing/invalid PEM, concurrent cache). Integration test proves PII redaction through full CONNECT tunnel. Total hot-path unit tests: 32 (was 21). 88 integration tests pass. Established ErrorReader/ErrorWriter and echo backend test patterns for downstream slices.
@@ -154,4 +156,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Workspace lints: clippy::all + suspicious (D025) | Codifies lint policy previously enforced only by CI flag | ✓ Good — workspace-wide consistency |
 
 ---
-*Last updated: 2026-03-13 after completing M006 (Production Safety & Quality)*
+*Last updated: 2026-03-15 after completing M007/S04 (Expanded Test Coverage)*

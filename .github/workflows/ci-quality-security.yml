@@ -86,12 +86,11 @@ jobs:
         run: cargo test -p kernel --test content_inspection_test
 
   # ---------------------------------------------------------------------------
-  # Code coverage reporting (quality signal, not a gate)
+  # Code coverage reporting (hard gate — blocks pipeline on failure)
   # ---------------------------------------------------------------------------
   coverage:
     name: coverage
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4

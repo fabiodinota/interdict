@@ -70,7 +70,7 @@ This milestone is complete only when all are true:
   > After this: Layer 3 queue/store modules and all evidence signing providers (local Ed25519, KMS mock, key rotation, chain management) are fully tested. `cargo test -p kernel queue store && cargo test -p evidence-collector signing chain` passes with ≥80% coverage.
 - [x] **S03: Dependency Cleanup + Constructor Safety** `risk:low` `depends:[]`
   > After this: All 4 unused dependencies removed (tower-http, uuid if unused, @sinclair/typebox, drizzle-typebox). ProxyService::new() has danger-doc, runtime warning, and per-request logging when pipeline is None. `cargo build --workspace && bun install && bun test` pass with fewer dependencies.
-- [ ] **S04: Expanded Test Coverage** `risk:medium` `depends:[S01,S02]`
+- [x] **S04: Expanded Test Coverage** `risk:medium` `depends:[S01,S02]`
   > After this: Dashboard coverage expands from 9→40+ components, control-plane from 18→27+ modules, negative/adversarial tests cover all services, E2E smoke test (Playwright + docker-compose) passes in CI, and coverage thresholds are enforced as hard CI gates.
 - [ ] **S05: CI/CD Release Pipeline + Quality Gates** `risk:medium` `depends:[]`
   > After this: Tag push produces signed container images in ghcr.io with SBOM and SLSA provenance. Conventional commits enforced, changelog auto-generated, cargo-audit blocks PRs, secret scanning runs on every PR, performance benchmarks have regression gates, and CODEOWNERS routes reviews.
