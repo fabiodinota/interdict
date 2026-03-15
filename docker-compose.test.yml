@@ -1,0 +1,146 @@
+# docker-compose.test.yml — Integration-test override
+# Usage: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+#
+# Differences from default profile:
+#   - All volumes are ephemeral (tmpfs / anonymous) — no persistent data between runs
+#   - Test-specific ports avoid conflicts with dev instance
+#   - Deterministic dev-mode credentials (no .env required)
+#   - Dashboard excluded (not needed for integration tests)
+#   - COLLECTOR_SIGNING_MODE=dev for simplified auth
+#   - MTLS_ENABLED=true (tests validate real mTLS gRPC channels)
+
+services:
+  # ---------------------------------------------------------------------------
+  # Infrastructure — ephemeral volumes, deterministic dev credentials
+  # ---------------------------------------------------------------------------
+
+  postgres:
+    environment:
+      POSTGRES_USER: interdict_test
+      POSTGRES_PASSWORD: test_password_postgres
+      POSTGRES_DB: interdict_test
+    volumes:
+      - test_pgdata:/var/lib/postgresql/data
+    ports: !override
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U interdict_test -d interdict_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  clickhouse:
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: test_password_clickhouse
+    volumes:
+      - test_chdata:/var/lib/clickhouse
+    ports: !override
+      - "18123:8123"
+
+  minio:
+    environment:
+      MINIO_ROOT_USER: interdict_test
+      MINIO_ROOT_PASSWORD: test_password_minio
+    volumes:
+      - test_miniodata:/data
+    ports: !override
+      - "19000:9000"
+      - "19001:9001"
+
+  minio-init:
+    environment:
+      MINIO_ROOT_USER: interdict_test
+      MINIO_ROOT_PASSWORD: test_password_minio
+
+  # ---------------------------------------------------------------------------
+  # Interdict services — test-specific ports, ephemeral state
+  # ---------------------------------------------------------------------------
+
+  control-plane:
+    environment:
+      DATABASE_URL: postgres://interdict_test:test_password_postgres@postgres:5432/interdict_test
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_DATABASE: interdict_test
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: test_password_clickhouse
+      PORT: "3000"
+      INTERDICT_GRPC_PORT: "50052"
+      MTLS_ENABLED: "true"
+      WASM_STORAGE_DIR: ./data/wasm
+      OPA_BINARY_PATH: opa
+    ports: !override
+      - "13001:3000"
+    volumes:
+      - certs:/certs:ro
+      - test_signing_keys:/data/keys
+      - ./config:/config:ro
+      - test_wasm_data:/app/data/wasm
+
+  evidence-collector:
+    environment:
+      COLLECTOR_GRPC_LISTEN_ADDR: "[::]:50051"
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_DATABASE: interdict_test
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: test_password_clickhouse
+      COLLECTOR_S3_BUCKET: interdict-evidence
+      COLLECTOR_S3_REGION: us-east-1
+      COLLECTOR_SIGNING_MODE: dev
+      COLLECTOR_MERKLE_WINDOW_SECS: "3600"
+      COLLECTOR_MERKLE_MAX_LEAVES: "1000000"
+      COLLECTOR_FULL_TEXT_STORAGE: "false"
+      COLLECTOR_RETENTION_DAYS: "2555"
+      COLLECTOR_REQUIRE_OBJECT_LOCK: "false"
+      AWS_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: interdict_test
+      AWS_SECRET_ACCESS_KEY: test_password_minio
+      AWS_REGION: us-east-1
+      MTLS_ENABLED: "true"
+      RUST_LOG: info
+
+  kernel:
+    environment:
+      KERNEL_LISTEN_ADDR: "0.0.0.0:8443"
+      KERNEL_DISTRIBUTION_ADDR: https://control-plane:50052
+      KERNEL_DISTRIBUTION_TLS_SERVER_NAME: control-plane
+      KERNEL_EVIDENCE_COLLECTOR_ADDR: https://evidence-collector:50051
+      KERNEL_ORG_ID: test-org
+      KERNEL_LOG_LEVEL: info
+      KERNEL_LOG_FORMAT: json
+      KERNEL_ALLOWLIST_VENDORS: '["api.openai.com","api.anthropic.com"]'
+      KERNEL_FORCE_TEMPLATE: "false"
+      MTLS_ENABLED: "true"
+      RUST_LOG: info
+    ports: !override
+      - "18443:8443"
+    volumes:
+      - test_kernel_data:/data
+      - test_kernel_policies:/app/policies
+      - certs:/certs:ro
+
+  # Dashboard is not needed for integration tests — disable it
+  dashboard:
+    profiles:
+      - dashboard-only
+
+# ---------------------------------------------------------------------------
+# Ephemeral test volumes — destroyed on `docker compose down -v`
+# ---------------------------------------------------------------------------
+volumes:
+  test_pgdata:
+    driver: local
+  test_chdata:
+    driver: local
+  test_miniodata:
+    driver: local
+  test_kernel_data:
+    driver: local
+  test_kernel_policies:
+    driver: local
+  test_signing_keys:
+    driver: local
+  test_wasm_data:
+    driver: local
+  # certs still shared from base compose (cert-init populates it)

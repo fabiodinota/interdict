@@ -111,6 +111,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
+**M008 S06 (Cross-Service Integration Tests) complete 2026-03-15.** Created docker-compose.test.yml override with ephemeral test-prefixed volumes, ports remapped to 1xxxx range, deterministic dev credentials, dashboard excluded. Orchestration script (scripts/integration-test.sh) auto-discovers tests/integration/*.sh, runs sequentially with per-test pass/fail tracking, trap-based cleanup dumps logs on failure. Policy distribution test proves 8-step lifecycle: auth bootstrap via direct psql insert (D056), REST policy creation, OPA compilation polling, kernel gRPC distribution receipt, allowlist enforcement (403 on non-allowlisted domain), cleanup. Evidence pipeline test proves 8-step flow: baseline ClickHouse count, kernel CONNECT requests, ClickHouse flush polling, field verification (bundle_id, kernel_id, vendor, policy_action, timestamp), chain hash integrity, audit API queryability. 1202 lines across 4 new files. 2 decisions (D055–D056). AR-TEST-01 validated.
+
 **M008 S05 (Helm Security Hardening) complete 2026-03-15.** Cert-init Job hardened with full pod-level and container-level securityContext (runAsNonRoot, runAsUser/Group 1000, readOnlyRootFilesystem, capabilities drop ALL, seccompProfile RuntimeDefault). Used `apk --root /tmp/apkroot` technique to install openssl to tmpfs while preserving read-only rootfs. Sidecar template changed to readOnlyRootFilesystem: true with tmpfs for /tmp, added missing runAsGroup and capabilities drop ALL. Created ServiceAccount with automountServiceAccountToken: false, namespace-scoped Role for secrets+configmaps get/list, and RoleBinding. All 6 pod specs wired to SA. Fixed CRLF line endings in 14 Helm template files that caused silent grep verification failures. 2 decisions (D053–D054). AR-HELM-01 validated.
 
 **M008 S04 (Docker Compose & Monitoring Hardening) complete 2026-03-15.** Added 3-network segmentation to Docker Compose: frontend (browser-facing), backend (inter-service), data (database). Dashboard isolated from data tier. Grafana credentials parameterized with fail-closed :? syntax (compose refuses to start without GRAFANA_ADMIN_PASSWORD). Resource limits on all 9 services (4 app + 3 infra + 2 monitoring). Operator guide updated with v1.6 upgrade section covering network topology diagram, credential migration, and resource limits table. 1 decision (D052). AR-INFRA-01 validated.
@@ -189,4 +191,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Workspace lints: clippy::all + suspicious (D025) | Codifies lint policy previously enforced only by CI flag | ✓ Good — workspace-wide consistency |
 
 ---
-*Last updated: 2026-03-15 after completing M008/S05 (Helm Security Hardening) — M008 S01–S05 complete, S06 next*
+*Last updated: 2026-03-15 after completing M008/S06 (Cross-Service Integration Tests) — M008 S01–S06 complete, S07 next*

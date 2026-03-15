@@ -211,6 +211,15 @@ Docker Compose uses 3 isolated networks (frontend, backend, data) with correct p
 
 Cert-init Job has pod-level and container-level securityContext matching standalone deployments (runAsNonRoot, runAsUser/Group 1000, allowPrivilegeEscalation false, readOnlyRootFilesystem true, capabilities drop ALL, seccompProfile RuntimeDefault). Sidecar template enforces readOnlyRootFilesystem: true with tmpfs for /tmp. ServiceAccount created by default with automountServiceAccountToken: false and namespace-scoped Role granting get/list on secrets and configmaps only. All 6 pod specs reference the dedicated SA.
 
+### AR-TEST-01 — Cross-service integration test validates kernel↔control-plane policy distribution and evidence pipeline.
+
+- Status: validated
+- Class: core-capability
+- Source: M008 assessment
+- Primary Slice: M008/S06
+
+Docker Compose test profile (docker-compose.test.yml) with ephemeral volumes and isolated ports. Integration test orchestration script (scripts/integration-test.sh) with trap-based cleanup and health-wait. Policy distribution test proves kernel subscribes to control-plane gRPC and enforces distributed policies. Evidence pipeline test proves evidence flows from kernel through evidence-collector to ClickHouse and is queryable. All scripts pass bash -n syntax check and shellcheck lint.
+
 ## Deferred
 
 ## Out of Scope

@@ -83,7 +83,7 @@ This milestone is complete only when all are true:
 - [x] **S05: Helm Security Hardening** `risk:medium` `depends:[]`
   > After this: Cert-init Job has full securityContext. Sidecar template enforces read-only rootfs. ServiceAccount is created by default. Cert PVC uses ReadWriteMany for multi-node. `helm template` output validates all security contexts. `bash scripts/quality/infra-check.sh` passes.
 
-- [ ] **S06: Cross-Service Integration Tests** `risk:high` `depends:[S02]`
+- [x] **S06: Cross-Service Integration Tests** `risk:high` `depends:[S02]`
   > After this: Integration test validates kernel subscribing to control-plane gRPC policy distribution, receiving a policy update, and enforcing it. Evidence pipeline integration test validates kernel→evidence-collector→ClickHouse flow. Tests pass in CI via docker-compose orchestration.
 
 - [ ] **S07: Code Quality & Dashboard Fixes** `risk:low` `depends:[]`
