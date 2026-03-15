@@ -16,6 +16,36 @@ dist/
 .claude/
 .planning/
 .git/
+.gsd/
+.pi/
+.husky/
+
+# CI / DevOps config (not needed in any Docker build)
+.github/
+docs/
+helm/
+scripts/
+
+# Markdown files (no build stage needs .md files)
+*.md
+
+# CI / config files not needed for builds
+commitlint.config.js
+release-please-config.json
+.release-please-manifest.json
+renovate.json
+.hadolint.yaml
+.yamllint.yml
+buf.yaml
+LICENSE
+docker-compose.yml
+docker-compose*.yml
+
+# Root-level package manager files (service builds use their own)
+package.json
+package-lock.json
+skills-lock.json
+opencode.json
 
 # Environment / secrets (never send to Docker daemon)
 .env
@@ -36,3 +66,19 @@ coverage/
 interdict.toml
 ca.crt
 ca.key
+
+# ---------------------------------------------------------------------------
+# Allowlist: re-include paths required by one or more Dockerfiles.
+# These override any broader exclusion above and serve as a safety net.
+# ---------------------------------------------------------------------------
+# gRPC proto files  (control-plane: COPY proto/ /proto/)
+!proto/
+# Rust workspace    (kernel + evidence-collector: COPY . .)
+!crates/
+!Cargo.toml
+!Cargo.lock
+# Service sources   (each service Dockerfile copies its own directory)
+!control-plane/
+!dashboard/
+# Build assets      (Dockerfiles + entrypoints live here)
+!docker/

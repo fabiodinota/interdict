@@ -22,6 +22,30 @@ COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
 DASHBOARD_DIR="${REPO_ROOT}/dashboard"
 HEALTH_TIMEOUT=120
 DASHBOARD_URL="http://localhost:8080"
+SKIP_ENV_CHECK=false
+
+# Parse flags
+for arg in "$@"; do
+  case "$arg" in
+    --skip-env-check) SKIP_ENV_CHECK=true ;;
+  esac
+done
+
+# ---------------------------------------------------------------------------
+# Pre-flight: validate environment before starting heavy infrastructure
+# ---------------------------------------------------------------------------
+if [ "$SKIP_ENV_CHECK" = true ]; then
+  echo "==> Skipping environment validation (--skip-env-check)"
+else
+  echo "==> Running environment validation..."
+  if ! bash "${REPO_ROOT}/scripts/validate-env.sh"; then
+    echo ""
+    echo "❌ Environment validation failed. Fix the issues above and retry."
+    echo "   To skip this check (e.g. in CI with known-good env): $0 --skip-env-check"
+    exit 1
+  fi
+  echo ""
+fi
 
 # Ensure cleanup runs on any exit
 cleanup() {

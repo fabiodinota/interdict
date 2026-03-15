@@ -79,6 +79,26 @@ render_helm_chart() {
   done
   helm lint "$tmp_chart"
   helm template interdict "$tmp_chart" >/dev/null
+
+  if command -v kube-score >/dev/null 2>&1; then
+    helm template interdict "$tmp_chart" | kube-score score \
+      --ignore-test container-image-pull-policy \
+      --ignore-test pod-topology-spread-constraints \
+      --ignore-test container-security-context-user-group-id \
+      --ignore-test container-security-context-readonlyrootfilesystem \
+      --ignore-test container-ephemeral-storage-request-and-limit \
+      --ignore-test pod-networkpolicy \
+      --ignore-test deployment-has-poddisruptionbudget \
+      --ignore-test statefulset-has-poddisruptionbudget \
+      --ignore-test pod-probes \
+      --ignore-test deployment-replicas \
+      --ignore-test deployment-has-host-podantiaffinity \
+      --ignore-test statefulset-has-host-podantiaffinity \
+      --ignore-test deployment-strategy \
+      -
+  else
+    printf 'WARNING: kube-score not installed — skipping Kubernetes manifest scoring\n' >&2
+  fi
 }
 
 run_hadolint() {

@@ -11,9 +11,10 @@ FROM oven/bun:1.1-slim AS base
 # ---------------------------------------------------------------------------
 FROM base AS opa-fetch
 ARG OPA_VERSION=v1.4.2
-# Air-gapped builds: replace this stage by providing opa_linux_amd64_static
+ARG TARGETARCH
+# Air-gapped builds: replace this stage by providing opa_linux_${TARGETARCH}_static
 # in the build context and using COPY instead of ADD.
-ADD https://github.com/open-policy-agent/opa/releases/download/${OPA_VERSION}/opa_linux_amd64_static /tmp/opa
+ADD https://github.com/open-policy-agent/opa/releases/download/${OPA_VERSION}/opa_linux_${TARGETARCH}_static /tmp/opa
 RUN chmod +x /tmp/opa
 
 # ---------------------------------------------------------------------------

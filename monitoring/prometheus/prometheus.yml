@@ -1,0 +1,36 @@
+# Interdict Prometheus scrape configuration
+# Deployed via docker-compose.monitoring.yml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Control plane — HTTP health endpoint
+  - job_name: control-plane
+    metrics_path: /health
+    static_configs:
+      - targets: ["control-plane:3000"]
+        labels:
+          service: control-plane
+
+  # Kernel — TCP port probe (gRPC/HTTPS, no native /metrics)
+  - job_name: kernel
+    metrics_path: /probe
+    static_configs:
+      - targets: ["kernel:8443"]
+        labels:
+          service: kernel
+
+  # Evidence collector — TCP port probe (gRPC, no native /metrics)
+  - job_name: evidence-collector
+    metrics_path: /probe
+    static_configs:
+      - targets: ["evidence-collector:50051"]
+        labels:
+          service: evidence-collector
+
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -63,6 +63,13 @@ spec:
             - name: NEXT_PUBLIC_API_URL
               value: {{ .Values.dashboard.saml.apiUrl | quote }}
             {{- end }}
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+            timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /

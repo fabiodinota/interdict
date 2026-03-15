@@ -118,8 +118,36 @@ jobs:
         with:
           version: v3.17.1
 
+      - name: Install kube-score
+        run: |
+          KUBESCORE_VERSION=v1.18.0
+          curl -fsSL "https://github.com/zegl/kube-score/releases/download/${KUBESCORE_VERSION}/kube-score_${KUBESCORE_VERSION#v}_linux_amd64.tar.gz" -o kube-score.tar.gz
+          tar xzf kube-score.tar.gz kube-score
+          chmod +x kube-score
+          sudo mv kube-score /usr/local/bin/kube-score
+          rm kube-score.tar.gz
+
       - name: Run infra quality gate
         run: npm run lint:infra
+
+      - name: kube-score Helm chart
+        run: |
+          helm dependency build helm/interdict >/dev/null
+          helm template interdict helm/interdict | kube-score score \
+            --ignore-test container-image-pull-policy \
+            --ignore-test pod-topology-spread-constraints \
+            --ignore-test container-security-context-user-group-id \
+            --ignore-test container-security-context-readonlyrootfilesystem \
+            --ignore-test container-ephemeral-storage-request-and-limit \
+            --ignore-test pod-networkpolicy \
+            --ignore-test deployment-has-poddisruptionbudget \
+            --ignore-test statefulset-has-poddisruptionbudget \
+            --ignore-test pod-probes \
+            --ignore-test deployment-replicas \
+            --ignore-test deployment-has-host-podantiaffinity \
+            --ignore-test statefulset-has-host-podantiaffinity \
+            --ignore-test deployment-strategy \
+            -
 
   quality:
     name: quality (${{ matrix.deployment_mode }})

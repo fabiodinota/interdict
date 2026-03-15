@@ -13,6 +13,11 @@ services:
 
   postgres:
     image: postgres:17-bookworm
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-interdict}
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — generate with openssl rand -base64 32}"
@@ -29,6 +34,11 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:25.1
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
@@ -45,6 +55,11 @@ services:
 
   minio:
     image: minio/minio:RELEASE.2025-02-28T09-55-16Z
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-interdict}
@@ -62,6 +77,11 @@ services:
   # One-shot init container to create the evidence bucket in MinIO
   minio-init:
     image: minio/mc:RELEASE.2025-02-21T16-00-34Z
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       minio:
         condition: service_healthy
@@ -82,6 +102,11 @@ services:
 
   cert-init:
     image: alpine:3.21
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     entrypoint: /bin/sh
     command:
       - -c
@@ -99,6 +124,11 @@ services:
     build:
       context: .
       dockerfile: docker/control-plane/Dockerfile
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,6 +186,11 @@ services:
     build:
       context: .
       dockerfile: docker/evidence-collector/Dockerfile
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -213,6 +248,11 @@ services:
     build:
       context: .
       dockerfile: docker/kernel/Dockerfile
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       control-plane:
         condition: service_healthy
@@ -274,6 +314,11 @@ services:
       args:
         NEXT_PUBLIC_SAML_ENABLED: ${NEXT_PUBLIC_SAML_ENABLED:-false}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       control-plane:
         condition: service_healthy

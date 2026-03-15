@@ -114,6 +114,12 @@ spec:
               value: {{ .Values.evidenceCollector.rustLog | quote }}
             - name: SIGNING_KEY_WATCH_PATH
               value: {{ .Values.evidenceCollector.signingKey.watchPath | quote }}
+          startupProbe:
+            tcpSocket:
+              port: grpc
+            periodSeconds: 5
+            failureThreshold: 30
+            timeoutSeconds: 3
           readinessProbe:
             tcpSocket:
               port: grpc
