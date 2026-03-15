@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "vitest-axe";
 import { PolicyRow } from "@/components/policies/PolicyRow";
 import type { Policy } from "@/types/api";
 
@@ -123,5 +124,12 @@ describe("PolicyRow", () => {
     render(<PolicyRow policy={noDescPolicy} />);
 
     expect(screen.getByText("Block OpenAI")).toBeInTheDocument();
+  });
+
+  it("has no axe-core accessibility violations", async () => {
+    const { container } = render(<PolicyRow policy={mockPolicy} />);
+
+    const results = await axe(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(results).toHaveNoViolations();
   });
 });

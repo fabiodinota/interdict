@@ -113,6 +113,7 @@ export function ModelList({ vendorId, models }: ModelListProps) {
                   size="icon"
                   className="size-6"
                   onClick={() => setDeleteTarget(model)}
+                  aria-label="Remove model"
                 >
                   <X className="size-3" />
                 </Button>

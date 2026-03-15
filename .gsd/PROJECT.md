@@ -79,6 +79,19 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 - ✓ Deployment artifacts and docs no longer overclaim production readiness — v1.2
 - ✓ Final product language matches what the platform can actually prove — v1.2
 
+**Production Readiness — v1.5**
+- ✓ Hot-path relay test coverage: 11 unit + 1 integration test across relay/streaming_relay/tls (32 total hot-path unit tests, 88 integration tests) — v1.5
+- ✓ Layer 3 queue and evidence signing tests: 17 new tests covering cleanup_old(), get_pending(), key loading, KMS mock signing, key rotation, error propagation (22 queue/store + 31 signing/chain tests) — v1.5
+- ✓ Dependency cleanup and workspace lints: cargo-deny supply-chain gate, workspace clippy lints, rand_core 0.6 compatibility — v1.5
+- ✓ Expanded test coverage: 46 dashboard test files (370 test cases), 26 control-plane test files (308 tests), Playwright E2E smoke test, vitest coverage thresholds (60/50/55/60), CI coverage gate hardened to blocking — v1.5
+- ✓ CI/CD release pipeline: GitHub Actions release workflow on v* tag, 4 Docker images to ghcr.io, SPDX SBOMs via anchore/sbom-action, cosign keyless OIDC signing by digest, release-please automation, commitlint with husky, TruffleHog secret scanning, criterion benchmark tracking — v1.5
+- ✓ CSP nonce hardening: per-request nonce middleware replacing unsafe-inline, strict-dynamic for scripts, inline styles refactored to Tailwind, zero unsafe-inline in production — v1.5
+- ✓ Helm network policies: enabled by default for all 4 services with CNI documentation — v1.5
+- ✓ DevOps maturity: multi-platform Docker builds (amd64+arm64), .dockerignore allowlist pattern, startupProbe on all Helm deployments, json-file log rotation on all Compose services, Prometheus+Grafana monitoring profile, backup script (Postgres + ClickHouse), validate-env.sh pre-flight checks, kube-score CI integration — v1.5
+- ✓ Operator documentation: 578-line operator guide, 417-line troubleshooting reference, full-text-storage security guide — v1.5
+- ✓ API documentation: REST reference (53 endpoints, 13 modules), gRPC reference (2 proto services) — v1.5
+- ✓ WCAG AA accessibility: aria-label on all icon buttons, vitest-axe assertions on 6 components, @axe-core/playwright WCAG AA check in Playwright smoke test — v1.5
+
 ### Out of Scope
 
 - **Building/fine-tuning LLMs** — governance infrastructure, not a model provider
@@ -97,6 +110,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 - **Real-time WebSocket streaming dashboard** — polling with 30s refresh suffices
 
 ## Context
+
+**M007 S08 (Documentation, Accessibility & Polish) complete 2026-03-15.** Added WCAG AA accessibility to dashboard: aria-label on 4 icon buttons (3 planned + 1 discovered), vitest-axe assertions on 6 component tests, @axe-core/playwright WCAG AA check in Playwright smoke test. Created 578-line operator guide and 417-line troubleshooting reference. Created REST API reference (53 endpoints, 13 modules) and gRPC API reference (2 proto services). Updated PROJECT.md to v1.5, README.md with documentation links, STATE.md with M007 complete.
 
 **M007 S07 (DevOps & Deployment Maturity) complete 2026-03-15.** Hardened .dockerignore with ~25 exclusions + 7 allowlist entries. Added multi-platform Docker builds (amd64+arm64) via QEMU for all 4 services. Control-plane Dockerfile uses TARGETARCH for OPA binary. Added startupProbe to all 4 Helm deployments (150s window). kube-score v1.18.0 integrated in CI infra-quality job and local infra-check.sh with 13 ignore flags for bitnami subchart issues. All 9 Docker Compose services have json-file log rotation (10m×3). Created Prometheus+Grafana monitoring profile overlay. Created backup script (Postgres pg_dump + ClickHouse table-by-table, --dry-run). Created validate-env.sh pre-flight script catching CHANGE_ME placeholders, missing vars, malformed URLs — wired into smoke-test.sh. 5 decisions (D037–D041).
 
@@ -162,4 +177,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Workspace lints: clippy::all + suspicious (D025) | Codifies lint policy previously enforced only by CI flag | ✓ Good — workspace-wide consistency |
 
 ---
-*Last updated: 2026-03-15 after completing M007/S06 (Security & CSP Hardening)*
+*Last updated: 2026-03-15 after completing M007/S08 (Documentation, Accessibility & Polish) — v1.5 Production Readiness milestone complete*

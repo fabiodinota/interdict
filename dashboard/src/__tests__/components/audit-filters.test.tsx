@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "vitest-axe";
 import { AuditFilters } from "@/components/audit/AuditFilters";
 import type { AuditFilters as AuditFiltersType } from "@/hooks/use-audit";
 
@@ -124,5 +125,14 @@ describe("AuditFilters", () => {
     const input = screen.getByPlaceholderText("Filter by department...");
     await user.type(input, "engineering");
     expect(input).toHaveValue("engineering");
+  });
+
+  it("has no axe-core accessibility violations", async () => {
+    const { container } = render(
+      <AuditFilters filters={defaultFilters} onFiltersChange={onFiltersChange} />,
+    );
+
+    const results = await axe(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(results).toHaveNoViolations();
   });
 });

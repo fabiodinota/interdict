@@ -75,7 +75,7 @@ export function TimeRangeSelector({
         {secondsAgo !== null && (
           <span className="text-xs text-muted-foreground">Last updated: {secondsAgo}s ago</span>
         )}
-        <Button variant="outline" size="icon-sm" onClick={onRefresh}>
+        <Button variant="outline" size="icon-sm" onClick={onRefresh} aria-label="Refresh data">
           <RefreshCw className="size-3.5" />
         </Button>
       </div>

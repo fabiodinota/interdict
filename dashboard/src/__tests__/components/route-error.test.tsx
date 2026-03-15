@@ -7,6 +7,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "vitest-axe";
 import { RouteError } from "@/components/layout/RouteError";
 
 describe("RouteError", () => {
@@ -44,5 +45,15 @@ describe("RouteError", () => {
     expect(
       screen.getByText("An unexpected error interrupted the dashboard."),
     ).toBeInTheDocument();
+  });
+
+  it("has no axe-core accessibility violations", async () => {
+    const error = new Error("Test error");
+    const reset = vi.fn();
+
+    const { container } = render(<RouteError error={error} reset={reset} />);
+
+    const results = await axe(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(results).toHaveNoViolations();
   });
 });

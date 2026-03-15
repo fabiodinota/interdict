@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 /**
  * E2E smoke tests for the Interdict Dashboard.
@@ -54,5 +55,21 @@ test.describe("Dashboard smoke tests", () => {
     // Accept 200 (healthy) or 404 (endpoint not wired yet but server responds)
     // Both prove the server is alive and handling HTTP.
     expect([200, 404]).toContain(response.status());
+  });
+
+  test("WCAG AA: no critical or serious accessibility violations", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+
+    // Filter to only critical and serious violations
+    const criticalOrSerious = accessibilityScanResults.violations.filter(
+      (v) => v.impact === "critical" || v.impact === "serious",
+    );
+
+    expect(criticalOrSerious).toEqual([]);
   });
 });

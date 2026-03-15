@@ -6,6 +6,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { axe } from "vitest-axe";
 import { RouteLoading } from "@/components/layout/RouteLoading";
 
 describe("RouteLoading", () => {
@@ -31,5 +32,12 @@ describe("RouteLoading", () => {
 
     // Grid should have responsive column classes
     expect(grid).toHaveClass("md:grid-cols-2");
+  });
+
+  it("has no axe-core accessibility violations", async () => {
+    const { container } = render(<RouteLoading />);
+
+    const results = await axe(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(results).toHaveNoViolations();
   });
 });

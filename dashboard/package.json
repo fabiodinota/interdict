@@ -32,6 +32,8 @@
     "tailwind-merge": "^3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -50,6 +52,6 @@
     "tw-animate-css": "^1",
     "typescript": "^5",
     "vitest": "^4.0.18",
-    "@playwright/test": "^1.52.0"
+    "vitest-axe": "^0.1.0"
   }
 }

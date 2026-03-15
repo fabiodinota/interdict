@@ -80,6 +80,7 @@ export function PolicyRow({ policy }: PolicyRowProps) {
               checked={policy.is_active}
               onCheckedChange={handleToggleActive}
               disabled={updatePolicy.isPending}
+              aria-label={`Toggle ${policy.name} active`}
             />
           </div>
 

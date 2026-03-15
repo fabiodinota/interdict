@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "vitest-axe";
 import { Sidebar } from "@/components/layout/Sidebar";
 
 // Mock Next.js navigation
@@ -146,6 +147,15 @@ describe("Sidebar", () => {
 
       const sidebar = screen.getByRole("complementary", { hidden: true });
       expect(sidebar).toHaveClass("w-16");
+    });
+  });
+
+  describe("accessibility", () => {
+    it("has no axe-core accessibility violations", async () => {
+      const { container } = render(<Sidebar />);
+
+      const results = await axe(container, { rules: { "color-contrast": { enabled: false } } });
+      expect(results).toHaveNoViolations();
     });
   });
 });

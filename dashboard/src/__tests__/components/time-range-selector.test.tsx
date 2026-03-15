@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "vitest-axe";
 import { TimeRangeSelector, getDateRange } from "@/components/dashboard/TimeRangeSelector";
 
 describe("TimeRangeSelector", () => {
@@ -97,6 +98,20 @@ describe("TimeRangeSelector", () => {
     );
 
     expect(screen.queryByText(/Last updated/)).not.toBeInTheDocument();
+  });
+
+  it("has no axe-core accessibility violations", async () => {
+    const { container } = render(
+      <TimeRangeSelector
+        value="24h"
+        onChange={onChange}
+        onRefresh={onRefresh}
+        lastUpdated={null}
+      />,
+    );
+
+    const results = await axe(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(results).toHaveNoViolations();
   });
 });
 

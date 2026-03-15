@@ -78,7 +78,7 @@ This milestone is complete only when all are true:
   > After this: Dashboard CSP uses nonces instead of unsafe-inline. Helm network policies enabled by default. full_text_storage risks documented for operators with startup warning. No security advisory remains unaddressed.
 - [x] **S07: DevOps & Deployment Maturity** `risk:medium` `depends:[S05]`
   > After this: All Docker images build for amd64+arm64 with proper .dockerignore. Helm chart passes kube-score. Docker Compose has logging rotation, optional monitoring profile (Prometheus+Grafana), backup scripts, and environment validation prevents misconfiguration at startup.
-- [ ] **S08: Documentation, Accessibility & Polish** `risk:low` `depends:[S01,S02,S03,S04,S05,S06,S07]`
+- [x] **S08: Documentation, Accessibility & Polish** `risk:low` `depends:[S01,S02,S03,S04,S05,S06,S07]`
   > After this: Operator guide, API docs (OpenAPI + gRPC), and troubleshooting guide exist. Dashboard passes axe-core with zero critical/serious WCAG violations. All project tracking documents updated to reflect v1.5 status.
 
 ## Boundary Map

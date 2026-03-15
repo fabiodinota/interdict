@@ -125,6 +125,7 @@ export function Sidebar() {
           size="sm"
           onClick={() => setCollapsed(!collapsed)}
           className={`w-full ${collapsed ? "justify-center px-2" : "justify-start"}`}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
             <PanelLeftOpen className="h-4 w-4" />
