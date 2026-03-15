@@ -74,7 +74,7 @@ This milestone is complete only when all are true:
   > After this: Dashboard coverage expands from 9→40+ components, control-plane from 18→27+ modules, negative/adversarial tests cover all services, E2E smoke test (Playwright + docker-compose) passes in CI, and coverage thresholds are enforced as hard CI gates.
 - [x] **S05: CI/CD Release Pipeline + Quality Gates** `risk:medium` `depends:[]`
   > After this: Tag push produces signed container images in ghcr.io with SBOM and SLSA provenance. Conventional commits enforced, changelog auto-generated, cargo-audit blocks PRs, secret scanning runs on every PR, performance benchmarks have regression gates, and CODEOWNERS routes reviews.
-- [ ] **S06: Security & CSP Hardening** `risk:medium` `depends:[S05]`
+- [x] **S06: Security & CSP Hardening** `risk:medium` `depends:[S05]`
   > After this: Dashboard CSP uses nonces instead of unsafe-inline. Helm network policies enabled by default. full_text_storage risks documented for operators with startup warning. No security advisory remains unaddressed.
 - [ ] **S07: DevOps & Deployment Maturity** `risk:medium` `depends:[S05]`
   > After this: All Docker images build for amd64+arm64 with proper .dockerignore. Helm chart passes kube-score. Docker Compose has logging rotation, optional monitoring profile (Prometheus+Grafana), backup scripts, and environment validation prevents misconfiguration at startup.

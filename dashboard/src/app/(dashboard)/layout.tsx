@@ -17,12 +17,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         position="bottom-right"
         richColors
         toastOptions={{
-          style: {
-            fontSize: "14px",
-            padding: "16px",
-            borderRadius: "12px",
-            boxShadow: "0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)",
-          },
+          className:
+            "text-sm p-4 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)]",
         }}
         visibleToasts={3}
         duration={4000}

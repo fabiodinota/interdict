@@ -98,6 +98,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
+**M007 S06 (Security & CSP Hardening) complete 2026-03-15.** Replaced unsafe-inline CSP with per-request nonce-based middleware in proxy.ts (Next.js 16 pattern). script-src uses 'nonce-{n}' + 'strict-dynamic', style-src uses 'nonce-{n}' — zero unsafe-inline in production. Refactored Sonner and VendorUsageChart inline styles to Tailwind classes. Enabled Helm NetworkPolicy by default for all 4 services with CNI documentation. Added tracing::warn! at startup in kernel and evidence-collector when full_text_storage is enabled. Created 163-line operator guide at docs/operator/full-text-storage.md covering security, GDPR, and configuration. 17 middleware tests pass. 2 decisions (D035–D036).
+
 **M007 S05 (CI/CD Release Pipeline + Quality Gates) complete 2026-03-15.** Created complete release pipeline: `.github/workflows/release.yml` triggered on `v*` tag push builds 4 Docker images (kernel, control-plane, dashboard, evidence-collector), pushes to ghcr.io, generates SPDX SBOMs via anchore/sbom-action, signs each by digest via cosign keyless OIDC, and creates GitHub Release with auto-notes and SBOM assets. Added release-please automation for version bumps/changelog/tag creation. Commitlint enforces conventional commits via husky hook and CI job. TruffleHog secret scanning blocks on verified/unknown findings. Criterion benchmark tracking with 200% alert threshold on main-only. CODEOWNERS and PR template for review governance. 4 new decisions (D031–D034).
 
 **M007 S04 (Expanded Test Coverage) complete 2026-03-15.** Dashboard test coverage expanded from 8→46 component test files (370 test cases, 0 failures) via 38 new vitest files covering all presentational, stateful, chart, table, form, dialog, and wizard components. Control-plane expanded from 18→26 test files (308 pass) with new coverage for anomaly severity, ClickHouse query builders, kernel tracker, auth middleware, CSV/PDF generators, cursor encoding, and config validation. Playwright E2E smoke test created with 3 test cases. Vitest coverage thresholds set (60/50/55/60). CI coverage job hardened from advisory to blocking gate. 2 new decisions (D029–D030).
@@ -158,4 +160,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Workspace lints: clippy::all + suspicious (D025) | Codifies lint policy previously enforced only by CI flag | ✓ Good — workspace-wide consistency |
 
 ---
-*Last updated: 2026-03-15 after completing M007/S05 (CI/CD Release Pipeline + Quality Gates)*
+*Last updated: 2026-03-15 after completing M007/S06 (Security & CSP Hardening)*

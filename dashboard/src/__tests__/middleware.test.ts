@@ -1,15 +1,148 @@
 /**
- * Tests for dashboard/src/proxy.ts
+ * Tests for dashboard/src/proxy.ts (Next.js middleware)
  *
- * The middleware enforces session-gating on all non-API routes.
- * It redirects unauthenticated users to /login and prevents
- * authenticated users from accessing /login.
+ * The proxy middleware:
+ * 1. Generates a per-request CSP nonce and sets Content-Security-Policy header
+ * 2. Propagates nonce via x-nonce request header for Server Components
+ * 3. Enforces session-gating on all non-API routes
  */
-import { describe, it, expect } from "vitest";
-import { proxy } from "@/proxy";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { buildNextRequest } from "./helpers/next-mocks";
+import { proxy } from "@/proxy";
 
-describe("Next.js proxy", () => {
+describe("Next.js proxy middleware", () => {
+  // -----------------------------------------------------------------------
+  // CSP nonce generation
+  // -----------------------------------------------------------------------
+  describe("CSP nonce", () => {
+    it("sets Content-Security-Policy header on responses", () => {
+      const req = buildNextRequest("http://localhost:3001/", {
+        cookies: { interdict_session: "valid-token" },
+      });
+      const res = proxy(req as never);
+      const csp = res.headers.get("Content-Security-Policy");
+
+      expect(csp).toBeTruthy();
+      expect(csp).toContain("script-src");
+      expect(csp).toContain("style-src");
+    });
+
+    it("includes nonce in script-src and style-src", () => {
+      const req = buildNextRequest("http://localhost:3001/", {
+        cookies: { interdict_session: "valid-token" },
+      });
+      const res = proxy(req as never);
+      const csp = res.headers.get("Content-Security-Policy")!;
+
+      // Extract nonce from script-src
+      const nonceMatch = csp.match(/'nonce-([A-Za-z0-9+/=]+)'/);
+      expect(nonceMatch).toBeTruthy();
+      const nonce = nonceMatch![1];
+
+      expect(csp).toContain(`'nonce-${nonce}'`);
+      // Nonce appears in both script-src and style-src
+      const scriptSrc = csp.split(";").find((d) => d.trimStart().startsWith("script-src"));
+      const styleSrc = csp.split(";").find((d) => d.trimStart().startsWith("style-src"));
+      expect(scriptSrc).toContain(`'nonce-${nonce}'`);
+      expect(styleSrc).toContain(`'nonce-${nonce}'`);
+    });
+
+    it("includes 'strict-dynamic' in script-src", () => {
+      const req = buildNextRequest("http://localhost:3001/", {
+        cookies: { interdict_session: "valid-token" },
+      });
+      const res = proxy(req as never);
+      const csp = res.headers.get("Content-Security-Policy")!;
+      const scriptSrc = csp.split(";").find((d) => d.trimStart().startsWith("script-src"));
+
+      expect(scriptSrc).toContain("'strict-dynamic'");
+    });
+
+    it("does not include 'unsafe-inline' in production CSP script-src", () => {
+      const req = buildNextRequest("http://localhost:3001/", {
+        cookies: { interdict_session: "valid-token" },
+      });
+      const res = proxy(req as never);
+      const csp = res.headers.get("Content-Security-Policy")!;
+      const scriptSrc = csp.split(";").find((d) => d.trimStart().startsWith("script-src"));
+
+      expect(scriptSrc).not.toContain("'unsafe-inline'");
+    });
+
+    it("does not include 'unsafe-inline' in production CSP style-src", () => {
+      const req = buildNextRequest("http://localhost:3001/", {
+        cookies: { interdict_session: "valid-token" },
+      });
+      const res = proxy(req as never);
+      const csp = res.headers.get("Content-Security-Policy")!;
+      const styleSrc = csp.split(";").find((d) => d.trimStart().startsWith("style-src"));
+
+      expect(styleSrc).not.toContain("'unsafe-inline'");
+    });
+
+    it("generates a unique nonce per request", () => {
+      const req1 = buildNextRequest("http://localhost:3001/", {
+        cookies: { interdict_session: "valid-token" },
+      });
+      const req2 = buildNextRequest("http://localhost:3001/", {
+        cookies: { interdict_session: "valid-token" },
+      });
+      const res1 = proxy(req1 as never);
+      const res2 = proxy(req2 as never);
+
+      const csp1 = res1.headers.get("Content-Security-Policy")!;
+      const csp2 = res2.headers.get("Content-Security-Policy")!;
+      const nonce1 = csp1.match(/'nonce-([A-Za-z0-9+/=]+)'/)?.[1];
+      const nonce2 = csp2.match(/'nonce-([A-Za-z0-9+/=]+)'/)?.[1];
+
+      expect(nonce1).toBeTruthy();
+      expect(nonce2).toBeTruthy();
+      expect(nonce1).not.toBe(nonce2);
+    });
+
+    it("sets CSP header on redirect responses too", () => {
+      const req = buildNextRequest("http://localhost:3001/evidence");
+      // No session → redirects to /login
+      const res = proxy(req as never);
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("Content-Security-Policy")).toBeTruthy();
+    });
+
+    it("sets CSP header on API route responses", () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/policies");
+      const res = proxy(req as never);
+
+      expect(res.headers.get("Content-Security-Policy")).toBeTruthy();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Dev mode unsafe-eval
+  // -----------------------------------------------------------------------
+  describe("dev mode", () => {
+    const originalEnv = process.env.NODE_ENV;
+
+    beforeEach(() => {
+      vi.stubEnv("NODE_ENV", "development");
+    });
+
+    afterEach(() => {
+      vi.stubEnv("NODE_ENV", originalEnv ?? "test");
+    });
+
+    it("includes 'unsafe-eval' in script-src in development", () => {
+      const req = buildNextRequest("http://localhost:3001/", {
+        cookies: { interdict_session: "valid-token" },
+      });
+      const res = proxy(req as never);
+      const csp = res.headers.get("Content-Security-Policy")!;
+      const scriptSrc = csp.split(";").find((d) => d.trimStart().startsWith("script-src"));
+
+      expect(scriptSrc).toContain("'unsafe-eval'");
+    });
+  });
+
   // -----------------------------------------------------------------------
   // API route passthrough
   // -----------------------------------------------------------------------
@@ -18,7 +151,6 @@ describe("Next.js proxy", () => {
       const req = buildNextRequest("http://localhost:3001/api/proxy/policies");
       const res = proxy(req as never);
 
-      // NextResponse.next() does not set a Location header
       expect(res.headers.get("location")).toBeNull();
     });
 

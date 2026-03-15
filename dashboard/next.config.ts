@@ -19,18 +19,7 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options",          value: "DENY" },
           { key: "Referrer-Policy",          value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy",       value: "camera=(), microphone=(), geolocation=()" },
-          {
-            key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",   // tighten after nonce/hash adoption
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data:",
-              "connect-src 'self'",
-              "font-src 'self'",
-              "frame-ancestors 'none'",
-            ].join("; "),
-          },
+          // CSP is now generated per-request in middleware.ts (nonce-based)
         ],
       },
     ];

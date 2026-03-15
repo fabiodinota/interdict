@@ -144,9 +144,20 @@ pub async fn bootstrap(config_path: &str) -> anyhow::Result<BootstrapResult> {
         config.clone(),
         pipeline,
         evidence_buffer.clone(),
-        std::env::var("INTERDICT_EVIDENCE_FULL_TEXT_STORAGE")
-            .map(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
-            .unwrap_or(false),
+        {
+            let full_text = std::env::var("INTERDICT_EVIDENCE_FULL_TEXT_STORAGE")
+                .map(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+                .unwrap_or(false);
+            if full_text {
+                tracing::warn!(
+                    "full_text_storage is ENABLED — raw LLM prompts and responses will be stored. \
+                     Ensure encryption-at-rest is configured for ClickHouse and S3/MinIO. \
+                     Review GDPR, data-residency, and retention requirements before production use. \
+                     See docs/operator/full-text-storage.md for guidance."
+                );
+            }
+            full_text
+        },
         Some(policy_set_manager),
         Some(session_store),
     )

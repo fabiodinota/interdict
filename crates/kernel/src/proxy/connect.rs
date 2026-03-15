@@ -661,6 +661,23 @@ impl Service<Request<Incoming>> for ProxyService {
     }
 }
 
+/// Constructs a [`RawEvidenceEvent`] from the completed request context.
+///
+/// # Privacy: `full_text_storage` parameter
+///
+/// When `full_text_storage` is `true`, the raw LLM prompt and response text is
+/// included in the evidence event. This text may contain PII, trade secrets, or
+/// other sensitive data. Operators enabling this flag **must** ensure:
+///
+/// - Encryption-at-rest for all downstream stores (ClickHouse, S3/MinIO).
+/// - Access controls restrict evidence reads to authorised compliance roles.
+/// - Retention and deletion policies satisfy GDPR Article 17 (right to erasure)
+///   and applicable data-residency regulations.
+///
+/// When `false` (the default), only metadata (host, actor, verdict, timing) is
+/// recorded — no prompt or response content is persisted.
+///
+/// See `docs/operator/full-text-storage.md` for the full operator guide.
 fn build_evidence_event(
     host: &str,
     full_text_storage: bool,

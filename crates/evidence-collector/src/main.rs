@@ -27,6 +27,16 @@ async fn main() -> Result<()> {
         .init();
 
     let cfg = CollectorConfig::from_env()?;
+
+    if cfg.full_text_storage {
+        tracing::warn!(
+            "full_text_storage is ENABLED — raw LLM prompts and responses will be stored. \
+             Ensure encryption-at-rest is configured for ClickHouse and S3/MinIO. \
+             Review GDPR, data-residency, and retention requirements before production use. \
+             See docs/operator/full-text-storage.md for guidance."
+        );
+    }
+
     let redacted_clickhouse_url = redact_url_credentials(&cfg.clickhouse_url);
 
     #[cfg(not(debug_assertions))]

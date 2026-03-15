@@ -80,8 +80,9 @@ kernel:
     type: ClusterIP
     port: 8443
   # -- Network policy for zero-trust pod-to-pod communication
+  # Requires CNI with NetworkPolicy support (Calico, Cilium, etc). Set false if unsupported.
   networkPolicy:
-    enabled: false
+    enabled: true
   # -- Pod disruption budget for rolling updates
   podDisruptionBudget:
     enabled: false
@@ -152,8 +153,9 @@ controlPlane:
     type: ClusterIP
     port: 3000
     grpcPort: 50052
+  # Requires CNI with NetworkPolicy support (Calico, Cilium, etc). Set false if unsupported.
   networkPolicy:
-    enabled: false
+    enabled: true
   podDisruptionBudget:
     enabled: false
     # minAvailable: 1
@@ -220,8 +222,9 @@ evidenceCollector:
   service:
     type: ClusterIP
     port: 50051
+  # Requires CNI with NetworkPolicy support (Calico, Cilium, etc). Set false if unsupported.
   networkPolicy:
-    enabled: false
+    enabled: true
   podDisruptionBudget:
     enabled: false
     # minAvailable: 1
@@ -262,8 +265,9 @@ dashboard:
   service:
     type: ClusterIP
     port: 3001
+  # Requires CNI with NetworkPolicy support (Calico, Cilium, etc). Set false if unsupported.
   networkPolicy:
-    enabled: false
+    enabled: true
   podDisruptionBudget:
     enabled: false
     # minAvailable: 1
