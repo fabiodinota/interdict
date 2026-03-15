@@ -15,6 +15,7 @@
 
 import { Elysia } from "elysia";
 import { db as pgDb } from "../../../db/postgres";
+import { type RateLimiter, createRateLimitHook } from "../rate-limiter";
 import { type AuthService, createAuthService } from "../service";
 import { idp, samlEnabled, sp } from "./config";
 import { getSpMetadata } from "./metadata";
@@ -81,8 +82,9 @@ function extractAttributes(extract: SamlExtract): {
 /**
  * Create the SAML routes Elysia plugin.
  * Only mounted when samlEnabled is true.
+ * Accepts an optional rate limiter to apply to the ACS endpoint.
  */
-export function createSamlRoutes() {
+export function createSamlRoutes(rateLimiter?: RateLimiter) {
   if (!samlEnabled || !sp || !idp) {
     // Return empty plugin if SAML is disabled
     return new Elysia({ prefix: "/saml" });
@@ -105,6 +107,7 @@ export function createSamlRoutes() {
 
       // -----------------------------------------------------------------------
       // POST /acs -- Assertion Consumer Service
+      // Rate limited (H-02): prevents brute-force SAML assertion replay
       // -----------------------------------------------------------------------
       .post("/acs", async (rawCtx) => {
         const { body, store, redirect } = rawCtx as {
@@ -148,7 +151,9 @@ export function createSamlRoutes() {
           console.error("[SAML] ACS error:", msg);
           return new Response("SAML authentication failed", { status: 401 });
         }
-      })
+      }, rateLimiter ? {
+        beforeHandle: createRateLimitHook(rateLimiter),
+      } : {})
 
       // -----------------------------------------------------------------------
       // GET /slo -- Single Logout

@@ -14,6 +14,7 @@ import { auditModule } from "./modules/audit";
 import { authModule } from "./modules/auth";
 import { authPlugin } from "./modules/auth/middleware";
 import { compilerModule } from "./modules/compiler";
+import { startAuthCleanup } from "./modules/auth/cleanup";
 import { startCompilationWorker } from "./modules/compiler/worker";
 import { departmentOverridesModule } from "./modules/department-overrides";
 import { startDistributionServer, stopDistributionServer } from "./modules/distribution";
@@ -124,12 +125,20 @@ console.log(`[control-plane] gRPC distribution server running on port ${config.g
 // Start the background compilation worker
 startCompilationWorker(db, config.wasmStorageDir);
 
+// Start the auth cleanup service (expired sessions & handoff codes)
+const authCleanup = startAuthCleanup(db as never, {
+  intervalMs: 300_000, // 5 minutes
+  batchSize: 1000,
+});
+console.log("[control-plane] Auth cleanup service started (interval: 5m, batch: 1000)");
+
 console.log(`[control-plane] Interdict Control Plane running on port ${config.port}`);
 console.log(`[control-plane] Modules loaded: ${MODULES.join(", ")}`);
 
 // Graceful shutdown: stop gRPC server on process exit
 const shutdown = async (signal: string) => {
   console.log(`[control-plane] Received ${signal}, shutting down...`);
+  authCleanup.stop();
   try {
     await stopDistributionServer(grpcServer);
   } catch (err: unknown) {

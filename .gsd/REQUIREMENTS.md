@@ -157,6 +157,33 @@ Dashboard passes axe-core with zero critical/serious WCAG violations. aria-label
 
 All 45 GitHub Actions references pinned to SHA digests across 3 workflow files. All 8 Docker base image FROM lines pinned by sha256 manifest-list digest. OPA binary download verified by per-architecture SHA256 checksums. Zero mutable @main or @vN tag references remain. Renovate pinDigests configured for automated updates.
 
+### AR-AUTH-01 — Auth endpoints return 429 after configurable rate limit threshold.
+
+- Status: validated
+- Class: security
+- Source: M008 assessment
+- Primary Slice: M008/S02
+
+In-memory per-IP sliding window rate limiter on /session/exchange-api-key, /saml/exchange-code, and /saml/acs. Configurable threshold (default 10/min) with TTL-based eviction. 12 tests prove threshold enforcement, window reset, IP isolation, eviction, 429+Retry-After response, and fail-open safety.
+
+### AR-AUTH-02 — SAML auth handlers have ≥20 test cases covering all handler paths.
+
+- Status: validated
+- Class: security
+- Source: M008 assessment
+- Primary Slice: M008/S02
+
+32 SAML tests (25 handler + 7 config) covering SSO initiation, ACS processing, handoff code creation/redemption/expiry, JIT user provisioning, SLO, metadata, disabled SAML, error handling, config enabled/disabled, missing env vars, and cert loading.
+
+### AR-AUTH-03 — Expired sessions and handoff codes automatically cleaned up on configurable interval.
+
+- Status: validated
+- Class: security
+- Source: M008 assessment
+- Primary Slice: M008/S02
+
+Interval-based cleanup service with batched SQL deletes (default 5-min interval, 1000 batch). 11 tests prove expired row deletion, active session preservation, batch limiting, graceful shutdown, error resilience, and logging.
+
 ## Deferred
 
 ## Out of Scope

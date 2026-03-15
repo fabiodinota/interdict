@@ -71,7 +71,7 @@ This milestone is complete only when all are true:
 - [x] **S01: CI Supply Chain Hardening** `risk:high` `depends:[]`
   > After this: All GitHub Actions across CI and release workflows are pinned to SHA digests. OPA binary download in control-plane Dockerfile includes SHA256 checksum verification. Base Docker images are pinned by digest. Zero mutable `@main` or `@vN` tag references remain. `yamllint .github/workflows/*.yml` passes.
 
-- [ ] **S02: Auth Hardening — Rate Limiting, Session Cleanup, SAML Tests** `risk:high` `depends:[]`
+- [x] **S02: Auth Hardening — Rate Limiting, Session Cleanup, SAML Tests** `risk:high` `depends:[]`
   > After this: Auth endpoints return 429 after rate limit threshold. Expired sessions and handoff codes are automatically cleaned up. SAML auth handlers have comprehensive test coverage. `bun test` passes with ≥20 new SAML test cases + rate limiting tests + cleanup tests.
 
 - [ ] **S03: Input Validation & Output Sanitization** `risk:medium` `depends:[]`

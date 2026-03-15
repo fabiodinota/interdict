@@ -29,8 +29,20 @@ import {
   ExchangeCodeBody,
   RevokeApiKeyParams,
 } from "./model";
+import { RateLimiter, createRateLimitHook } from "./rate-limiter";
 import { createSamlRoutes } from "./saml/handlers";
 import { type AuthenticatedUser, type AuthService, createAuthService } from "./service";
+
+/**
+ * Shared rate limiter for auth endpoints (H-02 mitigation).
+ * Default: 10 requests per minute per IP, cleanup every 60s.
+ * Exported for testing and graceful shutdown.
+ */
+export const authRateLimiter = new RateLimiter({
+  maxRequests: Number(process.env.AUTH_RATE_LIMIT_MAX ?? 10),
+  windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS ?? 60_000),
+  cleanupIntervalMs: 60_000,
+});
 
 /**
  * Auth route handler context.
@@ -50,6 +62,9 @@ interface AuthCtx {
   headers: Record<string, string | undefined>;
   set: { status: number };
 }
+
+/** Per-route beforeHandle hook for rate-limited auth endpoints */
+const rateLimitHook = createRateLimitHook(authRateLimiter);
 
 export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   .use(authPlugin)
@@ -73,6 +88,7 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
 
   // -------------------------------------------------------------------------
   // POST /session/exchange-api-key -- exchange API key for opaque session
+  // Rate limited (H-02): prevents brute-force API key enumeration
   // -------------------------------------------------------------------------
   .post(
     "/session/exchange-api-key",
@@ -89,6 +105,7 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
     },
     {
       body: ExchangeApiKeyBody,
+      beforeHandle: rateLimitHook,
     },
   )
 
@@ -180,6 +197,7 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
   // -------------------------------------------------------------------------
   // POST /saml/exchange-code -- One-time code -> session token (CRIT-002)
   // Unauthenticated: the code IS the credential for this one exchange.
+  // Rate limited (H-02): prevents brute-force code enumeration
   // -------------------------------------------------------------------------
   .post(
     "/saml/exchange-code",
@@ -196,10 +214,13 @@ export const authModule = new Elysia({ prefix: "/api/v1/auth" })
       }
       return { success: true, data: { token: sessionToken } };
     },
-    { body: ExchangeCodeBody },
+    {
+      body: ExchangeCodeBody,
+      beforeHandle: rateLimitHook,
+    },
   )
 
   // -------------------------------------------------------------------------
   // SAML SSO Routes (conditionally mounted when SAML is configured)
   // -------------------------------------------------------------------------
-  .use(createSamlRoutes());
+  .use(createSamlRoutes(authRateLimiter));
