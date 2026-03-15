@@ -18,6 +18,7 @@ spec:
         app.kubernetes.io/component: evidence-collector
     spec:
       {{- include "interdict.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "interdict.serviceAccountName" . }}
       securityContext:
         fsGroup: 1000
         seccompProfile:

@@ -20,6 +20,7 @@ spec:
     spec:
       restartPolicy: Never
       {{- include "interdict.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "interdict.serviceAccountName" . }}
       containers:
         - name: minio-init
           image: {{ include "interdict.image" (dict "service" .Values.minioInit "global" .Values.global "chart" .Chart) }}

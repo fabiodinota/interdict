@@ -18,6 +18,7 @@ spec:
         app.kubernetes.io/component: dashboard
     spec:
       {{- include "interdict.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "interdict.serviceAccountName" . }}
       securityContext:
         fsGroup: 1000
         seccompProfile:

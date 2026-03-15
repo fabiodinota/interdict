@@ -19,22 +19,32 @@
 - `helm template interdict helm/interdict --dependency-update | grep -c "kind: Role"` returns ≥1
 - `bash scripts/quality/infra-check.sh` passes
 - `helm lint helm/interdict` passes
+- `helm template interdict helm/interdict --dependency-update | grep -c "drop:"` returns ≥5 (confirms no container retains Linux capabilities)
+- `helm template interdict helm/interdict --set serviceAccount.create=false --dependency-update | grep -c "kind: ServiceAccount"` returns 0 (confirms ServiceAccount conditional guard works)
+- `helm template interdict helm/interdict --dependency-update | grep "automountServiceAccountToken" | grep -c "false"` returns ≥1 (confirms token not auto-mounted)
 
 ## Tasks
 
-- [ ] **T01: Harden cert-init Job securityContext** `est:30m`
+- [x] **T01: Harden cert-init Job securityContext** `est:30m`
   - Why: M-09 — cert-init runs as root with no security restrictions, inconsistent with all other pods.
   - Files: `helm/interdict/templates/cert-init-job.yaml`
   - Do: Add `securityContext` to the container spec matching other pods: `runAsNonRoot: true`, `runAsUser: 1000`, `runAsGroup: 1000`, `allowPrivilegeEscalation: false`, `capabilities: { drop: [ALL] }`, `seccompProfile: { type: RuntimeDefault }`, `readOnlyRootFilesystem: true`. Add `volumeMounts` for `/tmp` as tmpfs (cert generation needs a temp directory). The cert volume mount at `/certs` remains writable. Update the Alpine image to use a non-root user — add `USER 1000` equivalent or use `securityContext` to enforce. Verify the openssl/cert generation commands work as non-root (they write to the mounted volume, not rootfs).
   - Verify: `helm template` shows cert-init with `runAsNonRoot: true`. `helm lint helm/interdict` passes.
   - Done when: cert-init has identical security posture to standalone deployments.
 
-- [ ] **T02: Enforce sidecar read-only rootfs and create ServiceAccount** `est:30m`
+- [x] **T02: Enforce sidecar read-only rootfs and create ServiceAccount** `est:30m`
   - Why: M-10 — Sidecar has writable rootfs, inconsistent with standalone deployments. L-05 — No dedicated ServiceAccount.
   - Files: `helm/interdict/templates/sidecar/_sidecar-container.tpl`, `helm/interdict/values.yaml`, `helm/interdict/templates/serviceaccount.yaml` (new), `helm/interdict/templates/role.yaml` (new), `helm/interdict/templates/rolebinding.yaml` (new)
   - Do: In `_sidecar-container.tpl`, change `readOnlyRootFilesystem: false` to `true`. Add tmpfs volume mounts for writable paths the kernel needs at runtime (e.g., `/tmp` for config templating). Create `templates/serviceaccount.yaml` with `{{ if .Values.serviceAccount.create }}` guard. Create `templates/role.yaml` with namespace-scoped Role allowing `get`, `list` on `secrets` (for cert access). Create `templates/rolebinding.yaml` binding the Role to the ServiceAccount. In `values.yaml`, set `serviceAccount.create: true` and `serviceAccount.name: ""` (auto-generates from fullname). Update all deployment templates to reference `{{ include "interdict.serviceAccountName" . }}`.
   - Verify: `helm template` shows ServiceAccount, Role, RoleBinding. Sidecar shows `readOnlyRootFilesystem: true`. `helm lint` passes. `bash scripts/quality/infra-check.sh` passes.
   - Done when: Sidecar has read-only rootfs, ServiceAccount exists with minimal RBAC.
+
+## Observability / Diagnostics
+
+- **Inspection surface:** `helm template interdict helm/interdict --dependency-update` renders all manifests for offline inspection of securityContext, RBAC, and volume mounts without a live cluster.
+- **Failure visibility:** `helm lint helm/interdict` catches YAML/template errors. `helm template ... | kubectl apply --dry-run=client -f -` (when a cluster is available) validates API conformance.
+- **Diagnostic command:** `bash scripts/quality/infra-check.sh` validates Dockerfile and Helm infra quality gates.
+- **Failure-path verification:** `helm template interdict helm/interdict --dependency-update | grep -c "drop:\|ALL"` confirms no container retains Linux capabilities. Missing output indicates a security regression.
 
 ## Files Likely Touched
 

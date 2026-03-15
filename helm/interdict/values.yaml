@@ -12,8 +12,9 @@ fullnameOverride: ""
 
 # -- Service account configuration
 serviceAccount:
-  create: false
+  create: true
   name: ""
+  annotations: {}
 
 # =============================================================================
 # Kernel (Data Plane Proxy)

@@ -111,6 +111,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
+**M008 S05 (Helm Security Hardening) complete 2026-03-15.** Cert-init Job hardened with full pod-level and container-level securityContext (runAsNonRoot, runAsUser/Group 1000, readOnlyRootFilesystem, capabilities drop ALL, seccompProfile RuntimeDefault). Used `apk --root /tmp/apkroot` technique to install openssl to tmpfs while preserving read-only rootfs. Sidecar template changed to readOnlyRootFilesystem: true with tmpfs for /tmp, added missing runAsGroup and capabilities drop ALL. Created ServiceAccount with automountServiceAccountToken: false, namespace-scoped Role for secrets+configmaps get/list, and RoleBinding. All 6 pod specs wired to SA. Fixed CRLF line endings in 14 Helm template files that caused silent grep verification failures. 2 decisions (D053–D054). AR-HELM-01 validated.
+
 **M008 S04 (Docker Compose & Monitoring Hardening) complete 2026-03-15.** Added 3-network segmentation to Docker Compose: frontend (browser-facing), backend (inter-service), data (database). Dashboard isolated from data tier. Grafana credentials parameterized with fail-closed :? syntax (compose refuses to start without GRAFANA_ADMIN_PASSWORD). Resource limits on all 9 services (4 app + 3 infra + 2 monitoring). Operator guide updated with v1.6 upgrade section covering network topology diagram, credential migration, and resource limits table. 1 decision (D052). AR-INFRA-01 validated.
 
 **M008 S03 (Input Validation & Output Sanitization) complete 2026-03-15.** CSV formula injection defense added to escapeCSV() — neutralizes =, +, -, @ prefixes with single-quote prepend (OWASP standard). Added maxLength constraints to all 47 TypeBox string fields across 7 model files using semantic tiers (255 for IDs, 500 for names, 2000 for URLs, 5000 for notes, 10000 for descriptions, 500000 for rego_source). Configured dual-layer body size limit: onRequest Content-Length check with structured 413 JSON response + Bun maxRequestBodySize backstop, 1MB default via MAX_BODY_SIZE env var. 45 new tests (21 CSV + 21 maxLength + 3 body limit). AR-INPUT-01 validated. 1 new decision (D051).
@@ -187,4 +189,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Workspace lints: clippy::all + suspicious (D025) | Codifies lint policy previously enforced only by CI flag | ✓ Good — workspace-wide consistency |
 
 ---
-*Last updated: 2026-03-15 after completing M007 (Production Readiness v1.5) — all milestones complete, project at v1.5*
+*Last updated: 2026-03-15 after completing M008/S05 (Helm Security Hardening) — M008 S01–S05 complete, S06 next*

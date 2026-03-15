@@ -80,7 +80,7 @@ This milestone is complete only when all are true:
 - [x] **S04: Docker Compose & Monitoring Hardening** `risk:medium` `depends:[]`
   > After this: Docker Compose uses 3 isolated networks (frontend, backend, data). Grafana credentials are parameterized. Infrastructure services have resource limits. `docker compose config` validates. Operator guide updated with network migration notes.
 
-- [ ] **S05: Helm Security Hardening** `risk:medium` `depends:[]`
+- [x] **S05: Helm Security Hardening** `risk:medium` `depends:[]`
   > After this: Cert-init Job has full securityContext. Sidecar template enforces read-only rootfs. ServiceAccount is created by default. Cert PVC uses ReadWriteMany for multi-node. `helm template` output validates all security contexts. `bash scripts/quality/infra-check.sh` passes.
 
 - [ ] **S06: Cross-Service Integration Tests** `risk:high` `depends:[S02]`

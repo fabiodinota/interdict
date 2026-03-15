@@ -38,6 +38,7 @@ spec:
         app.kubernetes.io/component: example-app
     spec:
       {{- include "interdict.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "interdict.serviceAccountName" . }}
       # -----------------------------------------------------------------
       # Init Containers: Interdict sidecar injection
       # Copy this entire initContainers block into your Deployment
@@ -85,4 +86,8 @@ spec:
             claimName: {{ include "interdict.fullname" . }}-certs
         - name: interdict-ca-certs
           emptyDir: {}
+        - name: interdict-tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
 {{- end }}

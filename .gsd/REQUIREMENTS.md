@@ -202,6 +202,15 @@ escapeCSV() neutralizes formula-injection prefixes (=, +, -, @) with single-quot
 
 Docker Compose uses 3 isolated networks (frontend, backend, data) with correct per-service assignments. Dashboard isolated from data tier. Grafana credentials parameterized with fail-closed :? syntax. All 9 services (4 app + 3 infra + 2 monitoring) have deploy.resources.limits. Operator guide documents v1.6 network migration with ASCII topology diagram.
 
+### AR-HELM-01 — Helm cert-init Job has full securityContext, sidecar enforces read-only rootfs, ServiceAccount created with RBAC.
+
+- Status: validated
+- Class: security
+- Source: M008 assessment
+- Primary Slice: M008/S05
+
+Cert-init Job has pod-level and container-level securityContext matching standalone deployments (runAsNonRoot, runAsUser/Group 1000, allowPrivilegeEscalation false, readOnlyRootFilesystem true, capabilities drop ALL, seccompProfile RuntimeDefault). Sidecar template enforces readOnlyRootFilesystem: true with tmpfs for /tmp. ServiceAccount created by default with automountServiceAccountToken: false and namespace-scoped Role granting get/list on secrets and configmaps only. All 6 pod specs reference the dedicated SA.
+
 ## Deferred
 
 ## Out of Scope

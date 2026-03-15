@@ -50,6 +50,11 @@ spec:
     spec:
       restartPolicy: Never
       {{- include "interdict.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "interdict.serviceAccountName" . }}
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: cert-init
           image: {{ include "interdict.image" (dict "service" .Values.certInit "global" .Values.global "chart" .Chart) }}
@@ -57,13 +62,30 @@ spec:
           command:
             - /bin/sh
             - -c
-            - "apk add --no-cache openssl && sh /scripts/generate-internal-ca.sh"
+            - |
+              apk --root /tmp/apkroot --initdb \
+                  --repositories-file /etc/apk/repositories \
+                  --keys-dir /etc/apk/keys \
+                  add --no-cache openssl \
+              && PATH="/tmp/apkroot/usr/bin:$PATH" \
+                 sh /scripts/generate-internal-ca.sh
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: cert-script
               mountPath: /scripts
               readOnly: true
             - name: certs
               mountPath: /certs
+            - name: tmp
+              mountPath: /tmp
           resources:
             {{- toYaml .Values.certInit.resources | nindent 12 }}
       volumes:
@@ -73,4 +95,8 @@ spec:
         - name: certs
           persistentVolumeClaim:
             claimName: {{ include "interdict.fullname" . }}-certs
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
 {{- end }}

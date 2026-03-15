@@ -77,11 +77,17 @@ Example:
       readOnly: true
     - name: interdict-ca-certs
       mountPath: /data/certs
+    - name: interdict-tmp
+      mountPath: /tmp
   resources:
     {{- toYaml .Values.sidecar.resources | nindent 4 }}
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
+    runAsGroup: 1000
     allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 {{- end }}
