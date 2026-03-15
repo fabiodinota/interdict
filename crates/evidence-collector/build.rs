@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_client(true)
         .compile_protos(
             &["../../proto/interdict/evidence/v1/evidence.proto"],
-            &["../../proto/"],
+            &["../../proto/", "../../proto/third_party/"],
         )?;
 
     Ok(())

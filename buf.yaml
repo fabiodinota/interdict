@@ -2,6 +2,11 @@ version: v2
 
 modules:
   - path: proto
+    excludes:
+      - proto/third_party
+
+deps:
+  - buf.build/bufbuild/protovalidate
 
 lint:
   use:

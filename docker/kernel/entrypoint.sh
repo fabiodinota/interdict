@@ -61,10 +61,11 @@ fi
 # Auto-generate CA cert/key if not present (pilot convenience)
 if [ ! -f "${KERNEL_CA_CERT_PATH}" ]; then
     echo "[entrypoint] Generating self-signed CA certificate..."
+    # 1-year validity — rotate before expiry. See docs/operator/guide.md for rotation procedure.
     openssl req -x509 -newkey ed25519 \
         -keyout "${KERNEL_CA_KEY_PATH}" \
         -out "${KERNEL_CA_CERT_PATH}" \
-        -days 3650 -nodes \
+        -days 365 -nodes \
         -subj "/CN=Interdict CA/O=Interdict"
     chmod 600 "${KERNEL_CA_KEY_PATH}"
     echo "[entrypoint] CA certificate generated at ${KERNEL_CA_CERT_PATH}"

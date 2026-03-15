@@ -32,7 +32,9 @@ pub fn to_proto_bundle(event: &RawEvidenceEvent, kernel_id: &str) -> EvidenceBun
         model: event.model.clone(),
         prompt_hash: event.prompt_hash.clone(),
         response_hash: event.response_hash.clone(),
+        #[allow(deprecated)] // Intentionally used for backward compat; will be removed in v2.0
         prompt_text: event.prompt_text.clone().unwrap_or_default(),
+        #[allow(deprecated)] // Intentionally used for backward compat; will be removed in v2.0
         response_text: event.response_text.clone().unwrap_or_default(),
         policy_action: event.policy_action.clone(),
         policy_rules_json: serde_json::to_string(&event.policy_rules)
@@ -61,6 +63,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)] // Tests backward-compat fields scheduled for removal in v2.0
     fn raw_event_to_proto_preserves_fields() {
         let event = RawEvidenceEvent {
             timestamp: Utc::now(),

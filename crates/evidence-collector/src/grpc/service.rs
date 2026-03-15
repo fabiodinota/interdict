@@ -216,7 +216,9 @@ fn map_bundle_to_row(
         model: bundle.model.clone(),
         prompt_hash: bundle.prompt_hash.clone(),
         response_hash: bundle.response_hash.clone(),
+        #[allow(deprecated)] // Intentionally used for backward compat; will be removed in v2.0
         prompt_text: bundle.prompt_text.clone(),
+        #[allow(deprecated)] // Intentionally used for backward compat; will be removed in v2.0
         response_text: bundle.response_text.clone(),
         policy_action: bundle.policy_action.clone(),
         policy_rules_json: bundle.policy_rules_json.clone(),

@@ -28,7 +28,9 @@ AI governance kernel for regulated enterprises. Sits between internal users and 
 
 ## Current Status
 
-**v1.5** (current) -- Production readiness milestone. Expanded hot-path and evidence test coverage, CI/CD release pipeline with signed images, CSP nonce hardening, Helm network policies, DevOps maturity (multi-platform builds, monitoring, backup, env validation), operator and API documentation, WCAG AA accessibility.
+**v1.6** (current) -- Assessment remediation milestone. All 28 findings from the v1.5 Foundation Assessment addressed: CI supply chain hardening (SHA-pinned Actions, OPA checksums, digest-pinned base images), auth hardening (rate limiting, SAML tests, session cleanup), input validation (CSV formula defense, TypeBox maxLength, body size limits), Docker Compose network segmentation and resource limits, Helm security contexts and RBAC, cross-service integration tests, proto validation annotations, certificate hygiene (1-year CA, expiry monitoring, rotation docs).
+
+**v1.5** (shipped 2026-03-15) -- Production readiness milestone. Expanded hot-path and evidence test coverage, CI/CD release pipeline with signed images, CSP nonce hardening, Helm network policies, DevOps maturity (multi-platform builds, monitoring, backup, env validation), operator and API documentation, WCAG AA accessibility.
 
 **v1.2** (shipped 2026-03-12) -- Trustworthiness and hardening milestone. No new features; focused on correctness, security, and honest deployment artifacts.
 

@@ -92,6 +92,19 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 - ✓ API documentation: REST reference (53 endpoints, 13 modules), gRPC reference (2 proto services) — v1.5
 - ✓ WCAG AA accessibility: aria-label on all icon buttons, vitest-axe assertions on 6 components, @axe-core/playwright WCAG AA check in Playwright smoke test — v1.5
 
+**Assessment Remediation — v1.6**
+- ✓ AR-SUPPLY-01: CI supply chain hardening — all 45 GitHub Actions pinned to SHA digests, OPA binary checksum verification, 8 Docker base images pinned by manifest-list digest, Windows target removed from deny.toml — v1.6
+- ✓ AR-AUTH-01: Auth endpoint rate limiting — per-IP sliding window (10/min) on all auth endpoints with 429 response — v1.6
+- ✓ AR-AUTH-02: SAML authentication test coverage — 32 SAML tests covering response processing, handoff lifecycle, JIT provisioning, replay prevention — v1.6
+- ✓ AR-AUTH-03: Expired session/handoff cleanup — interval-based cleanup (5-min default, 1000 batch) for sessions and handoff codes — v1.6
+- ✓ AR-INPUT-01: Input validation and output sanitization — CSV formula injection defense, 47 TypeBox maxLength constraints, dual-layer body size limiting (1MB default) — v1.6
+- ✓ AR-INFRA-01: Docker Compose and monitoring hardening — 3-network segmentation (frontend/backend/data), Grafana credential parameterization, resource limits on all 9 services — v1.6
+- ✓ AR-HELM-01: Helm security hardening — cert-init securityContext (non-root, read-only rootfs, drop ALL), sidecar read-only rootfs, ServiceAccount with RBAC — v1.6
+- ✓ AR-TEST-01: Cross-service integration tests — docker-compose.test.yml with policy distribution and evidence pipeline end-to-end tests — v1.6
+- ✓ AR-CODE-01: Code quality fixes — dead code removal, console.error sanitization, type assertion cleanup, ClickHouse password warning, CSRF documentation — v1.6
+- ✓ AR-PROTO-01: Proto safety — buf.validate annotations on all string/bytes fields, prompt_text/response_text deprecation, Wasm transfer documentation — v1.6
+- ✓ AR-CERT-01: Certificate hygiene — CA validity reduced from 10 years to 1 year, 30-day expiry monitoring, rotation procedure documented — v1.6
+
 ### Out of Scope
 
 - **Building/fine-tuning LLMs** — governance infrastructure, not a model provider
@@ -110,6 +123,10 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 - **Real-time WebSocket streaming dashboard** — polling with 30s refresh suffices
 
 ## Context
+
+**M008 (Assessment Remediation v1.6) COMPLETE 2026-03-15.** All 8 slices delivered. Systematic remediation of all 28 findings from the v1.5 Foundation Assessment. 16 decisions (D044–D059). 11 new requirements validated (AR-SUPPLY-01 through AR-CERT-01). CI supply chain hardened (SHA-pinned Actions, OPA checksum, digest-pinned base images). Auth hardened (rate limiting, SAML tests, session cleanup). Input validation and output sanitization (CSV formula defense, TypeBox maxLength, body size limits). Infrastructure hardened (Docker 3-network segmentation, Grafana credentials, resource limits). Helm security hardened (cert-init securityContext, sidecar read-only rootfs, ServiceAccount RBAC). Cross-service integration tests (policy distribution and evidence pipeline). Code quality fixes (dead code, console sanitization, CSRF docs). Proto safety (buf.validate annotations, field deprecation). Certificate hygiene (1-year CA, expiry monitoring, rotation docs). All 28 assessment findings addressed — zero deferred.
+
+**M008 S08 (Proto Safety, Config Hygiene & Documentation) complete 2026-03-15.** Added buf.validate annotations to all string/bytes fields in evidence.proto and policy_distribution.proto with semantic limits (IDs→255, names→500, text→1MB, bytes→16MB). Deprecated prompt_text/response_text with proto-level markers. Vendored buf/validate/validate.proto for protoc compatibility (D058). Reduced CA validity from 10 years to 1 year in both entrypoint.sh and generate-internal-ca.sh. Added 30-day cert expiry warning to cert-init startup (D059). Documented certificate rotation for Docker Compose and Kubernetes. Updated all project tracking to v1.6. Verified all 28 assessment findings addressed. 2 decisions (D058–D059). AR-PROTO-01, AR-CERT-01 validated.
 
 **M008 S07 (Code Quality & Dashboard Fixes) complete 2026-03-15.** Seven low-severity code quality findings addressed across dashboard, control-plane, and Rust CLI. Removed dead `document.cookie` httpOnly clearing from auth-client.ts logout(). Made cookie `secure` flag configurable via `COOKIE_SECURE` env var with NODE_ENV fallback (D057). Sanitized RouteError.tsx console.error for production (generic message only, full error in dev). Replaced `as any` with `as unknown as number` in audit-table.test.tsx. Added ClickHouse empty-password production warning in config.ts. Replaced interdict-verify `.unwrap()` with `.unwrap_or_else()` fallback. Added CSRF Protection documentation to operator guide. 1 decision (D057). AR-CODE-01 validated.
 
@@ -193,4 +210,4 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Workspace lints: clippy::all + suspicious (D025) | Codifies lint policy previously enforced only by CI flag | ✓ Good — workspace-wide consistency |
 
 ---
-*Last updated: 2026-03-15 after completing M008/S07 (Code Quality & Dashboard Fixes) — M008 S01–S07 complete, S08 next (final slice)*
+*Last updated: 2026-03-15 after completing M008 (Assessment Remediation v1.6) — all 8 milestones complete, all 28 v1.5 assessment findings addressed, project at v1.6*

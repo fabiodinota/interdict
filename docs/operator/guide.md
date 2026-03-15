@@ -324,6 +324,91 @@ The secret must contain: `internal-ca.pem`, `control-plane.pem`,
 `control-plane-key.pem`, `evidence-collector.pem`,
 `evidence-collector-key.pem`, `kernel-client.pem`, `kernel-client-key.pem`.
 
+### Certificate Rotation
+
+Internal mTLS certificates and the kernel proxy CA are generated with
+**1-year validity**. Rotate them before they expire to avoid mTLS
+handshake failures.
+
+#### Checking Certificate Expiry
+
+```bash
+# Check internal CA expiry
+openssl x509 -enddate -noout -in /certs/internal-ca.pem
+
+# Check kernel proxy CA expiry
+openssl x509 -enddate -noout -in /data/certs/ca.crt
+
+# Check a service certificate
+openssl x509 -enddate -noout -in /certs/evidence-collector.pem
+```
+
+The `cert-init` container automatically logs a warning at startup when
+any certificate expires within 30 days:
+
+```
+[certs] WARNING: Certificate expires in 12 days (/certs/internal-ca.pem). See docs/operator/guide.md for rotation.
+```
+
+Operators can monitor container logs for `[certs] WARNING` to detect
+impending expiry.
+
+#### Rotating Certificates (Docker Compose)
+
+```bash
+# 1. Stop application services (infrastructure stays up)
+docker compose stop kernel control-plane evidence-collector dashboard
+
+# 2. Remove existing certificates to trigger regeneration
+docker compose run --rm cert-init sh -c "rm -f /certs/*.pem /certs/*.srl"
+
+# 3. Regenerate certificates
+docker compose run --rm cert-init
+
+# 4. Restart application services
+docker compose up -d kernel control-plane evidence-collector dashboard
+```
+
+#### Rotating Certificates (Kubernetes)
+
+```bash
+# 1. Delete the certificate secret (or PVC if using cert-init job)
+kubectl delete secret interdict-tls -n interdict
+
+# 2. Re-run the cert-init job
+kubectl create job cert-rotate --from=cronjob/cert-init -n interdict
+
+# 3. Restart services to pick up new certificates
+kubectl rollout restart deploy/interdict-kernel -n interdict
+kubectl rollout restart deploy/interdict-control-plane -n interdict
+kubectl rollout restart deploy/interdict-evidence-collector -n interdict
+```
+
+Alternatively, provide your own certificates via `existingTlsSecret` and
+manage rotation with your organisation's PKI tooling (e.g., cert-manager).
+
+#### Grace Period and Impact
+
+- Services **continue working** with existing certificates until they
+  expire. There is no sudden failure — you have the full validity period.
+- After expiry, mTLS handshakes between services will fail with TLS
+  certificate verification errors. Services will not be able to
+  communicate until certificates are rotated.
+- The kernel proxy CA expiry affects outbound HTTPS interception — clients
+  will see TLS errors for AI vendor requests.
+
+#### Production Monitoring
+
+For production deployments, supplement the built-in startup warning with
+continuous certificate monitoring:
+
+- **Prometheus blackbox_exporter:** Probe certificate endpoints and alert
+  when expiry is within 30 days.
+- **cert-manager (Kubernetes):** Automates certificate rotation with
+  configurable renewal windows.
+- **Custom CronJob:** Schedule a periodic check using `openssl x509
+  -checkend` and send alerts via your notification pipeline.
+
 ---
 
 ## Signing Key Management

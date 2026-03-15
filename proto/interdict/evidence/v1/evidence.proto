@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package interdict.evidence.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
 service EvidenceCollectorService {
@@ -9,44 +10,105 @@ service EvidenceCollectorService {
 }
 
 message SubmitEvidenceRequest {
-  bytes compressed_payload = 1;
-  string kernel_id = 2;
+  // Zstd-compressed batch of serialized EvidenceBundle messages.
+  bytes compressed_payload = 1 [(buf.validate.field).bytes.max_len = 16777216]; // 16MB max, matching gRPC default
+
+  // Kernel instance submitting this batch.
+  string kernel_id = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Monotonic sequence number within the batch stream.
   uint64 batch_sequence = 3;
 }
 
 message SubmitEvidenceResponse {
   uint64 accepted_count = 1;
   uint64 rejected_count = 2;
-  string error_message = 3;
+
+  // Human-readable error detail (empty on full success).
+  string error_message = 3 [(buf.validate.field).string.max_len = 10000];
 }
 
 message EvidenceBundle {
-  string bundle_id = 1;
-  string kernel_id = 2;
+  // Unique identifier for this evidence bundle (UUID format).
+  string bundle_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Kernel instance that produced this bundle.
+  string kernel_id = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Timestamp of evidence capture (kernel wall clock).
   google.protobuf.Timestamp timestamp = 3;
 
-  string actor_identity = 4;
-  string department = 5;
-  string vendor = 6;
-  string model = 7;
+  // Identity of the actor (user or service) whose request was evaluated.
+  string actor_identity = 4 [(buf.validate.field).string.max_len = 500];
 
-  string prompt_hash = 8;
-  string response_hash = 9;
-  string prompt_text = 10;
-  string response_text = 11;
+  // Organizational department of the actor.
+  string department = 5 [(buf.validate.field).string.max_len = 500];
 
-  string policy_action = 12;
-  string policy_rules_json = 13;
+  // AI vendor/provider name (e.g., "openai", "anthropic").
+  string vendor = 6 [(buf.validate.field).string.max_len = 500];
+
+  // Model identifier used for the request (e.g., "gpt-4", "claude-3").
+  string model = 7 [(buf.validate.field).string.max_len = 500];
+
+  // SHA-256 hash of the prompt content.
+  string prompt_hash = 8 [(buf.validate.field).string.max_len = 255];
+
+  // SHA-256 hash of the response content.
+  string response_hash = 9 [(buf.validate.field).string.max_len = 255];
+
+  // DEPRECATED: Use content_hash for privacy. Only populated when
+  // full_text_storage is enabled. Will be removed in v2.0.
+  string prompt_text = 10 [
+    deprecated = true,
+    (buf.validate.field).string.max_len = 1048576 // 1MB
+  ];
+
+  // DEPRECATED: Use content_hash for privacy. Only populated when
+  // full_text_storage is enabled. Will be removed in v2.0.
+  string response_text = 11 [
+    deprecated = true,
+    (buf.validate.field).string.max_len = 1048576 // 1MB
+  ];
+
+  // Policy enforcement action taken (e.g., "allow", "block", "redact").
+  string policy_action = 12 [(buf.validate.field).string.max_len = 255];
+
+  // JSON-serialized array of rules that matched during evaluation.
+  string policy_rules_json = 13 [(buf.validate.field).string.max_len = 65536]; // 64KB
+
+  // Approximate token count of the evaluated request.
   uint32 token_count = 14;
+
+  // Enforcement pipeline latency in microseconds.
   uint64 enforcement_latency_us = 15;
 
-  bytes chain_hash = 16;
-  bytes previous_hash = 17;
+  // SHA-256 hash chaining this bundle to all previous bundles (tamper evidence).
+  bytes chain_hash = 16 [(buf.validate.field).bytes.max_len = 64];
+
+  // Hash of the immediately preceding bundle in the chain.
+  bytes previous_hash = 17 [(buf.validate.field).bytes.max_len = 64];
+
+  // Monotonic sequence number within the hash chain.
   uint64 sequence_number = 18;
 
-  bytes signature = 19;
-  string signing_key_id = 20;
+  // Ed25519 signature over the canonical serialization of this bundle.
+  bytes signature = 19 [(buf.validate.field).bytes.max_len = 128];
+
+  // Identifier of the signing key used (for key rotation support).
+  string signing_key_id = 20 [(buf.validate.field).string.max_len = 255];
+
+  // True when signed with a development key (not production-grade).
   bool dev_signed = 21;
 
+  // Schema version for forward-compatible deserialization.
   uint32 schema_version = 22;
 }

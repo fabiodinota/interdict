@@ -89,7 +89,7 @@ This milestone is complete only when all are true:
 - [x] **S07: Code Quality & Dashboard Fixes** `risk:low` `depends:[]`
   > After this: Dead code removed from auth-client.ts. RouteError.tsx console.error sanitized for production. Cookie secure flag decoupled from NODE_ENV. ClickHouse password warns when empty in production. interdict-verify production unwrap replaced. `as any` removed from test code. `npx vitest run` and `cargo test` pass.
 
-- [ ] **S08: Proto Safety, Config Hygiene & Documentation** `risk:low` `depends:[S01,S02,S03,S04,S05,S06,S07]`
+- [x] **S08: Proto Safety, Config Hygiene & Documentation** `risk:low` `depends:[S01,S02,S03,S04,S05,S06,S07]`
   > After this: Proto files have buf validate annotations on string/bytes fields. Kernel entrypoint CA validity reduced from 10 years to 1 year. deny.toml Windows target removed. prompt_text/response_text proto fields documented with deprecation notice. Operator guide updated with all new procedures. final_assessment.md regenerated showing zero high/medium findings.
 
 ## Boundary Map

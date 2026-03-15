@@ -34,10 +34,11 @@ echo "[cert-init] Generating internal CA and service certificates..."
 # ---------------------------------------------------------------------------
 # 1. Internal CA (10-year validity, ECDSA P-256)
 # ---------------------------------------------------------------------------
+# 1-year validity — rotate before expiry. See docs/operator/guide.md for rotation procedure.
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout "${CERT_DIR}/internal-ca-key.pem" \
     -out "${CERT_DIR}/internal-ca.pem" \
-    -days 3650 -nodes \
+    -days 365 -nodes \
     -subj "/CN=interdict-internal-ca/O=Interdict"
 
 echo "[cert-init] Internal CA generated."
@@ -123,4 +124,46 @@ chmod 644 "${CERT_DIR}"/*.pem
 chmod 600 "${CERT_DIR}"/*-key.pem
 
 echo "[cert-init] All certificates generated successfully."
+
+# ---------------------------------------------------------------------------
+# 7. Certificate expiry monitoring
+# ---------------------------------------------------------------------------
+# Check all certificates and warn if any expire within 30 days.
+# Operators can grep container logs for "[certs] WARNING" to detect
+# impending expiry. See docs/operator/guide.md for rotation procedure.
+# ---------------------------------------------------------------------------
+WARN_DAYS=30
+WARN_SECS=$((WARN_DAYS * 86400))
+NOW_EPOCH=$(date +%s)
+
+for cert_file in "${CERT_DIR}"/*.pem; do
+    # Skip private key files
+    case "${cert_file}" in *-key.pem) continue ;; esac
+
+    if [ ! -f "${cert_file}" ]; then
+        continue
+    fi
+
+    # Extract expiry date from certificate
+    END_DATE=$(openssl x509 -enddate -noout -in "${cert_file}" 2>/dev/null | sed 's/notAfter=//')
+    if [ -z "${END_DATE}" ]; then
+        continue
+    fi
+
+    # Convert expiry to epoch (portable: works with GNU and BusyBox date)
+    END_EPOCH=$(date -d "${END_DATE}" +%s 2>/dev/null || date -D "%b %d %T %Y %Z" -d "${END_DATE}" +%s 2>/dev/null || echo "")
+    if [ -z "${END_EPOCH}" ]; then
+        continue
+    fi
+
+    REMAINING_SECS=$((END_EPOCH - NOW_EPOCH))
+    REMAINING_DAYS=$((REMAINING_SECS / 86400))
+
+    if [ "${REMAINING_SECS}" -le 0 ]; then
+        echo "[certs] WARNING: Certificate ${cert_file} has EXPIRED. See docs/operator/guide.md for rotation." >&2
+    elif [ "${REMAINING_SECS}" -le "${WARN_SECS}" ]; then
+        echo "[certs] WARNING: Certificate expires in ${REMAINING_DAYS} days (${cert_file}). See docs/operator/guide.md for rotation." >&2
+    fi
+done
+
 ls -la "${CERT_DIR}/"

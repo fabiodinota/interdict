@@ -251,6 +251,7 @@ async fn test_evidence_buffer_nonblocking() {
 // Test 4: Evidence bundle schema completeness (EVID-06)
 // ---------------------------------------------------------------------------
 #[test]
+#[allow(deprecated)] // Tests backward-compat fields scheduled for removal in v2.0
 fn test_evidence_bundle_schema_completeness() {
     use kernel::evidence::bundle::{RawEvidenceEvent, to_proto_bundle};
 

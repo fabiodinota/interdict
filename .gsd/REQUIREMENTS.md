@@ -229,6 +229,24 @@ Docker Compose test profile (docker-compose.test.yml) with ephemeral volumes and
 
 Dead `document.cookie` httpOnly clearing removed from auth-client.ts. RouteError.tsx console.error sanitized (generic in production, full in development). Cookie `secure` flag decoupled from NODE_ENV via `COOKIE_SECURE` env var. ClickHouse password warns at startup when empty in production. interdict-verify `.unwrap()` replaced with `.unwrap_or_else()` fallback producing valid JSON. `as any` replaced with typed casts in audit-table.test.tsx. CSRF protection posture documented in operator guide. All 7 assessment findings (L-01, L-02, L-03, L-05, L-12, M-01, M-03) addressed.
 
+### AR-PROTO-01 — Proto fields have buf.validate annotations with size constraints, deprecated fields marked, Wasm transfer documented.
+
+- Status: validated
+- Class: security
+- Source: M008 assessment
+- Primary Slice: M008/S08
+
+buf.validate annotations on all string/bytes fields in evidence.proto and policy_distribution.proto with semantic size limits (IDs 255, names 500, text 1MB, Wasm 16MB). prompt_text/response_text marked deprecated with proto-level `deprecated = true` and comment-level notices. Wasm inline transfer documented with size guidance (>1MB consider shared storage). Vendored protovalidate proto for protoc/tonic compatibility. All 3 assessment findings (L-08, L-10, L-11) addressed.
+
+### AR-CERT-01 — CA validity reduced to 1 year with cert expiry monitoring and documented rotation procedure.
+
+- Status: validated
+- Class: security
+- Source: M008 assessment
+- Primary Slice: M008/S08
+
+CA validity reduced from 10 years to 1 year in both entrypoint.sh and generate-internal-ca.sh. Cert-init emits structured `[certs] WARNING` to stderr when any cert expires within 30 days. Operator guide documents rotation procedure for Docker Compose and Kubernetes with diagnostic commands and production monitoring recommendations. Both assessment findings (L-09, M-08) addressed.
+
 ## Deferred
 
 ## Out of Scope

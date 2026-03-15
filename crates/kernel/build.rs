@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "../../proto/interdict/evidence/v1/evidence.proto",
                 "../../proto/interdict/policy/v1/policy_distribution.proto",
             ],
-            &["../../proto/"],
+            &["../../proto/", "../../proto/third_party/"],
         )?;
 
     Ok(())

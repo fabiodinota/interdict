@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package interdict.policy.v1;
 
+import "buf/validate/validate.proto";
+
 // Policy distribution service using xDS-style server-streaming.
 // Control plane pushes policy updates to kernel fleet in real-time.
 service PolicyDistributionService {
@@ -17,33 +19,47 @@ service PolicyDistributionService {
 // Request to subscribe to policy updates for this kernel instance.
 message SubscribeRequest {
   // Unique identifier for this kernel instance.
-  string kernel_id = 1;
+  string kernel_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
   // Current policy version known to the kernel. 0 = request full snapshot.
   uint64 current_version = 2;
+
   // Organization ID for hierarchy-aware policy filtering.
-  string org_id = 3;
+  string org_id = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
   // Department ID (optional) for hierarchy-aware policy filtering.
-  string dept_id = 4;
+  string dept_id = 4 [(buf.validate.field).string.max_len = 255];
+
   // Team ID (optional) for hierarchy-aware policy filtering.
-  string team_id = 5;
+  string team_id = 5 [(buf.validate.field).string.max_len = 255];
 }
 
 // A policy update pushed from the control plane to a kernel.
 message SubscribeResponse {
   // Monotonic version counter (higher = newer).
   uint64 version = 1;
+
   // Type of update.
   UpdateType type = 2;
+
   // Policies included in this update (new or changed).
   repeated PolicyEntry policies = 3;
+
   // Policy IDs removed in this update (delta only).
-  repeated string removed_policy_ids = 4;
+  repeated string removed_policy_ids = 4 [(buf.validate.field).repeated.items.string.max_len = 255];
 
   // Ed25519 signature over canonical serialization of policy entries.
   // Empty when signing is not configured on the control plane.
-  bytes signature = 10;
+  bytes signature = 10 [(buf.validate.field).bytes.max_len = 128];
+
   // Identifier of the signing key used (for key rotation support).
-  string signing_key_id = 11;
+  string signing_key_id = 11 [(buf.validate.field).string.max_len = 255];
 
   enum UpdateType {
     UPDATE_TYPE_UNSPECIFIED = 0;
@@ -57,21 +73,38 @@ message SubscribeResponse {
 // A single policy entry in a policy update.
 message PolicyEntry {
   // Unique identifier for this policy.
-  string policy_id = 1;
+  string policy_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
   // Human-readable policy name.
-  string name = 2;
+  string name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 500
+  ];
+
   // Policy version (monotonic per policy).
   uint64 version = 3;
+
   // Compiled Wasm module bytes (optional, may be empty for Rego-only policies).
-  bytes wasm_bytes = 4;
+  // Transferred inline in gRPC stream. Maximum size bounded by gRPC max message
+  // size (default 16MB). For modules >1MB, consider pre-deploying to shared
+  // storage and referencing by hash instead.
+  bytes wasm_bytes = 4 [(buf.validate.field).bytes.max_len = 16777216]; // 16MB
+
   // SHA-256 hash of wasm_bytes for integrity verification.
-  string wasm_hash = 5;
+  string wasm_hash = 5 [(buf.validate.field).string.max_len = 255];
+
   // Rego source code (optional, may be empty for Wasm-only policies).
-  string rego_source = 6;
+  string rego_source = 6 [(buf.validate.field).string.max_len = 1048576]; // 1MB
+
   // Rego entrypoint rule path (e.g., "data.interdict.policy.vendor.verdict").
-  string entrypoint = 7;
+  string entrypoint = 7 [(buf.validate.field).string.max_len = 500];
+
   // Scope determines which hierarchy levels this policy applies to.
   PolicyScope scope = 8;
+
   // Behavior on evaluation error.
   FailMode fail_mode = 9;
 
@@ -87,25 +120,37 @@ message PolicyEntry {
 // Defines the organizational scope a policy applies to.
 message PolicyScope {
   // Organization this policy belongs to (required).
-  string org_id = 1;
+  string org_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
   // Department scope (empty = org-wide).
-  string dept_id = 2;
+  string dept_id = 2 [(buf.validate.field).string.max_len = 255];
+
   // Team scope (empty = dept-wide or org-wide).
-  string team_id = 3;
+  string team_id = 3 [(buf.validate.field).string.max_len = 255];
+
   // Vendor-specific scoping (empty = all vendors).
-  repeated string vendor_ids = 4;
+  repeated string vendor_ids = 4 [(buf.validate.field).repeated.items.string.max_len = 255];
 }
 
 // Acknowledgement of a policy version by a kernel.
 message AcknowledgeRequest {
   // Kernel instance that processed the update.
-  string kernel_id = 1;
+  string kernel_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
   // Version being acknowledged.
   uint64 version = 2;
+
   // True if policies were successfully loaded.
   bool accepted = 3;
+
   // Error message if not accepted (NACK).
-  string error_message = 4;
+  string error_message = 4 [(buf.validate.field).string.max_len = 10000];
 }
 
 // Response to an acknowledgement.
