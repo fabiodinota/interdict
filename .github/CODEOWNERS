@@ -1,0 +1,23 @@
+# Interdict — Code Ownership Rules
+# Enforced when branch protection requires CODEOWNERS review.
+
+# Default owner for everything
+* @fabiodinota
+
+# Rust data-plane and policy crates
+/crates/ @fabiodinota
+
+# Dashboard (Next.js)
+/dashboard/ @fabiodinota
+
+# Control-plane API
+/control-plane/ @fabiodinota
+
+# Helm charts
+/helm/ @fabiodinota
+
+# Docker build files
+/docker/ @fabiodinota
+
+# CI/CD and GitHub config
+/.github/ @fabiodinota
