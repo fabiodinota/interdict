@@ -77,7 +77,7 @@ This milestone is complete only when all are true:
 - [x] **S03: Input Validation & Output Sanitization** `risk:medium` `depends:[]`
   > After this: CSV generator sanitizes formula-injection prefixes. All TypeBox model schemas have maxLength on string fields. Elysia body size limit is configured. `bun test` passes with new CSV sanitization tests and model validation tests.
 
-- [ ] **S04: Docker Compose & Monitoring Hardening** `risk:medium` `depends:[]`
+- [x] **S04: Docker Compose & Monitoring Hardening** `risk:medium` `depends:[]`
   > After this: Docker Compose uses 3 isolated networks (frontend, backend, data). Grafana credentials are parameterized. Infrastructure services have resource limits. `docker compose config` validates. Operator guide updated with network migration notes.
 
 - [ ] **S05: Helm Security Hardening** `risk:medium` `depends:[]`

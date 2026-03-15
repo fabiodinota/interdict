@@ -46,6 +46,7 @@ cp env.example .env
 sed -i "s|CHANGE_ME_POSTGRES_PASSWORD|$(openssl rand -base64 32)|" .env
 sed -i "s|CHANGE_ME_CLICKHOUSE_PASSWORD|$(openssl rand -base64 32)|" .env
 sed -i "s|CHANGE_ME_MINIO_PASSWORD|$(openssl rand -base64 32)|" .env
+sed -i "s|CHANGE_ME_GRAFANA_PASSWORD|$(openssl rand -base64 32)|" .env
 
 # 4. Update DATABASE_URL with the generated Postgres password
 #    Find the new POSTGRES_PASSWORD value in .env, then replace the
@@ -257,6 +258,13 @@ truth). The table below groups them by component.
 | `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | No | Control plane URL for browser redirects (requires image rebuild) |
 | `CONTROL_PLANE_URL` | `http://control-plane:3000` | No | Internal control plane URL for dashboard backchannel |
 
+### Monitoring (Grafana)
+
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `GRAFANA_ADMIN_USER` | `admin` | No | Grafana admin username |
+| `GRAFANA_ADMIN_PASSWORD` | — | Yes (monitoring profile) | Grafana admin password. **Generate with `openssl rand -base64 32`** |
+
 ### Signing Key Rotation
 
 | Variable | Default | Required | Description |
@@ -379,7 +387,7 @@ docker compose --profile monitoring up -d
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | Prometheus | `http://localhost:9090` | — |
-| Grafana | `http://localhost:3002` | `admin` / `admin` |
+| Grafana | `http://localhost:3002` | Set via `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` in `.env` |
 
 ### What's Included
 
@@ -530,6 +538,117 @@ kubectl rollout status deploy/interdict-dashboard -n interdict
   NetworkPolicy resources. Clusters without a NetworkPolicy-capable CNI
   (Calico, Cilium) must set `networkPolicy.enabled: false` for each
   component. See [Kubernetes Deployment](#kubernetes-deployment-helm).
+
+### Upgrading from v1.5 to v1.6
+
+v1.6 introduces Docker Compose network segmentation, parameterized
+Grafana credentials, and resource limits on all services. Existing
+deployments must apply the following changes.
+
+#### 1. Network Segmentation
+
+Services are now assigned to three isolated Docker networks instead of
+sharing the default bridge network:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Docker Compose Stack                        │
+│                                                                 │
+│  ┌──────────┐   frontend   ┌──────────┐                        │
+│  │Dashboard │◄────────────►│ Grafana  │                        │
+│  └────┬─────┘              └────┬─────┘                        │
+│       │                         │                               │
+│       │ backend                 │ backend                       │
+│       ▼                         ▼                               │
+│  ┌──────────┐  ┌────────────┐  ┌──────────┐                   │
+│  │ Control  │  │ Evidence   │  │Prometheus│                    │
+│  │  Plane   │  │ Collector  │  │          │                    │
+│  └────┬─────┘  └─────┬──────┘  └──────────┘                   │
+│       │               │                                         │
+│       │ data          │ data                                    │
+│       ▼               ▼                                         │
+│  ┌──────────┐  ┌────────────┐  ┌──────────┐                   │
+│  │ Postgres │  │ ClickHouse │  │  MinIO   │                   │
+│  └──────────┘  └────────────┘  └──────────┘                   │
+│                                                                 │
+│  Networks:                                                      │
+│    frontend — browser-facing (dashboard, grafana)               │
+│    backend  — inter-service (app services, prometheus)          │
+│    data     — database access (postgres, clickhouse, minio)     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Service network assignments:**
+
+| Service | frontend | backend | data |
+|---------|:--------:|:-------:|:----:|
+| Dashboard | ✓ | ✓ | — |
+| Control Plane | — | ✓ | ✓ |
+| Kernel | — | ✓ | ✓ |
+| Evidence Collector | — | ✓ | ✓ |
+| Postgres | — | — | ✓ |
+| ClickHouse | — | — | ✓ |
+| MinIO | — | — | ✓ |
+| Grafana | ✓ | ✓ | — |
+| Prometheus | — | ✓ | — |
+
+**Migration:** No data migration is needed. Stop and restart the stack to
+apply the new network topology:
+
+```bash
+docker compose down
+docker compose up -d
+```
+
+Docker Compose automatically creates the three named networks on startup.
+The old default network is no longer used and will be removed by
+`docker compose down`.
+
+> **Effect:** The dashboard can no longer reach databases directly. All
+> database access flows through the control plane and evidence collector
+> on the `backend` + `data` networks. This matches the Kubernetes
+> NetworkPolicy isolation already enforced in Helm deployments since v1.5.
+
+#### 2. Grafana Credentials (Monitoring Profile)
+
+Grafana no longer starts with hardcoded `admin/admin` credentials. The
+`GRAFANA_ADMIN_PASSWORD` environment variable is **required** when using
+the monitoring profile. Without it, `docker compose` will refuse to start
+with a clear error message.
+
+Add to your `.env` file:
+
+```bash
+# Generate a unique Grafana admin password
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 32)
+```
+
+Or use the `sed` shortcut from `env.example`:
+
+```bash
+sed -i "s|CHANGE_ME_GRAFANA_PASSWORD|$(openssl rand -base64 32)|" .env
+```
+
+#### 3. Resource Limits
+
+All services now have `deploy.resources.limits` for memory and CPU:
+
+| Service | Memory | CPU |
+|---------|--------|-----|
+| Postgres | 1 GB | 1.0 |
+| ClickHouse | 2 GB | 2.0 |
+| MinIO | 512 MB | 0.5 |
+| Control Plane | 1 GB | 1.0 |
+| Evidence Collector | 512 MB | 0.5 |
+| Kernel | 512 MB | 0.5 |
+| Dashboard | 512 MB | 0.5 |
+| Prometheus | 512 MB | 0.5 |
+| Grafana | 256 MB | 0.25 |
+
+These limits prevent any single service from consuming all host resources.
+Adjust via the `deploy.resources.limits` keys in `docker-compose.yml` and
+`docker-compose.monitoring.yml` if your workload requires higher limits.
 
 ---
 

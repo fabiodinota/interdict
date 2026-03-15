@@ -3,7 +3,7 @@
 #
 # Ports:
 #   - Prometheus: http://localhost:9090
-#   - Grafana:    http://localhost:3002 (admin/admin)
+#   - Grafana:    http://localhost:3002 (credentials from .env)
 
 services:
   prometheus:
@@ -25,7 +25,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
     restart: unless-stopped
+    networks:
+      - backend
 
   grafana:
     image: grafana/grafana:11.5.2
@@ -36,8 +43,8 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env — generate with openssl rand -base64 32}"
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -54,10 +61,21 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
     restart: unless-stopped
+    networks:
+      - frontend
+      - backend
 
 volumes:
   prometheus_data:
     driver: local
   grafana_data:
     driver: local
+
+# Networks are defined in docker-compose.yml (primary file).
+# When merging with -f, Docker Compose inherits them automatically.

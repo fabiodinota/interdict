@@ -111,6 +111,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
+**M008 S04 (Docker Compose & Monitoring Hardening) complete 2026-03-15.** Added 3-network segmentation to Docker Compose: frontend (browser-facing), backend (inter-service), data (database). Dashboard isolated from data tier. Grafana credentials parameterized with fail-closed :? syntax (compose refuses to start without GRAFANA_ADMIN_PASSWORD). Resource limits on all 9 services (4 app + 3 infra + 2 monitoring). Operator guide updated with v1.6 upgrade section covering network topology diagram, credential migration, and resource limits table. 1 decision (D052). AR-INFRA-01 validated.
+
 **M008 S03 (Input Validation & Output Sanitization) complete 2026-03-15.** CSV formula injection defense added to escapeCSV() — neutralizes =, +, -, @ prefixes with single-quote prepend (OWASP standard). Added maxLength constraints to all 47 TypeBox string fields across 7 model files using semantic tiers (255 for IDs, 500 for names, 2000 for URLs, 5000 for notes, 10000 for descriptions, 500000 for rego_source). Configured dual-layer body size limit: onRequest Content-Length check with structured 413 JSON response + Bun maxRequestBodySize backstop, 1MB default via MAX_BODY_SIZE env var. 45 new tests (21 CSV + 21 maxLength + 3 body limit). AR-INPUT-01 validated. 1 new decision (D051).
 
 **M008 S02 (Auth Hardening) complete 2026-03-15.** Per-route rate limiting on auth endpoints (10/min per IP, sliding window, TTL eviction). Interval-based session/handoff cleanup (5-min default, 1000 batch). 32 SAML tests + 12 rate limit tests + 11 cleanup tests. 4 decisions (D047–D048). AR-AUTH-01, AR-AUTH-02, AR-AUTH-03 validated.

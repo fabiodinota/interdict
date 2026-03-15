@@ -193,6 +193,15 @@ Interval-based cleanup service with batched SQL deletes (default 5-min interval,
 
 escapeCSV() neutralizes formula-injection prefixes (=, +, -, @) with single-quote prepend. 47 TypeBox string fields across 7 model files have explicit maxLength constraints (255–500000 tiers). Elysia body size limit configured at 1MB default with structured 413 rejection and MAX_BODY_SIZE env var override. 45 new tests: 21 CSV sanitization, 21 maxLength boundary, 3 body limit.
 
+### AR-INFRA-01 — Docker Compose uses 3 isolated networks, Grafana credentials parameterized, all services have resource limits.
+
+- Status: validated
+- Class: security
+- Source: M008 assessment
+- Primary Slice: M008/S04
+
+Docker Compose uses 3 isolated networks (frontend, backend, data) with correct per-service assignments. Dashboard isolated from data tier. Grafana credentials parameterized with fail-closed :? syntax. All 9 services (4 app + 3 infra + 2 monitoring) have deploy.resources.limits. Operator guide documents v1.6 network migration with ASCII topology diagram.
+
 ## Deferred
 
 ## Out of Scope

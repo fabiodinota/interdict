@@ -31,6 +31,13 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+    networks:
+      - data
 
   clickhouse:
     image: clickhouse/clickhouse-server:25.1
@@ -52,6 +59,13 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+    networks:
+      - data
 
   minio:
     image: minio/minio:RELEASE.2025-02-28T09-55-16Z
@@ -73,6 +87,13 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    networks:
+      - data
 
   # One-shot init container to create the evidence bucket in MinIO
   minio-init:
@@ -95,6 +116,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-interdict}
       MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}"
     restart: "no"
+    networks:
+      - data
 
   # ---------------------------------------------------------------------------
   # mTLS Certificate Bootstrap
@@ -115,6 +138,8 @@ services:
       - ./docker/certs/generate-internal-ca.sh:/scripts/generate-internal-ca.sh:ro
       - certs:/certs
     restart: "no"
+    networks:
+      - data
 
   # ---------------------------------------------------------------------------
   # Interdict Services
@@ -181,6 +206,9 @@ services:
           memory: 1G
           cpus: "1.0"
     restart: unless-stopped
+    networks:
+      - backend
+      - data
 
   evidence-collector:
     build:
@@ -243,6 +271,9 @@ services:
           memory: 512M
           cpus: "0.5"
     restart: unless-stopped
+    networks:
+      - backend
+      - data
 
   kernel:
     build:
@@ -306,6 +337,9 @@ services:
           memory: 512M
           cpus: "0.5"
     restart: unless-stopped
+    networks:
+      - backend
+      - data
 
   dashboard:
     build:
@@ -348,6 +382,9 @@ services:
           memory: 512M
           cpus: "0.5"
     restart: unless-stopped
+    networks:
+      - frontend
+      - backend
 
 # ---------------------------------------------------------------------------
 # Volumes
@@ -372,3 +409,24 @@ volumes:
     driver: local
   dashboard_cache:
     driver: local
+
+# ---------------------------------------------------------------------------
+# Networks — 3-tier segmentation
+# ---------------------------------------------------------------------------
+# frontend: browser-facing services (dashboard, grafana)
+# backend:  inter-service communication (app services, prometheus)
+# data:     database access (postgres, clickhouse, minio)
+#
+# dashboard  → frontend + backend  (no direct DB access)
+# kernel     → backend  + data
+# control-plane → backend + data
+# evidence-collector → backend + data
+# postgres/clickhouse/minio → data only
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+  data:
+    driver: bridge
