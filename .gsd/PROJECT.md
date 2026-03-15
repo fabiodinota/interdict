@@ -98,7 +98,7 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
-**M006 in progress (2026-03-12).** S01 is complete and merged locally: `default.rs` now compiles hot-path regexes via `LazyLock`, `InjectionDetector::default()` no longer panics on regex compilation, and `regorus.rs` returns a fail-mode verdict instead of panicking on pool exhaustion. S02/T01 is also merged locally: `deny.toml` is present, CI runs `cargo deny` unconditionally, and workspace crates now declare proprietary license metadata required by cargo-deny v0.18. Remaining M006 work is S02/T02-T04 plus all of S03.
+**M006 (Production Safety & Quality) complete 2026-03-13.** 3 slices across 3 sessions. Eliminated all runtime panic paths in hot-path pattern initialization (14 Regex unwraps → LazyLock, InjectionDetector infallible, regorus fail-mode verdict). Added cargo-deny supply-chain gate, hardened all 4 Docker images (non-root, read-only rootfs, no-new-privileges), parameterized docker-compose credentials, added proptest PII fuzzing, CI coverage reporting, CONTRIBUTING.md/CHANGELOG.md, and workspace [lints]. 2 new decisions (D024–D025).
 
 **M005 (Hardening & Release Readiness) complete 2026-03-12.** 4 slices across 4 sessions. Eliminated credential leak paths (seed plaintext reveal removed, API-key-to-session exchange for BFF cookies), made kernel mTLS distribution hostname deployment-configurable, established canonical repo-root quality gates with CI infra-quality job and Husky-based local hooks, and burned down warning debt (Biome for control-plane, Next.js 15→16 upgrade, Dockerfile and proto lint fixes). All 4 HR-* requirements validated.
 
@@ -146,6 +146,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 | Postgres single authoritative review store | One source of truth for workflow state | ✓ Good — eliminated dual-write |
 | Air-gapped OPA multi-stage Dockerfile | Offline-compatible deployment | ✓ Good — single stage replacement |
 | Opt-in Helm security templates (NetworkPolicy, PDB, HPA) | No breaking changes to existing deployments | ✓ Good — disabled by default |
+| rand_core 0.6 for ed25519-dalek compat (D024) | rand 0.9 traits incompatible with ed25519-dalek 2.x | ✓ Good — clean dependency graph |
+| Workspace lints: clippy::all + suspicious (D025) | Codifies lint policy previously enforced only by CI flag | ✓ Good — workspace-wide consistency |
 
 ---
-*Last updated: 2026-03-12 after merging M006/S01 and M006/S02-T01 into master*
+*Last updated: 2026-03-13 after completing M006 (Production Safety & Quality)*

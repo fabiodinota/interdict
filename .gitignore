@@ -91,3 +91,6 @@ vendor/
 .cache/
 tmp/
 *.proptest-regressions
+
+# ── GSD baseline (auto-generated) ──
+.gsd/completed-units.json
