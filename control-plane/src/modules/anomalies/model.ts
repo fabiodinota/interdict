@@ -14,8 +14,8 @@ import { t } from "elysia";
 
 /** Action link within an anomaly alert */
 export const AnomalyAction = t.Object({
-  label: t.String(),
-  href: t.String(),
+  label: t.String({ maxLength: 500 }),
+  href: t.String({ maxLength: 2_000 }),
 });
 
 /** A single anomaly alert */
@@ -27,11 +27,11 @@ export const AnomalyAlertSchema = t.Object({
     t.Literal("topic_drift"),
   ]),
   severity: t.Union([t.Literal("info"), t.Literal("warning"), t.Literal("critical")]),
-  actorIdentity: t.String(),
-  summary: t.String(),
-  baseline: t.Record(t.String(), t.Union([t.Number(), t.String()])),
-  current: t.Record(t.String(), t.Union([t.Number(), t.String()])),
-  detectedAt: t.String(),
+  actorIdentity: t.String({ maxLength: 500 }),
+  summary: t.String({ maxLength: 5_000 }),
+  baseline: t.Record(t.String({ maxLength: 255 }), t.Union([t.Number(), t.String({ maxLength: 1_000 })])),
+  current: t.Record(t.String({ maxLength: 255 }), t.Union([t.Number(), t.String({ maxLength: 1_000 })])),
+  detectedAt: t.String({ maxLength: 255 }),
   actions: t.Array(AnomalyAction),
 });
 

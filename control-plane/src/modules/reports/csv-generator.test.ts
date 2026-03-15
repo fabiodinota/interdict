@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { generateCSV } from "./csv-generator";
+import { generateCSV, escapeCSV } from "./csv-generator";
 import type { ReportData } from "./service";
 
 // ---------------------------------------------------------------------------
@@ -233,5 +233,130 @@ describe("generateCSV", () => {
       // Should not crash
       expect(csv.length).toBeGreaterThan(0);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// escapeCSV — formula injection sanitization (direct unit tests)
+// ---------------------------------------------------------------------------
+
+describe("escapeCSV", () => {
+  describe("formula injection defense", () => {
+    it("sanitizes = prefix: =CMD(\"calc\") becomes \"'=CMD(\"\"calc\"\")\"", () => {
+      expect(escapeCSV('=CMD("calc")')).toBe(`"'=CMD(""calc"")"`)
+    });
+
+    it("sanitizes + prefix: +1-1 becomes \"'+1-1\"", () => {
+      expect(escapeCSV("+1-1")).toBe(`"'+1-1"`);
+    });
+
+    it("sanitizes @ prefix: @SUM(A1:A10) becomes \"'@SUM(A1:A10)\"", () => {
+      expect(escapeCSV("@SUM(A1:A10)")).toBe(`"'@SUM(A1:A10)"`);
+    });
+
+    it("sanitizes - prefix: -1+1 becomes \"'-1+1\"", () => {
+      expect(escapeCSV("-1+1")).toBe(`"'-1+1"`);
+    });
+
+    it("sanitizes formula prefix even when value also contains commas", () => {
+      expect(escapeCSV("=A1,B2")).toBe(`"'=A1,B2"`);
+    });
+
+    it("sanitizes formula prefix even when value also contains quotes", () => {
+      expect(escapeCSV('=HYPERLINK("http://evil")')).toBe(`"'=HYPERLINK(""http://evil"")"`)
+    });
+
+    it("sanitizes formula prefix with newlines in value", () => {
+      expect(escapeCSV("=A1\nB2")).toBe(`"'=A1\nB2"`);
+    });
+  });
+
+  describe("normal values unchanged", () => {
+    it("leaves plain strings unchanged", () => {
+      expect(escapeCSV("hello")).toBe("hello");
+    });
+
+    it("leaves numbers unchanged", () => {
+      expect(escapeCSV(42)).toBe("42");
+    });
+
+    it("leaves negative numbers as-is (stringified by String())", () => {
+      // Number -1 becomes the string "-1" which starts with "-",
+      // but this is fine — CSV formula injection is a string-input concern.
+      // When a number is passed, String(-1) = "-1" which does start with "-",
+      // so it will be sanitized. This is the safe default — fail-closed.
+      const result = escapeCSV(-1);
+      expect(result).toBe(`"'-1"`);
+    });
+
+    it("returns empty string for null", () => {
+      expect(escapeCSV(null)).toBe("");
+    });
+
+    it("returns empty string for undefined", () => {
+      expect(escapeCSV(undefined)).toBe("");
+    });
+
+    it("handles booleans", () => {
+      expect(escapeCSV(true)).toBe("true");
+      expect(escapeCSV(false)).toBe("false");
+    });
+
+    it("handles empty string", () => {
+      expect(escapeCSV("")).toBe("");
+    });
+  });
+
+  describe("standard CSV escaping still works", () => {
+    it("wraps comma-containing strings in quotes", () => {
+      expect(escapeCSV("a,b")).toBe('"a,b"');
+    });
+
+    it("escapes double quotes by doubling them", () => {
+      expect(escapeCSV('say "hello"')).toBe('"say ""hello"""');
+    });
+
+    it("wraps newline-containing strings in quotes", () => {
+      expect(escapeCSV("line1\nline2")).toBe('"line1\nline2"');
+    });
+
+    it("wraps carriage-return-containing strings in quotes", () => {
+      expect(escapeCSV("line1\rline2")).toBe('"line1\rline2"');
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Formula injection via generateCSV (integration-level)
+// ---------------------------------------------------------------------------
+
+describe("generateCSV — formula injection in data fields", () => {
+  it("sanitizes formula-prefixed vendor names", () => {
+    const data = createMinimalReportData({
+      violationsByVendor: [{ vendor: "=CMD(\"calc\")", count: 1 }],
+    });
+    const csv = generateCSV(data);
+
+    // The vendor name must be neutralized
+    expect(csv).toContain("'=CMD");
+    expect(csv).not.toMatch(/(?<!"')=CMD/); // no bare =CMD without leading '
+  });
+
+  it("sanitizes formula-prefixed department names", () => {
+    const data = createMinimalReportData({
+      violationsByDepartment: [{ department: "+1-1", count: 1 }],
+    });
+    const csv = generateCSV(data);
+
+    expect(csv).toContain("'+1-1");
+  });
+
+  it("sanitizes formula-prefixed policy names", () => {
+    const data = createMinimalReportData({
+      activePolicies: [{ name: "@SUM(A1:A10)", enabled: true, compilationStatus: "compiled" }],
+    });
+    const csv = generateCSV(data);
+
+    expect(csv).toContain("'@SUM");
   });
 });

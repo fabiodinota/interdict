@@ -184,6 +184,15 @@ In-memory per-IP sliding window rate limiter on /session/exchange-api-key, /saml
 
 Interval-based cleanup service with batched SQL deletes (default 5-min interval, 1000 batch). 11 tests prove expired row deletion, active session preservation, batch limiting, graceful shutdown, error resilience, and logging.
 
+### AR-INPUT-01 — CSV formula injection sanitized, TypeBox maxLength on all string fields, Elysia body size limit configured.
+
+- Status: validated
+- Class: security
+- Source: M008 assessment
+- Primary Slice: M008/S03
+
+escapeCSV() neutralizes formula-injection prefixes (=, +, -, @) with single-quote prepend. 47 TypeBox string fields across 7 model files have explicit maxLength constraints (255–500000 tiers). Elysia body size limit configured at 1MB default with structured 413 rejection and MAX_BODY_SIZE env var override. 45 new tests: 21 CSV sanitization, 21 maxLength boundary, 3 body limit.
+
 ## Deferred
 
 ## Out of Scope

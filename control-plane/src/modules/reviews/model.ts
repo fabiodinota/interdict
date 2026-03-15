@@ -14,7 +14,7 @@ import { t } from "elysia";
 /** GET /queue query parameters */
 export const ReviewQueueParams = t.Object({
   status: t.Optional(t.Union([t.Literal("pending"), t.Literal("claimed"), t.Literal("all")])),
-  cursor: t.Optional(t.String()),
+  cursor: t.Optional(t.String({ maxLength: 255 })),
   page_size: t.Optional(t.Number({ minimum: 1, maximum: 200, default: 50 })),
 });
 
@@ -30,7 +30,7 @@ export const ResolveReviewBody = t.Object({
     t.Literal("needs_policy_update"),
     t.Literal("insufficient_context"),
   ]),
-  resolution_notes: t.String({ minLength: 10 }),
+  resolution_notes: t.String({ minLength: 10, maxLength: 5_000 }),
 });
 
 // ---------------------------------------------------------------------------

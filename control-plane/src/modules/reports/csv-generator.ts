@@ -14,13 +14,27 @@ import type { ReportData } from "./service";
 // CSV Escaping
 // ---------------------------------------------------------------------------
 
+/** Characters that trigger formula execution in spreadsheet applications. */
+const FORMULA_PREFIXES = new Set(["=", "+", "-", "@"]);
+
 /**
  * Escape a value for CSV output.
- * Wraps in quotes if it contains commas, quotes, or newlines.
+ *
+ * 1. Formula injection defense: if the string starts with `=`, `+`, `-`, or `@`,
+ *    prepend a single-quote (`'`) to neutralize formula interpretation in Excel/Sheets,
+ *    then always wrap in double-quotes so the quote character is preserved.
+ * 2. Standard CSV quoting: wraps in double-quotes when the value contains commas,
+ *    double-quotes, or newlines.
  */
-function escapeCSV(value: string | number | boolean | null | undefined): string {
+export function escapeCSV(value: string | number | boolean | null | undefined): string {
   if (value === null || value === undefined) return "";
   const str = String(value);
+
+  // Formula injection sanitization — prefix-neutralize and force-quote
+  if (str.length > 0 && FORMULA_PREFIXES.has(str[0])) {
+    return `"'${str.replace(/"/g, '""')}"`;
+  }
+
   if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
     return `"${str.replace(/"/g, '""')}"`;
   }

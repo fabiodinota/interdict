@@ -23,7 +23,7 @@ export const ExchangeCodeBody = t.Object({
 
 /** Body for POST /api/v1/auth/session/exchange-api-key */
 export const ExchangeApiKeyBody = t.Object({
-  apiKey: t.String({ minLength: 1 }),
+  apiKey: t.String({ minLength: 1, maxLength: 255 }),
 });
 
 // ---------------------------------------------------------------------------
@@ -33,13 +33,13 @@ export const ExchangeApiKeyBody = t.Object({
 /** Query for GET /api/v1/auth/keys -- list API keys with pagination */
 export const ApiKeyListQuery = t.Object({
   page_size: t.Optional(t.Numeric({ minimum: 1, maximum: 200, default: 50 })),
-  cursor: t.Optional(t.String()),
-  all: t.Optional(t.String()), // "true" for super admins to see all keys
+  cursor: t.Optional(t.String({ maxLength: 255 })),
+  all: t.Optional(t.String({ maxLength: 10 })), // "true" for super admins to see all keys
 });
 
 /** Path params for DELETE /api/v1/auth/keys/:keyId */
 export const RevokeApiKeyParams = t.Object({
-  keyId: t.String(),
+  keyId: t.String({ maxLength: 255 }),
 });
 
 // ---------------------------------------------------------------------------

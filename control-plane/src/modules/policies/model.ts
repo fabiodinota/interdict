@@ -13,15 +13,15 @@ import { t } from "elysia";
 
 export const CreatePolicyBody = t.Object({
   name: t.String({ minLength: 1, maxLength: 255 }),
-  description: t.Optional(t.String()),
-  rego_source: t.String({ minLength: 1 }),
-  entrypoint: t.Optional(t.String({ default: "interdict/policy/verdict" })),
+  description: t.Optional(t.String({ maxLength: 10_000 })),
+  rego_source: t.String({ minLength: 1, maxLength: 500_000 }),
+  entrypoint: t.Optional(t.String({ maxLength: 500, default: "interdict/policy/verdict" })),
 });
 
 export const UpdatePolicyBody = t.Object({
-  rego_source: t.String({ minLength: 1 }),
-  entrypoint: t.Optional(t.String()),
-  change_description: t.Optional(t.String()),
+  rego_source: t.String({ minLength: 1, maxLength: 500_000 }),
+  entrypoint: t.Optional(t.String({ maxLength: 500 })),
+  change_description: t.Optional(t.String({ maxLength: 5_000 })),
 });
 
 // ---------------------------------------------------------------------------
@@ -30,7 +30,7 @@ export const UpdatePolicyBody = t.Object({
 
 export const PolicyListQuery = t.Object({
   page_size: t.Optional(t.Numeric({ minimum: 1, maximum: 200, default: 50 })),
-  cursor: t.Optional(t.String()),
+  cursor: t.Optional(t.String({ maxLength: 255 })),
 });
 
 // ---------------------------------------------------------------------------

@@ -27,6 +27,7 @@ import { signingKeysModule } from "./modules/signing-keys";
 import { vendorsModule } from "./modules/vendors";
 
 const config = getConfig();
+const MAX_BODY_BYTES = parseInt(process.env.MAX_BODY_SIZE || "1048576", 10); // 1MB default
 
 const MODULES = [
   "auth",
@@ -47,6 +48,24 @@ const MODULES = [
 const app = new Elysia()
   .decorate("db", db)
   .decorate("clickhouse", clickhouse)
+  .onRequest(({ request, set }) => {
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
+      console.warn("[body-limit] Request rejected", {
+        code: "BODY_TOO_LARGE",
+        contentLength: parseInt(contentLength, 10),
+        maxBytes: MAX_BODY_BYTES,
+      });
+      set.status = 413;
+      return {
+        success: false,
+        error: {
+          code: "BODY_TOO_LARGE",
+          maxBytes: MAX_BODY_BYTES,
+        },
+      };
+    }
+  })
   .onError(({ error, set }) => {
     // Safely extract message — ElysiaCustomStatusResponse may lack .message
     const errMessage =
@@ -116,7 +135,10 @@ const app = new Elysia()
   .use(reviewsModule)
   .use(departmentOverridesModule)
   .use(anomaliesModule)
-  .listen(config.port);
+  .listen({
+    port: config.port,
+    maxRequestBodySize: MAX_BODY_BYTES,
+  });
 
 // Start gRPC distribution server for pushing policy updates to kernels
 const grpcServer = startDistributionServer(db, config.grpcPort, config.grpcMaxMessageSize);

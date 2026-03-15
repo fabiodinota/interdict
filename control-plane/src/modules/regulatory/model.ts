@@ -10,22 +10,22 @@ import { t } from "elysia";
 export const FrameworkPolicySchema = t.Object({
   id: t.String({ format: "uuid" }),
   policyId: t.String({ format: "uuid" }),
-  policyName: t.String(),
-  requirementRef: t.Nullable(t.String()),
-  requirementDescription: t.Nullable(t.String()),
+  policyName: t.String({ maxLength: 500 }),
+  requirementRef: t.Nullable(t.String({ maxLength: 500 })),
+  requirementDescription: t.Nullable(t.String({ maxLength: 10_000 })),
   isRequired: t.Boolean(),
   sortOrder: t.Number(),
-  compilationStatus: t.Nullable(t.String()),
+  compilationStatus: t.Nullable(t.String({ maxLength: 255 })),
 });
 
 /** Full framework detail response (single framework with policies) */
 export const FrameworkResponse = t.Object({
   id: t.String({ format: "uuid" }),
-  slug: t.String(),
-  name: t.String(),
-  description: t.Nullable(t.String()),
-  jurisdiction: t.Nullable(t.String()),
-  version: t.Nullable(t.String()),
+  slug: t.String({ maxLength: 255 }),
+  name: t.String({ maxLength: 500 }),
+  description: t.Nullable(t.String({ maxLength: 10_000 })),
+  jurisdiction: t.Nullable(t.String({ maxLength: 500 })),
+  version: t.Nullable(t.String({ maxLength: 255 })),
   isSeeded: t.Boolean(),
   isActive: t.Boolean(),
   policies: t.Array(FrameworkPolicySchema),
@@ -34,11 +34,11 @@ export const FrameworkResponse = t.Object({
 /** Framework list item with activation status summary */
 export const FrameworkListItem = t.Object({
   id: t.String({ format: "uuid" }),
-  slug: t.String(),
-  name: t.String(),
-  description: t.Nullable(t.String()),
-  jurisdiction: t.Nullable(t.String()),
-  version: t.Nullable(t.String()),
+  slug: t.String({ maxLength: 255 }),
+  name: t.String({ maxLength: 500 }),
+  description: t.Nullable(t.String({ maxLength: 10_000 })),
+  jurisdiction: t.Nullable(t.String({ maxLength: 500 })),
+  version: t.Nullable(t.String({ maxLength: 255 })),
   isSeeded: t.Boolean(),
   isActive: t.Boolean(),
   policyCount: t.Number(),
@@ -50,7 +50,7 @@ export const FrameworkListResponse = t.Array(FrameworkListItem);
 
 /** Body for activating a framework */
 export const ActivateFrameworkBody = t.Object({
-  notes: t.Optional(t.String()),
+  notes: t.Optional(t.String({ maxLength: 5_000 })),
 });
 
 /** Body for toggling an individual framework policy */
