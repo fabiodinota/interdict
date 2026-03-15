@@ -3,13 +3,13 @@
 # Usage: docker build -f docker/dashboard/Dockerfile .
 
 # Stage 1: Install dependencies
-FROM oven/bun:1.1 AS deps
+FROM oven/bun:1.1@sha256:d6ad4d3280d3e7e92b793a924105d68766d60b1f36709f4cee11bc8737782621 AS deps
 WORKDIR /app
 COPY dashboard/package.json dashboard/bun.lock ./
 RUN bun install --frozen-lockfile
 
 # Stage 2: Build
-FROM oven/bun:1.1 AS builder
+FROM oven/bun:1.1@sha256:d6ad4d3280d3e7e92b793a924105d68766d60b1f36709f4cee11bc8737782621 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY dashboard/ .
@@ -21,7 +21,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN bun run build
 
 # Stage 3: Production
-FROM node:20-slim AS runner
+FROM node:20-slim@sha256:a82f40540f5959e0003fb7b3c0f80490def2927be8bdbee7e3e0ac65cce3be92 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

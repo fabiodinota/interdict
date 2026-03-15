@@ -148,6 +148,15 @@ Prometheus+Grafana monitoring profile, Postgres+ClickHouse backup script, valida
 
 Dashboard passes axe-core with zero critical/serious WCAG violations. aria-label on all icon buttons, vitest-axe on 6 components, @axe-core/playwright WCAG AA check.
 
+### AR-SUPPLY-01 — All CI supply chain references pinned to immutable identifiers.
+
+- Status: validated
+- Class: security
+- Source: M008 assessment
+- Primary Slice: M008/S01
+
+All 45 GitHub Actions references pinned to SHA digests across 3 workflow files. All 8 Docker base image FROM lines pinned by sha256 manifest-list digest. OPA binary download verified by per-architecture SHA256 checksums. Zero mutable @main or @vN tag references remain. Renovate pinDigests configured for automated updates.
+
 ## Deferred
 
 ## Out of Scope

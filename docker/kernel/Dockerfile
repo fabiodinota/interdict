@@ -7,7 +7,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1: Chef base
 # ---------------------------------------------------------------------------
-FROM lukemathwalker/cargo-chef:latest-rust-1-bookworm AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1-bookworm@sha256:123b94ec34d078f5b2a124f46e4f15d2c25ee668e6437aab9a9ac1e490fd4ea0 AS chef
 WORKDIR /app
 
 # ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ RUN cargo build --release --bin kernel
 # ---------------------------------------------------------------------------
 # Stage 4: Runtime -- minimal image with kernel binary
 # ---------------------------------------------------------------------------
-FROM debian:bookworm-slim AS runtime
+FROM debian:bookworm-slim@sha256:74d56e3931e0d5a1dd51f8c8a2466d21de84a271cd3b5a733b803aa91abf4421 AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates=20230311* \

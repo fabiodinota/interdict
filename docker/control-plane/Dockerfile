@@ -4,18 +4,26 @@
 # Build context: repository root (.)
 # Usage: docker build -f docker/control-plane/Dockerfile .
 
-FROM oven/bun:1.1-slim AS base
+FROM oven/bun:1.1-slim@sha256:98d461b362506de2b89f9f9d03106ad9b3597e94971d8bb358395ce02d9c4f2b AS base
 
 # ---------------------------------------------------------------------------
-# Stage 1: Download OPA binary (isolated for air-gapped cache replacement)
+# Stage 1: Download OPA binary with SHA256 verification
 # ---------------------------------------------------------------------------
 FROM base AS opa-fetch
 ARG OPA_VERSION=v1.4.2
 ARG TARGETARCH
+# Official SHA256 checksums from https://github.com/open-policy-agent/opa/releases/tag/v1.4.2
+ARG OPA_SHA256_AMD64=2c0ccdbbe0b8e2a5d12d9c42d92f1f34f494ffb32d1f3c4ddc36101be637d66f
+ARG OPA_SHA256_ARM64=facd6a9ea375c6299701f86b90b470e52305c5726c4f136e2980fa6123ae9613
 # Air-gapped builds: replace this stage by providing opa_linux_${TARGETARCH}_static
 # in the build context and using COPY instead of ADD.
-ADD https://github.com/open-policy-agent/opa/releases/download/${OPA_VERSION}/opa_linux_${TARGETARCH}_static /tmp/opa
-RUN chmod +x /tmp/opa
+RUN apt-get update && apt-get install -y --no-install-recommends curl=7.* ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && OPA_SHA256=$(if [ "$TARGETARCH" = "arm64" ]; then echo "$OPA_SHA256_ARM64"; else echo "$OPA_SHA256_AMD64"; fi) \
+    && curl -fSL -o /tmp/opa \
+       "https://github.com/open-policy-agent/opa/releases/download/${OPA_VERSION}/opa_linux_${TARGETARCH}_static" \
+    && echo "${OPA_SHA256}  /tmp/opa" | sha256sum -c - \
+    && chmod +x /tmp/opa
 
 # ---------------------------------------------------------------------------
 # Stage 2: Production image

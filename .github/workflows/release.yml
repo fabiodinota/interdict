@@ -36,28 +36,28 @@ jobs:
     steps:
       # ── Shared setup ──────────────────────────────────────────────────────
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
 
       - name: Set up QEMU for multi-platform builds
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@main
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
 
       # ── Kernel ─────────────────────────────────────────────────────────────
       - name: Build and push kernel
         id: build-kernel
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: docker/kernel/Dockerfile
@@ -70,7 +70,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate SBOM for kernel
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@f6c3d0fe42c3cf876e3462574e4c9416b5e0f07a # v0.9.0
         with:
           image: ${{ env.IMAGE_PREFIX }}/kernel@${{ steps.build-kernel.outputs.digest }}
           format: spdx-json
@@ -83,7 +83,7 @@ jobs:
       # ── Control Plane ──────────────────────────────────────────────────────
       - name: Build and push control-plane
         id: build-control-plane
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: docker/control-plane/Dockerfile
@@ -96,7 +96,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate SBOM for control-plane
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@f6c3d0fe42c3cf876e3462574e4c9416b5e0f07a # v0.9.0
         with:
           image: ${{ env.IMAGE_PREFIX }}/control-plane@${{ steps.build-control-plane.outputs.digest }}
           format: spdx-json
@@ -109,7 +109,7 @@ jobs:
       # ── Dashboard ──────────────────────────────────────────────────────────
       - name: Build and push dashboard
         id: build-dashboard
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: docker/dashboard/Dockerfile
@@ -122,7 +122,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate SBOM for dashboard
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@f6c3d0fe42c3cf876e3462574e4c9416b5e0f07a # v0.9.0
         with:
           image: ${{ env.IMAGE_PREFIX }}/dashboard@${{ steps.build-dashboard.outputs.digest }}
           format: spdx-json
@@ -135,7 +135,7 @@ jobs:
       # ── Evidence Collector ─────────────────────────────────────────────────
       - name: Build and push evidence-collector
         id: build-evidence-collector
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: docker/evidence-collector/Dockerfile
@@ -148,7 +148,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate SBOM for evidence-collector
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@f6c3d0fe42c3cf876e3462574e4c9416b5e0f07a # v0.9.0
         with:
           image: ${{ env.IMAGE_PREFIX }}/evidence-collector@${{ steps.build-evidence-collector.outputs.digest }}
           format: spdx-json
@@ -160,7 +160,7 @@ jobs:
 
       # ── GitHub Release ─────────────────────────────────────────────────────
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@26e8ad27a09a225049a7075d7ec1caa2df6ff332 # v2.6.0
         with:
           generate_release_notes: true
           files: |
