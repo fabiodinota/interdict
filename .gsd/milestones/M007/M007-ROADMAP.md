@@ -64,7 +64,7 @@ This milestone is complete only when all are true:
 
 ## Slices
 
-- [ ] **S01: Hot-Path Relay Testing** `risk:high` `depends:[]`
+- [x] **S01: Hot-Path Relay Testing** `risk:high` `depends:[]`
   > After this: proxy/relay.rs, proxy/streaming_relay.rs, and proxy/tls.rs have ≥80% line coverage with unit tests covering bidirectional relay, cross-chunk pattern detection, connection failure handling, and evidence collection. Integration test proves full proxy relay flow end-to-end. `cargo test -p kernel relay streaming_relay tls --nocapture` passes.
 - [ ] **S02: Layer 3 Queue + Evidence Signing Tests** `risk:high` `depends:[]`
   > After this: Layer 3 queue/store modules and all evidence signing providers (local Ed25519, KMS mock, key rotation, chain management) are fully tested. `cargo test -p kernel queue store && cargo test -p evidence-collector signing chain` passes with ≥80% coverage.

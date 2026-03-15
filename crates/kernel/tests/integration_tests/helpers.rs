@@ -441,6 +441,14 @@ impl TestProxy {
     pub async fn create_delayed_backend(&self, delay: Duration, status: StatusCode) -> MockBackend {
         MockBackend::delayed_response(&self.ca_cert_pem, &self.ca_key_pem, delay, status).await
     }
+
+    /// Create an echo mock backend signed by this proxy's test CA.
+    ///
+    /// The echo backend returns the request body as the response body,
+    /// allowing tests to verify content inspection/redaction behavior.
+    pub async fn create_echo_backend(&self) -> MockBackend {
+        MockBackend::echo(&self.ca_cert_pem, &self.ca_key_pem).await
+    }
 }
 
 impl Drop for TestProxy {
@@ -647,6 +655,64 @@ impl MockBackend {
                                     )
                                 }
                             });
+                            let _ = auto::Builder::new(TokioExecutor::new())
+                                .serve_connection(io, svc)
+                                .await;
+                        });
+                    }
+                    _ = shutdown_rx.changed() => break,
+                }
+            }
+        });
+
+        wait_for_ready(addr).await;
+        MockBackend {
+            addr,
+            _server_handle: server_handle,
+            shutdown_tx,
+        }
+    }
+
+    /// Create a mock backend that echoes the request body back as the response body.
+    ///
+    /// Used by content inspection integration tests to verify that the proxy
+    /// redacts PII before the data reaches the upstream server.
+    pub async fn echo(ca_cert_pem: &str, ca_key_pem: &str) -> Self {
+        let (server_config, addr, listener) =
+            create_tls_server_with_ca(ca_cert_pem, ca_key_pem, "127.0.0.1").await;
+
+        let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
+
+        let server_handle = tokio::spawn(async move {
+            let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(server_config));
+            loop {
+                tokio::select! {
+                    accept_result = listener.accept() => {
+                        let (stream, _) = match accept_result {
+                            Ok(r) => r,
+                            Err(_) => continue,
+                        };
+                        let tls_acceptor = tls_acceptor.clone();
+
+                        tokio::spawn(async move {
+                            let tls_stream = match tls_acceptor.accept(stream).await {
+                                Ok(s) => s,
+                                Err(_) => return,
+                            };
+                            let io = TokioIo::new(tls_stream);
+                            let svc = hyper::service::service_fn(
+                                |req: Request<hyper::body::Incoming>| async move {
+                                    let body_bytes =
+                                        req.into_body().collect().await.unwrap().to_bytes();
+                                    Ok::<_, std::convert::Infallible>(
+                                        hyper::Response::builder()
+                                            .status(200u16)
+                                            .header("content-type", "text/plain")
+                                            .body(Full::new(body_bytes))
+                                            .unwrap(),
+                                    )
+                                },
+                            );
                             let _ = auto::Builder::new(TokioExecutor::new())
                                 .serve_connection(io, svc)
                                 .await;

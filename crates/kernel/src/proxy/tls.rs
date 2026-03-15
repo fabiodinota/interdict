@@ -348,6 +348,141 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_load_ca_valid_pem() {
+        use std::io::Write;
+
+        // Generate a CA cert/key pair, serialize to PEM, write to temp files
+        let (ca_cert, ca_key) = generate_test_ca();
+        let cert_pem = ca_cert.pem();
+        let key_pem = ca_key.serialize_pem();
+
+        let mut cert_file = tempfile::NamedTempFile::new().expect("create cert tempfile");
+        cert_file
+            .write_all(cert_pem.as_bytes())
+            .expect("write cert PEM");
+
+        let mut key_file = tempfile::NamedTempFile::new().expect("create key tempfile");
+        key_file
+            .write_all(key_pem.as_bytes())
+            .expect("write key PEM");
+
+        let config = TlsConfig {
+            ca_cert_path: cert_file.path().to_string_lossy().into_owned(),
+            ca_key_path: key_file.path().to_string_lossy().into_owned(),
+        };
+
+        let result = load_ca(&config);
+        assert!(result.is_ok(), "load_ca should succeed with valid PEM files");
+
+        // Verify we got usable CA components back
+        let (loaded_cert, _loaded_key) = result.unwrap();
+        assert!(
+            !loaded_cert.pem().is_empty(),
+            "loaded cert should produce non-empty PEM"
+        );
+    }
+
+    #[test]
+    fn test_load_ca_missing_file() {
+        let config = TlsConfig {
+            ca_cert_path: "/nonexistent/path/ca-cert.pem".to_string(),
+            ca_key_path: "/nonexistent/path/ca-key.pem".to_string(),
+        };
+
+        let result = load_ca(&config);
+        assert!(result.is_err(), "load_ca should fail for missing files");
+
+        let err = match result {
+            Err(e) => e,
+            Ok(_) => unreachable!("already asserted is_err"),
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("failed to read CA cert"),
+            "error should mention cert read failure, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_load_ca_invalid_pem() {
+        use std::io::Write;
+
+        let mut cert_file = tempfile::NamedTempFile::new().expect("create cert tempfile");
+        cert_file
+            .write_all(b"this is not valid PEM data")
+            .expect("write garbage");
+
+        let mut key_file = tempfile::NamedTempFile::new().expect("create key tempfile");
+        key_file
+            .write_all(b"also not valid PEM data")
+            .expect("write garbage");
+
+        let config = TlsConfig {
+            ca_cert_path: cert_file.path().to_string_lossy().into_owned(),
+            ca_key_path: key_file.path().to_string_lossy().into_owned(),
+        };
+
+        let result = load_ca(&config);
+        assert!(result.is_err(), "load_ca should fail for invalid PEM");
+
+        let err = match result {
+            Err(e) => e,
+            Ok(_) => unreachable!("already asserted is_err"),
+        };
+        let msg = err.to_string();
+        // Should fail on key or cert parsing — either error path is acceptable
+        assert!(
+            msg.contains("failed to parse") || msg.contains("failed to read"),
+            "error should mention parse/read failure, got: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_get_or_create_same_domain() {
+        let (ca_cert, ca_key) = generate_test_ca();
+        let cache = Arc::new(CertCache::new(ca_cert, ca_key));
+
+        let mut handles = Vec::new();
+        for _ in 0..10 {
+            let cache = Arc::clone(&cache);
+            handles.push(tokio::spawn(async move {
+                cache.get_or_create("concurrent.example.com").await
+            }));
+        }
+
+        let mut results = Vec::new();
+        for handle in handles {
+            let result = handle.await.expect("task should not panic");
+            assert!(result.is_ok(), "get_or_create should succeed");
+            results.push(result.unwrap());
+        }
+
+        // All 10 tasks should have succeeded and only one cache entry should exist
+        assert_eq!(
+            cache.len(),
+            1,
+            "cache should contain exactly 1 entry for the domain"
+        );
+
+        // Verify that a subsequent call returns the cached entry
+        let cached = cache
+            .get_or_create("concurrent.example.com")
+            .await
+            .expect("cached lookup should succeed");
+        assert_eq!(
+            cache.len(),
+            1,
+            "cache should still contain exactly 1 entry"
+        );
+        // The cached config should match at least one of the results
+        // (the one that won the or_insert race)
+        assert!(
+            results.iter().any(|r| Arc::ptr_eq(r, &cached)),
+            "cached entry should be one of the concurrently generated configs"
+        );
+    }
+
     #[tokio::test]
     async fn test_cert_cache_ttl_expiration() {
         let (ca_cert, ca_key) = generate_test_ca();

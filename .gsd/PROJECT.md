@@ -98,6 +98,8 @@ Every AI action an employee takes is routed through a policy-enforcing kernel �
 
 ## Context
 
+**M007 S01 (Hot-Path Relay Testing) complete 2026-03-15.** Added 11 unit tests and 1 integration test across relay.rs (flush-timeout, read/write error, outbound redaction), streaming_relay.rs (partial-match boundary-split, multi-redaction, channel-drop), and tls.rs (load_ca valid/missing/invalid PEM, concurrent cache). Integration test proves PII redaction through full CONNECT tunnel. Total hot-path unit tests: 32 (was 21). 88 integration tests pass. Established ErrorReader/ErrorWriter and echo backend test patterns for downstream slices.
+
 **M006 (Production Safety & Quality) complete 2026-03-13.** 3 slices across 3 sessions. Eliminated all runtime panic paths in hot-path pattern initialization (14 Regex unwraps → LazyLock, InjectionDetector infallible, regorus fail-mode verdict). Added cargo-deny supply-chain gate, hardened all 4 Docker images (non-root, read-only rootfs, no-new-privileges), parameterized docker-compose credentials, added proptest PII fuzzing, CI coverage reporting, CONTRIBUTING.md/CHANGELOG.md, and workspace [lints]. 2 new decisions (D024–D025).
 
 **M005 (Hardening & Release Readiness) complete 2026-03-12.** 4 slices across 4 sessions. Eliminated credential leak paths (seed plaintext reveal removed, API-key-to-session exchange for BFF cookies), made kernel mTLS distribution hostname deployment-configurable, established canonical repo-root quality gates with CI infra-quality job and Husky-based local hooks, and burned down warning debt (Biome for control-plane, Next.js 15→16 upgrade, Dockerfile and proto lint fixes). All 4 HR-* requirements validated.

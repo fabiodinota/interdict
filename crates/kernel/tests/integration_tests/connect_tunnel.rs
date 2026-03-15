@@ -143,3 +143,106 @@ async fn test_non_connect_rejected() {
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(json["error"], "method_not_supported");
 }
+
+/// Test content inspection through a CONNECT tunnel with PII redaction.
+///
+/// Proves the full wired path: client → CONNECT tunnel → TLS interception →
+/// ContentInspector (outbound) → relay to upstream → echo response →
+/// ContentInspector (inbound) → client.
+///
+/// The test sends a request body containing an email address through the tunnel.
+/// The ContentInspector is configured with an EMAIL pattern that triggers redaction.
+/// The echo backend returns whatever it received, so the response body should
+/// contain the *redacted* email (proving outbound inspection replaced the PII
+/// before it reached the upstream server).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_connect_tunnel_with_content_inspection() {
+    use kernel::policy::content_inspection::ContentInspector;
+    use kernel::policy::patterns::{PatternRegistry, PatternRule};
+    use kernel::policy::redaction::RedactionEngine;
+    use std::sync::Arc;
+
+    // Build a ContentInspector with an EMAIL pattern
+    let registry = Arc::new(PatternRegistry {
+        patterns: vec![PatternRule {
+            category: "EMAIL".to_string(),
+            pattern: regex::Regex::new(r"[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}").unwrap(),
+            validator: None,
+            base_confidence: 0.9,
+            context_boosters: vec![],
+        }],
+        version: 1,
+    });
+    let redactor = Arc::new(RedactionEngine::empty());
+    let policy_config = Arc::new(kernel::policy::config::PolicyConfig {
+        id: "test-content-inspection".to_string(),
+        name: "Test Content Inspection".to_string(),
+        rego_source: None,
+        entrypoint: None,
+        fail_mode: kernel::policy::config::FailMode::FailClosed,
+        block_response_detail: kernel::policy::config::BlockResponseDetail::Opaque,
+        redaction_direction: kernel::policy::config::RedactionDirection::Both,
+        background_l2: false,
+        enabled: true,
+    });
+
+    let inspector = Arc::new(
+        ContentInspector::new(registry, redactor, policy_config)
+            .expect("content inspector should initialize"),
+    );
+
+    // Create proxy with content inspector wired in
+    let proxy = TestProxy::with_config(super::helpers::TestProxyConfig {
+        allowlist: vec!["127.0.0.1".to_string()],
+        content_inspector: Some(inspector),
+        ..Default::default()
+    })
+    .await;
+
+    // Create an echo backend that returns request body as response body
+    let backend = proxy.create_echo_backend().await;
+
+    // Send request body containing a test email through the CONNECT tunnel
+    let pii_body = r#"{"prompt":"Contact alice@example.com for details"}"#;
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/v1/chat/completions")
+        .header("host", "127.0.0.1")
+        .header("content-type", "application/json")
+        .body(Full::new(Bytes::from(pii_body)))
+        .unwrap();
+
+    let (status, _headers, body) = proxy
+        .send_through_tunnel("127.0.0.1", backend.port(), req)
+        .await
+        .expect("tunnel request should succeed");
+
+    assert_eq!(status, StatusCode::OK, "request through tunnel should succeed");
+
+    let response_text = String::from_utf8_lossy(&body);
+    println!("Response body: {}", response_text);
+
+    // The outbound inspector should have redacted the email before it reached
+    // the echo backend. The echo backend returns what it received, so the
+    // response should NOT contain the original email address.
+    assert!(
+        !response_text.contains("alice@example.com"),
+        "original email should be redacted before reaching upstream; got: {}",
+        response_text,
+    );
+
+    // The response should still contain the non-PII parts of the prompt
+    assert!(
+        response_text.contains("Contact"),
+        "non-PII content should pass through; got: {}",
+        response_text,
+    );
+
+    // Verify that the redaction placeholder is present.
+    // RedactionEngine::create_placeholder replaces with asterisks of equal length.
+    assert!(
+        response_text.contains("***"),
+        "redaction asterisks should be present; got: {}",
+        response_text,
+    );
+}

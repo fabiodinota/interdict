@@ -331,6 +331,218 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_relay_partial_match_hold_and_release() {
+        // Chunk 1 ends with partial email ("user@exam" has @ but no TLD) → PartialMatch → hold
+        // Chunk 2 completes it ("ple.com for info") → FullMatch → redact and emit
+        let registry = Arc::new(PatternRegistry {
+            patterns: vec![PatternRule {
+                category: "EMAIL".to_string(),
+                pattern: Regex::new(r"[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}").unwrap(),
+                validator: None,
+                base_confidence: 0.9,
+                context_boosters: vec![],
+            }],
+            version: 1,
+        });
+        let redactor = Arc::new(RedactionEngine::empty());
+        let detector = Arc::new(StreamingDetector::new(registry, redactor));
+
+        let relay = InspectingRelay::new(detector, BufferPreset::Small);
+
+        let (input_tx, input_rx) = mpsc::channel(10);
+        let (output_tx, mut output_rx) = mpsc::channel(10);
+
+        // Partial email: has @ but no ".TLD" → triggers PartialMatch
+        input_tx
+            .send(Bytes::from("Contact user@exam"))
+            .await
+            .unwrap();
+        // Completes the email → combined buffer becomes "Contact user@example.com for info"
+        input_tx
+            .send(Bytes::from("ple.com for info"))
+            .await
+            .unwrap();
+        drop(input_tx);
+
+        let handle = tokio::spawn(async move {
+            relay
+                .relay_with_inspection(input_rx, output_tx, vec![], String::new())
+                .await
+        });
+
+        let result = handle.await.unwrap();
+        assert!(
+            result.is_ok(),
+            "partial-match relay should succeed: {:?}",
+            result.err()
+        );
+
+        let mut collected = Vec::new();
+        while let Some(chunk) = output_rx.recv().await {
+            collected.push(chunk);
+        }
+
+        let output: String = collected
+            .iter()
+            .flat_map(|b| b.iter())
+            .map(|&b| b as char)
+            .collect();
+
+        // Email should be redacted after partial match resolved to full match
+        assert!(
+            !output.contains("user@example.com"),
+            "email should be redacted after partial match resolved: {output}"
+        );
+        // Surrounding text must be preserved
+        assert!(
+            output.contains("Contact"),
+            "non-PII text should be preserved: {output}"
+        );
+        assert!(
+            output.contains("for info"),
+            "non-PII text should be preserved: {output}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_relay_multiple_redactions_across_chunks() {
+        // Chunk 1 has an email → FullMatch → redact
+        // Chunk 2 has an SSN → FullMatch → redact independently
+        // Verifies sequential redactions work across buffer clears
+        let registry = Arc::new(PatternRegistry {
+            patterns: vec![
+                PatternRule {
+                    category: "EMAIL".to_string(),
+                    pattern: Regex::new(r"[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}").unwrap(),
+                    validator: None,
+                    base_confidence: 0.9,
+                    context_boosters: vec![],
+                },
+                PatternRule {
+                    category: "SSN".to_string(),
+                    pattern: Regex::new(r"\d{3}-\d{2}-\d{4}").unwrap(),
+                    validator: None,
+                    base_confidence: 0.9,
+                    context_boosters: vec![],
+                },
+            ],
+            version: 1,
+        });
+        let redactor = Arc::new(RedactionEngine::empty());
+        let detector = Arc::new(StreamingDetector::new(registry, redactor));
+
+        let relay = InspectingRelay::new(detector, BufferPreset::Small);
+
+        let (input_tx, input_rx) = mpsc::channel(10);
+        let (output_tx, mut output_rx) = mpsc::channel(10);
+
+        // Each chunk triggers an independent FullMatch after buffer clear
+        input_tx
+            .send(Bytes::from("Email: user@example.com end."))
+            .await
+            .unwrap();
+        input_tx
+            .send(Bytes::from("SSN: 123-45-6789 end."))
+            .await
+            .unwrap();
+        input_tx.send(Bytes::from("Done.")).await.unwrap();
+        drop(input_tx);
+
+        let handle = tokio::spawn(async move {
+            relay
+                .relay_with_inspection(input_rx, output_tx, vec![], String::new())
+                .await
+        });
+
+        let result = handle.await.unwrap();
+        assert!(
+            result.is_ok(),
+            "multi-redaction relay should succeed: {:?}",
+            result.err()
+        );
+
+        let mut collected = Vec::new();
+        while let Some(chunk) = output_rx.recv().await {
+            collected.push(chunk);
+        }
+
+        let output: String = collected
+            .iter()
+            .flat_map(|b| b.iter())
+            .map(|&b| b as char)
+            .collect();
+
+        // Both PII values should be independently redacted
+        assert!(
+            !output.contains("user@example.com"),
+            "email should be redacted: {output}"
+        );
+        assert!(
+            !output.contains("123-45-6789"),
+            "SSN should be redacted: {output}"
+        );
+        // Labels should survive redaction
+        assert!(
+            output.contains("Email:"),
+            "email label should be preserved: {output}"
+        );
+        assert!(
+            output.contains("SSN:"),
+            "SSN label should be preserved: {output}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_relay_handles_sender_drop_gracefully() {
+        // Send one chunk, then immediately drop the sender channel.
+        // Relay must complete without panic and emit processed data.
+        let registry = Arc::new(PatternRegistry {
+            patterns: vec![],
+            version: 1,
+        });
+        let redactor = Arc::new(RedactionEngine::empty());
+        let detector = Arc::new(StreamingDetector::new(registry, redactor));
+
+        let relay = InspectingRelay::new(detector, BufferPreset::Small);
+
+        let (input_tx, input_rx) = mpsc::channel(10);
+        let (output_tx, mut output_rx) = mpsc::channel(10);
+
+        input_tx.send(Bytes::from("partial data")).await.unwrap();
+        drop(input_tx); // Abrupt channel closure
+
+        let handle = tokio::spawn(async move {
+            relay
+                .relay_with_inspection(input_rx, output_tx, vec![], String::new())
+                .await
+        });
+
+        let result = handle.await.unwrap();
+        assert!(
+            result.is_ok(),
+            "relay should handle sender drop gracefully: {:?}",
+            result.err()
+        );
+
+        // Successfully processed data should still be emitted
+        let mut collected = Vec::new();
+        while let Some(chunk) = output_rx.recv().await {
+            collected.push(chunk);
+        }
+
+        let output: String = collected
+            .iter()
+            .flat_map(|b| b.iter())
+            .map(|&b| b as char)
+            .collect();
+
+        assert!(
+            output.contains("partial data"),
+            "processed data should be emitted despite abrupt sender drop: {output}"
+        );
+    }
+
+    #[tokio::test]
     async fn test_relay_flushes_buffer_on_end() {
         let registry = Arc::new(PatternRegistry {
             patterns: vec![],

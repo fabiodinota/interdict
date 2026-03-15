@@ -87,6 +87,13 @@ If touched paths include policy enforcement or evidence logic, run additional ta
 
 Do not bypass failing hooks/checks; fix root causes.
 
+## Known GSD Patches
+
+After upgrading `gsd-pi`, re-apply local patches that fix upstream bugs not yet released:
+
+- **clearPathCache loop fix** ([gsd-build/gsd-2#433](https://github.com/gsd-build/gsd-2/issues/433)): Run `bash scripts/gsd-patch-clearPathCache.sh` — fixes infinite dispatch loop caused by stale directory cache in auto.ts. Safe to run multiple times; skips if already patched. See D026 in DECISIONS.md.
+- **guided-flow self-heal stale runtime records** ([gsd-build/gsd-2#436](https://github.com/gsd-build/gsd-2/issues/436)): Applied by the same patch script above — adds `selfHealRuntimeRecords()` to guided-flow.ts so manual-mode wizard cleans up stale `.gsd/runtime/units/` records from crashed auto-mode sessions.
+
 ## Documentation and Traceability
 
 For architectural/security-impacting changes, update:

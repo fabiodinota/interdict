@@ -611,4 +611,206 @@ mod tests {
             "error should mention blocked: {err}"
         );
     }
+
+    #[tokio::test]
+    async fn test_flush_timeout_triggers_inspect_and_forward() {
+        // Exercise the FLUSH_TIMEOUT path (line ~119–131): when no more data
+        // arrives within 50ms, accumulated content is flushed and forwarded.
+        tokio::time::pause(); // deterministic time control
+
+        let inspector = make_inspector_with_patterns(vec![]);
+
+        let (reader, mut write_end) = duplex(4096);
+        // Write data but do NOT close the write side — the relay must flush via timeout, not EOF.
+        tokio::io::AsyncWriteExt::write_all(&mut write_end, b"flush me via timeout")
+            .await
+            .unwrap();
+
+        let mut output = Vec::new();
+
+        // Spawn relay in background — it will block waiting for more reads.
+        let relay_handle = tokio::spawn(async move {
+            inspecting_relay_outbound(reader, &mut output, inspector).await.map(|bytes| (bytes, output))
+        });
+
+        // Advance time past FLUSH_TIMEOUT (50ms) so the timeout branch fires.
+        tokio::time::advance(std::time::Duration::from_millis(60)).await;
+
+        // Now close the write side to let the relay exit cleanly via EOF.
+        drop(write_end);
+
+        let result = tokio::time::timeout(std::time::Duration::from_secs(5), relay_handle)
+            .await
+            .expect("relay should finish")
+            .expect("task should not panic");
+
+        let (bytes, output) = result.unwrap();
+        assert_eq!(bytes, 20, "should forward all 20 bytes");
+        assert_eq!(&output, b"flush me via timeout");
+    }
+
+    /// AsyncRead adapter that returns an IO error after delivering `good_bytes`.
+    struct ErrorReader {
+        good_data: Vec<u8>,
+        offset: usize,
+        error_kind: std::io::ErrorKind,
+    }
+
+    impl ErrorReader {
+        fn new(good_data: &[u8], error_kind: std::io::ErrorKind) -> Self {
+            Self {
+                good_data: good_data.to_vec(),
+                offset: 0,
+                error_kind,
+            }
+        }
+    }
+
+    impl AsyncRead for ErrorReader {
+        fn poll_read(
+            mut self: std::pin::Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+            buf: &mut tokio::io::ReadBuf<'_>,
+        ) -> std::task::Poll<std::io::Result<()>> {
+            if self.offset < self.good_data.len() {
+                let remaining = &self.good_data[self.offset..];
+                let to_copy = remaining.len().min(buf.remaining());
+                buf.put_slice(&remaining[..to_copy]);
+                self.offset += to_copy;
+                std::task::Poll::Ready(Ok(()))
+            } else {
+                std::task::Poll::Ready(Err(std::io::Error::new(
+                    self.error_kind,
+                    "injected read error",
+                )))
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_read_error_propagation() {
+        // Exercise the Ok(Err(e)) path (line ~116–118): a read error after
+        // some good bytes should surface as Err("read error: ...").
+        let inspector = make_inspector_with_patterns(vec![]);
+
+        let reader = ErrorReader::new(
+            b"some good data before failure",
+            std::io::ErrorKind::ConnectionReset,
+        );
+
+        let mut output = Vec::new();
+        let result = inspecting_relay_outbound(reader, &mut output, inspector).await;
+
+        assert!(result.is_err(), "read error should propagate");
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("read error"),
+            "error should contain 'read error': {err}"
+        );
+        assert!(
+            err.contains("injected read error"),
+            "error should contain injected message: {err}"
+        );
+    }
+
+    /// AsyncWrite adapter that fails on the first write call.
+    struct ErrorWriter {
+        error_kind: std::io::ErrorKind,
+    }
+
+    impl AsyncWrite for ErrorWriter {
+        fn poll_write(
+            self: std::pin::Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+            _buf: &[u8],
+        ) -> std::task::Poll<std::io::Result<usize>> {
+            std::task::Poll::Ready(Err(std::io::Error::new(
+                self.error_kind,
+                "injected write error",
+            )))
+        }
+
+        fn poll_flush(
+            self: std::pin::Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<std::io::Result<()>> {
+            std::task::Poll::Ready(Ok(()))
+        }
+
+        fn poll_shutdown(
+            self: std::pin::Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<std::io::Result<()>> {
+            std::task::Poll::Ready(Ok(()))
+        }
+    }
+
+    #[tokio::test]
+    async fn test_write_error_propagation() {
+        // Exercise the write error path in inspect_and_forward: when the writer
+        // fails, the relay should surface the error as Err("write error: ...").
+        let inspector = make_inspector_with_patterns(vec![]);
+
+        let input_data = b"data that will trigger a write error";
+        let (mut reader, mut writer) = duplex(1024);
+        tokio::io::AsyncWriteExt::write_all(&mut writer, input_data)
+            .await
+            .unwrap();
+        drop(writer); // signal EOF so relay reads all data
+
+        let mut error_writer = ErrorWriter {
+            error_kind: std::io::ErrorKind::BrokenPipe,
+        };
+        let result = inspecting_relay_outbound(&mut reader, &mut error_writer, inspector).await;
+
+        assert!(result.is_err(), "write error should propagate");
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("write error"),
+            "error should contain 'write error': {err}"
+        );
+        assert!(
+            err.contains("injected write error"),
+            "error should contain injected message: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_inspecting_relay_outbound_redact() {
+        // Exercise VerdictAction::Redact for the outbound relay path.
+        // Existing tests only checked allow and block for outbound; this
+        // confirms PII at confidence 0.9 is redacted (not blocked).
+        use crate::policy::patterns::PatternRule;
+
+        let inspector = make_inspector_with_patterns(vec![PatternRule {
+            category: "SSN".to_string(),
+            pattern: regex::Regex::new(r"\d{3}-\d{2}-\d{4}").unwrap(),
+            validator: None,
+            base_confidence: 0.9,
+            context_boosters: vec![],
+        }]);
+
+        let input_data = b"User SSN is 123-45-6789 in this request";
+        let (mut reader, mut writer) = duplex(1024);
+        tokio::io::AsyncWriteExt::write_all(&mut writer, input_data)
+            .await
+            .unwrap();
+        drop(writer);
+
+        let mut output = Vec::new();
+        let result = inspecting_relay_outbound(&mut reader, &mut output, inspector).await;
+
+        assert!(
+            result.is_ok(),
+            "SSN should be redacted not blocked: {:?}",
+            result.err()
+        );
+        let output_str = String::from_utf8_lossy(&output);
+        assert!(
+            !output_str.contains("123-45-6789"),
+            "SSN should be redacted in outbound output: {output_str}"
+        );
+        // Verify some content was forwarded (redacted but not empty)
+        assert!(!output.is_empty(), "redacted output should not be empty");
+    }
 }

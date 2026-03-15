@@ -78,7 +78,6 @@ nul
 .gsd/worktrees/
 .gsd/auto.lock
 .gsd/metrics.json
-.gsd/STATE.md
 *~
 *.code-workspace
 build/
@@ -94,3 +93,6 @@ tmp/
 
 # ── GSD baseline (auto-generated) ──
 .gsd/completed-units.json
+
+# ── GSD baseline (auto-generated) ──
+.gsd/STATE.md
