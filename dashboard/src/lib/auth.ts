@@ -57,7 +57,9 @@ export async function parseLoginRequest(
 export function getSessionCookieOptions() {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.COOKIE_SECURE
+      ? process.env.COOKIE_SECURE === "true"
+      : process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
     path: "/",

@@ -69,6 +69,12 @@ export function loadConfig(): Config {
     throw new Error(`Invalid INTERDICT_GRPC_PORT value: ${process.env.INTERDICT_GRPC_PORT}`);
   }
 
+  if (isProduction && !config.clickhousePassword) {
+    console.warn(
+      "[config] WARNING: ClickHouse password is empty in production mode. Set CLICKHOUSE_PASSWORD in .env.",
+    );
+  }
+
   checkOpaBinary(config.opaBinaryPath);
 
   return config;

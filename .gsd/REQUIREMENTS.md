@@ -220,6 +220,15 @@ Cert-init Job has pod-level and container-level securityContext matching standal
 
 Docker Compose test profile (docker-compose.test.yml) with ephemeral volumes and isolated ports. Integration test orchestration script (scripts/integration-test.sh) with trap-based cleanup and health-wait. Policy distribution test proves kernel subscribes to control-plane gRPC and enforces distributed policies. Evidence pipeline test proves evidence flows from kernel through evidence-collector to ClickHouse and is queryable. All scripts pass bash -n syntax check and shellcheck lint.
 
+### AR-CODE-01 — Dead code removed, production error leaks sanitized, cookie security configurable, ClickHouse warns on empty password, interdict-verify panic-free, test type safety enforced, CSRF posture documented.
+
+- Status: validated
+- Class: code-quality
+- Source: M008 assessment
+- Primary Slice: M008/S07
+
+Dead `document.cookie` httpOnly clearing removed from auth-client.ts. RouteError.tsx console.error sanitized (generic in production, full in development). Cookie `secure` flag decoupled from NODE_ENV via `COOKIE_SECURE` env var. ClickHouse password warns at startup when empty in production. interdict-verify `.unwrap()` replaced with `.unwrap_or_else()` fallback producing valid JSON. `as any` replaced with typed casts in audit-table.test.tsx. CSRF protection posture documented in operator guide. All 7 assessment findings (L-01, L-02, L-03, L-05, L-12, M-01, M-03) addressed.
+
 ## Deferred
 
 ## Out of Scope

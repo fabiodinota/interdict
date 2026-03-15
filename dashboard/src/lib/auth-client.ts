@@ -38,8 +38,6 @@ export function getSsoUrl(): string {
  * for IdP-initiated logout. Otherwise redirects to /login.
  */
 export function logout(): void {
-  document.cookie = `${COOKIE_NAME}=; path=/; max-age=0`;
-
   if (isSamlEnabled()) {
     const apiUrl = requirePublicApiUrl();
     window.location.href = `${apiUrl}/api/v1/auth/saml/slo`;

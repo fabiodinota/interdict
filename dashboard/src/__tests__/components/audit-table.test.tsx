@@ -190,10 +190,14 @@ describe("AuditTable", () => {
     });
 
     it("handles null values gracefully", () => {
+      // Runtime data may contain nulls even though the TypeScript type
+      // declares these fields as non-nullable. We use a typed override to
+      // exercise the defensive rendering path without suppressing the type
+      // system entirely.
       const recordWithNulls: AuditRecord = {
         ...MOCK_AUDIT_RECORDS[0],
-        token_count: null as any,
-        enforcement_latency_us: null as any,
+        token_count: null as unknown as number,
+        enforcement_latency_us: null as unknown as number,
         department_display_name: null,
       };
 

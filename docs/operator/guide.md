@@ -683,6 +683,30 @@ The Docker Compose configuration applies:
 For additional security considerations when storing full prompt/response
 text, see the [Full-Text Storage Guide](full-text-storage.md).
 
+### CSRF Protection
+
+Interdict mitigates Cross-Site Request Forgery through two complementary
+mechanisms:
+
+1. **`SameSite=Lax` session cookies.** The dashboard's authentication
+   cookie is set with `sameSite: "lax"`, which prevents browsers from
+   sending the cookie on cross-origin POST, PUT, and DELETE requests.
+   This blocks the most common CSRF vector — a malicious page submitting
+   a form to the Interdict dashboard on behalf of a logged-in operator.
+
+2. **BFF (Backend-for-Frontend) proxy pattern.** The dashboard never
+   exposes raw API tokens to the browser. All API calls are proxied
+   through the Next.js server, which attaches credentials server-side.
+   This eliminates the risk of token theft via XSS being leveraged for
+   cross-origin requests.
+
+**Multi-tenant deployments:** For environments where multiple tenants
+share a single Interdict instance behind different subdomains, consider
+adding explicit CSRF tokens (e.g., the Synchronizer Token pattern or
+`Double-Submit Cookie` pattern) to mutation endpoints. The `SameSite=Lax`
+policy alone does not protect against same-site attacks from sibling
+subdomains.
+
 ---
 
 ## Cross-References

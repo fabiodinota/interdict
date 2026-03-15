@@ -86,7 +86,7 @@ This milestone is complete only when all are true:
 - [x] **S06: Cross-Service Integration Tests** `risk:high` `depends:[S02]`
   > After this: Integration test validates kernel subscribing to control-plane gRPC policy distribution, receiving a policy update, and enforcing it. Evidence pipeline integration test validates kernel→evidence-collector→ClickHouse flow. Tests pass in CI via docker-compose orchestration.
 
-- [ ] **S07: Code Quality & Dashboard Fixes** `risk:low` `depends:[]`
+- [x] **S07: Code Quality & Dashboard Fixes** `risk:low` `depends:[]`
   > After this: Dead code removed from auth-client.ts. RouteError.tsx console.error sanitized for production. Cookie secure flag decoupled from NODE_ENV. ClickHouse password warns when empty in production. interdict-verify production unwrap replaced. `as any` removed from test code. `npx vitest run` and `cargo test` pass.
 
 - [ ] **S08: Proto Safety, Config Hygiene & Documentation** `risk:low` `depends:[S01,S02,S03,S04,S05,S06,S07]`

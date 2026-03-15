@@ -10,7 +10,11 @@ interface RouteErrorProps {
 
 export function RouteError({ error, reset }: RouteErrorProps) {
   useEffect(() => {
-    console.error("[dashboard] route segment failed", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[dashboard] route segment failed", error);
+    } else {
+      console.error("[dashboard] route segment failed");
+    }
   }, [error]);
 
   return (

@@ -126,7 +126,7 @@ async fn main() -> ExitCode {
                     "error": format!("{e:#}"),
                     "overall_valid": false,
                 });
-                println!("{}", serde_json::to_string_pretty(&err_json).unwrap());
+                println!("{}", serde_json::to_string_pretty(&err_json).unwrap_or_else(|e| format!("{{\"error\": \"serialization failed: {e}\"}}")));
             } else {
                 eprintln!("Error: {e:#}");
             }
