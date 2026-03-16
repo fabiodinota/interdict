@@ -11,6 +11,8 @@ import { db as pgDb } from "../../db/postgres";
 import type { AppStore, RouteContext } from "../../shared/types";
 import { apiResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { apiRateLimiter } from "../auth";
+import { createRateLimitHook } from "../auth/rate-limiter";
 import type { SigningKeysService } from "./service";
 import { createSigningKeysService } from "./service";
 
@@ -48,7 +50,7 @@ export const signingKeysModule = new Elysia({
       routeCtx.set.status = 201;
       return apiResponse(result);
     },
-    { auth: ["super_admin"] },
+    { auth: ["super_admin"], beforeHandle: createRateLimitHook(apiRateLimiter) },
   )
 
   // GET /active -- Get current active key public info (Policy Admin+)

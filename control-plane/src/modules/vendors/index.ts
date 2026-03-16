@@ -11,6 +11,8 @@ import { db as pgDb } from "../../db/postgres";
 import type { AppStore, RouteContext } from "../../shared/types";
 import { apiResponse, paginatedResponse } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { apiRateLimiter } from "../auth";
+import { createRateLimitHook } from "../auth/rate-limiter";
 import {
   CreateModelBody,
   type CreateModelBodyType,
@@ -47,7 +49,7 @@ export const vendorsModule = new Elysia({ prefix: "/api/v1/vendors" })
       routeCtx.set.status = 201;
       return apiResponse(result);
     },
-    { auth: ["policy_admin"], body: CreateVendorBody },
+    { auth: ["policy_admin"], body: CreateVendorBody, beforeHandle: createRateLimitHook(apiRateLimiter) },
   )
 
   // GET / -- List vendors with optional status filter (Read-Only Auditor+)

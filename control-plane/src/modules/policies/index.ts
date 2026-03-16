@@ -12,6 +12,8 @@ import { db as pgDb } from "../../db/postgres";
 import type { AppStore, RouteContext } from "../../shared/types";
 import { apiResponse, paginatedResponse, ValidationError } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { apiRateLimiter } from "../auth";
+import { createRateLimitHook } from "../auth/rate-limiter";
 import { validateRego } from "../compiler/validator";
 import {
   CreatePolicyBody,
@@ -51,7 +53,7 @@ export const policiesModule = new Elysia({ prefix: "/api/v1/policies" })
       routeCtx.set.status = 201;
       return apiResponse(result);
     },
-    { auth: ["policy_admin"], body: CreatePolicyBody },
+    { auth: ["policy_admin"], body: CreatePolicyBody, beforeHandle: createRateLimitHook(apiRateLimiter) },
   )
 
   // GET / -- List active policies (Read-Only Auditor+)

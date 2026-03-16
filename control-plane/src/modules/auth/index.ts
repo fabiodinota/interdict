@@ -45,6 +45,17 @@ export const authRateLimiter = new RateLimiter({
 });
 
 /**
+ * Shared rate limiter for write/expensive API endpoints (FH-SECURITY-02).
+ * Default: 60 requests per minute per IP, cleanup every 60s.
+ * Exported for testing, graceful shutdown, and future Prometheus metrics (S06).
+ */
+export const apiRateLimiter = new RateLimiter({
+  maxRequests: Number(process.env.API_RATE_LIMIT_MAX) || 60,
+  windowMs: Number(process.env.API_RATE_LIMIT_WINDOW_MS) || 60_000,
+  cleanupIntervalMs: 60_000,
+});
+
+/**
  * Auth route handler context.
  *
  * Elysia macro-injected properties (like `user` from authPlugin) are not

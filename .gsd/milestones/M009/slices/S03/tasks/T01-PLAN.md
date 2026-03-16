@@ -78,6 +78,13 @@ cd control-plane && bun test src/modules/auth/rate-limiter.test.ts
 
 All existing + new tests pass.
 
+## Observability Impact
+
+- **429 response body** includes `{ code: "RATE_LIMITED", message: "Too many requests. Please try again later." }` and `Retry-After` header — inspectable by any HTTP client or test
+- **`console.warn` on fail-open** with `[rate-limiter]` prefix — future agent can grep logs for `[rate-limiter]` to see both rate-limit-exceeded and internal-error events
+- **IP hashing** — `hashIP()` in rate-limiter.ts ensures raw IPs never appear in logs; diagnostics show first 12 chars of SHA-256 hash
+- **`getStats()`** — `RateLimiter.getStats()` returns `{ trackedIPs, evictionCount }` for runtime inspection without exposing IP data
+
 ## Inputs
 
 - Existing `RateLimiter` class and `createRateLimitHook()` in `control-plane/src/modules/auth/rate-limiter.ts`

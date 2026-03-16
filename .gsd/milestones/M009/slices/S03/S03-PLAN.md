@@ -29,6 +29,8 @@
 - `rg "rolePermissions" control-plane/src/` returns zero hits
 - `rg "_SESSION_MAX_AGE_SECONDS" control-plane/src/` returns zero hits
 - Migration SQL file exists in `control-plane/drizzle/` containing ALTER TABLE departments + DROP TABLE role_permissions
+- Rate limiter 429 response body includes `{ code: "RATE_LIMITED", message: ... }` and `Retry-After` header (verified via test assertions)
+- Rate limiter fail-open behavior verified: broken limiter still returns 200 (existing test covers this)
 
 ## Observability / Diagnostics
 
@@ -45,7 +47,7 @@
 
 ## Tasks
 
-- [ ] **T01: Expand rate limiter IP fallback and add apiRateLimiter to write endpoints** `est:45m`
+- [x] **T01: Expand rate limiter IP fallback and add apiRateLimiter to write endpoints** `est:45m`
   - Why: Core of this slice — closes FH-SECURITY-02 requirement for rate limiting on write/expensive endpoints and robust IP resolution
   - Files: `control-plane/src/modules/auth/rate-limiter.ts`, `control-plane/src/modules/auth/rate-limiter.test.ts`, `control-plane/src/modules/auth/index.ts`, `control-plane/src/modules/policies/index.ts`, `control-plane/src/modules/reports/index.ts`, `control-plane/src/modules/signing-keys/index.ts`, `control-plane/src/modules/vendors/index.ts`
   - Do:

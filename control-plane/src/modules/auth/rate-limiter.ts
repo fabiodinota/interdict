@@ -162,15 +162,25 @@ export class RateLimiter {
  * a warning — never blocks legitimate traffic due to limiter bugs.
  */
 export function createRateLimitHook(limiter: RateLimiter) {
-  return ({ request, set }: {
+  return ({ request, set, server }: {
     request: Request;
     set: { status: number; headers: Record<string, string> };
+    server?: { requestIP: (req: Request) => { address: string } | null };
   }) => {
     try {
       const forwarded = request.headers.get("x-forwarded-for");
-      const ip = forwarded
-        ? forwarded.split(",")[0].trim()
-        : "unknown";
+      const realIp = request.headers.get("x-real-ip");
+      let ip: string;
+      if (forwarded) {
+        ip = forwarded.split(",")[0].trim();
+      } else if (realIp) {
+        ip = realIp.trim();
+      } else if (server) {
+        const addr = server.requestIP(request);
+        ip = addr?.address ?? "unknown";
+      } else {
+        ip = "unknown";
+      }
 
       const result = limiter.check(ip);
 
