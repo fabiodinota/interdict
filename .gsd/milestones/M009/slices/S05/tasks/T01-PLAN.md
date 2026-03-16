@@ -52,6 +52,12 @@ grep "1-year" docker/certs/generate-internal-ca.sh       # must match
 grep "cargo fmt" package.json                             # must show new handler
 ```
 
+## Observability Impact
+
+- **`unsafe_code = "deny"`:** Any future use of `unsafe` without `#[allow(unsafe_code)]` now produces a compile-time error (not a warning). `cargo clippy` output is the inspection surface — grep for `unsafe_code` in build logs.
+- **Cert comment:** No runtime signal change — this is a documentation-only fix. Inspection: `grep "year" docker/certs/generate-internal-ca.sh`.
+- **lint-staged Rust handler:** On pre-commit, outputs either `cargo fmt` check results or `[lint-staged] cargo not found` — both visible in the terminal during `git commit`. No persisted state.
+
 ## Inputs
 
 - `Cargo.toml` — line 11: `unsafe_code = "warn"`

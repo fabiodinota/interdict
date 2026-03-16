@@ -16,7 +16,7 @@
   },
   "lint-staged": {
     "crates/**/*.rs": [
-      "echo Rust files staged -- cargo fmt/clippy checked in CI or run locally via WSL2"
+      "sh -c 'command -v cargo >/dev/null 2>&1 && cargo fmt -- --check || echo \"[lint-staged] cargo not found — skipping Rust format check (run in WSL2 or install Rust)\"'"
     ],
     "control-plane/src/**/*.{ts,tsx,js,jsx}": [
       "sh -c 'cd control-plane && ./node_modules/.bin/biome check --fix ./src'"

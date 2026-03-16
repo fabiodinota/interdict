@@ -31,7 +31,7 @@
 
 ## Tasks
 
-- [ ] **T01: Workspace unsafe_code deny, cert comment fix, lint-staged improvement** `est:20m`
+- [x] **T01: Workspace unsafe_code deny, cert comment fix, lint-staged improvement** `est:20m`
   - Why: Three independent quick config fixes that close L-25 (unsafe_code), L-22 (stale comment), and improve developer workflow (lint-staged). Grouped because each is a single-line or small-block edit in a different file with no cross-dependencies.
   - Files: `Cargo.toml`, `docker/certs/generate-internal-ca.sh`, `package.json`
   - Do: (1) Change `unsafe_code = "warn"` to `unsafe_code = "deny"` on line 11 of root `Cargo.toml`. Per-crate `#[allow(unsafe_code)]` attributes already exist on all unsafe sites — no new allows needed. (2) Fix line 35 of `generate-internal-ca.sh`: change `# 1. Internal CA (10-year validity, ECDSA P-256)` to `# 1. Internal CA (1-year validity, ECDSA P-256)` (D059 already reduced validity to 1 year). (3) Replace the lint-staged Rust echo no-op in `package.json` with a handler that runs `cargo fmt -- --check` on staged files, with a fallback message if `cargo` is not in PATH. Since this runs on Windows where cargo may not be available, use `sh -c 'command -v cargo >/dev/null 2>&1 && cargo fmt -- --check || echo "cargo not found — skipping Rust format check"'`.
@@ -58,6 +58,14 @@
   - Do: (1) In the CI workflow, modify the "Install hadolint" step (around line 106): add `HADOLINT_SHA256` variable with the SHA256 for hadolint v2.12.0 Linux x86_64. After `curl`, add `echo "${HADOLINT_SHA256}  hadolint" | sha256sum -c -`. Pattern matches OPA verification in the Dockerfile. (2) Modify the "Install kube-score" step (around line 122): add `KUBESCORE_SHA256` variable with SHA256 for kube-score v1.18.0 linux_amd64 tarball. After `curl` and before `tar`, add `echo "${KUBESCORE_SHA256}  kube-score.tar.gz" | sha256sum -c -`. (3) In control-plane Dockerfile, improve layer caching by separating the dependency install: first `COPY control-plane/package.json control-plane/bun.lock ./` then `RUN bun install --production --frozen-lockfile` (prod deps, cached), then `COPY control-plane/ .` (source), then `RUN bun install --frozen-lockfile` (adds dev deps needed for drizzle-kit migrations). This way source changes don't invalidate the prod dependency layer. Note: look up the exact SHA256 checksums from the official release pages for hadolint v2.12.0 and kube-score v1.18.0 — do NOT guess them. Use `curl -fsSL <release-url> | sha256sum` or find them in the release notes.
   - Verify: CI workflow YAML has `sha256sum -c` in both hadolint and kube-score install steps; Dockerfile has two separate `bun install` commands (production first, then full); `docker compose config` still validates
   - Done when: Both CI tool download steps include SHA256 verification variables and `sha256sum -c` commands; Dockerfile has separated dependency layers
+
+## Observability / Diagnostics
+
+- **Compile-time enforcement:** `cargo clippy --workspace --all-targets -- -D warnings` will fail loudly if any crate uses `unsafe` without an explicit `#[allow(unsafe_code)]` — no silent pass-through.
+- **CI signal:** hadolint and kube-score steps will fail with a SHA256 mismatch line in the CI log if binaries are tampered — grep for `sha256sum` in workflow run output.
+- **Container startup:** cert-init logs `[cert-init]` prefixed messages to stdout; failures surface via container exit code and Docker Compose `--abort-on-container-exit`.
+- **Helm validation:** `helm lint` and `helm template` are the inspection surfaces for securityContext correctness — no runtime signal needed since these are declarative manifests.
+- **lint-staged:** When `cargo` is absent, the handler prints `[lint-staged] cargo not found` to the commit hook output — visible to the developer, not silent.
 
 ## Files Likely Touched
 
