@@ -83,7 +83,12 @@ Two dashboard components set state during the render phase — a React anti-patt
 cd dashboard && npx vitest run home-page review-queue-simple
 ```
 
-## Inputs
+## Observability Impact
+
+These are pure React pattern fixes — no new runtime signals, endpoints, or logs. The observable change:
+- **Before:** Strict-mode React would double-fire `queueMicrotask` state updates in HomePage and call `onStatsUpdate` twice per render in ReviewQueue. React DevTools would show render-phase side effects.
+- **After:** Both updates fire exactly once via `useEffect`. No render-phase warnings in console. React DevTools Profiler shows clean commit phases without side-effect violations.
+- **Future agent inspection:** Run `npx vitest run home-page review-queue-simple` — both test files verify the effects fire correctly and no render-phase warnings are emitted.
 
 - `dashboard/src/app/(dashboard)/page.tsx` — render-phase `queueMicrotask` at line ~41
 - `dashboard/src/components/reviews/ReviewQueue.tsx` — render-phase `onStatsUpdate` at lines ~89-91

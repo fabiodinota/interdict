@@ -33,7 +33,7 @@
 
 ## Tasks
 
-- [ ] **T01: Fix render-phase side effects in HomePage and ReviewQueue** `est:45m`
+- [x] **T01: Fix render-phase side effects in HomePage and ReviewQueue** `est:45m`
   - Why: Both components set state during render — violates React's purity contract, causes double-fires in strict mode, and will break under concurrent features. Highest-value fix in this slice.
   - Files: `dashboard/src/app/(dashboard)/page.tsx`, `dashboard/src/components/reviews/ReviewQueue.tsx`, `dashboard/src/__tests__/pages/home-page.test.tsx` (new), `dashboard/src/__tests__/components/review-queue-simple.test.tsx`
   - Do:
@@ -68,6 +68,16 @@
     7. Run full dashboard test suite: `cd dashboard && npx vitest run` — zero failures.
   - Verify: `cd dashboard && npx vitest run batch-verify vendor-card anomalies-page`
   - Done when: All three ARIA patterns testable via `getByRole` queries; full `npx vitest run` passes with zero failures
+
+## Observability / Diagnostics
+
+This slice is purely client-side React fixes (side effects, intervals, ARIA attributes) with no new runtime servers, API endpoints, or background processes. Observable signals:
+
+- **Test suite:** `cd dashboard && npx vitest run` — 54 files, 403+ tests. Zero failures is the green signal.
+- **React DevTools:** After these fixes, Profiler should show no render-phase side effects in HomePage or ReviewQueue. SlaTimer should show one interval source in the React hooks inspector.
+- **Accessibility audit:** Lighthouse or axe-core scans should no longer flag missing labels on BatchVerifyTable checkboxes, VendorCard toggle, or anomaly severity tabs.
+- **Failure visibility:** Any regression reintroducing render-phase side effects will be caught by the `console.error` spy assertions in home-page.test.tsx and review-queue-simple.test.tsx.
+- **No secrets or redaction concerns** — this slice touches only UI components and test files.
 
 ## Files Likely Touched
 
