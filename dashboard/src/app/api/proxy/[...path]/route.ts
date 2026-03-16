@@ -43,10 +43,7 @@ async function proxyRequest(
   // H-03: Reject paths that don't match a known control-plane module prefix.
   const firstSegment = path[0];
   if (!firstSegment || !ALLOWED_PATH_PREFIXES.includes(firstSegment as any)) {
-    return NextResponse.json(
-      { success: false, error: { message: "Forbidden" } },
-      { status: 403 },
-    );
+    return NextResponse.json({ success: false, error: { message: "Forbidden" } }, { status: 403 });
   }
 
   // Reject oversized request bodies before forwarding.

@@ -165,9 +165,7 @@ describe("FrameworkDetail", () => {
 
     render(<FrameworkDetail slug="gdpr" onBack={mockOnBack} />);
 
-    expect(
-      screen.getByText("No policies configured for this framework."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No policies configured for this framework.")).toBeInTheDocument();
   });
 
   it("renders loading skeletons when loading", () => {

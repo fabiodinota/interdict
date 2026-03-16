@@ -8,11 +8,11 @@
 
 import { describe, expect, test } from "bun:test";
 import { Value } from "@sinclair/typebox/value";
+import { CreateApiKeyBody, ExchangeApiKeyBody } from "./auth/model";
 import { CreatePolicyBody, UpdatePolicyBody } from "./policies/model";
-import { CreateVendorBody, UpdateVendorBody } from "./vendors/model";
 import { ActivateFrameworkBody } from "./regulatory/model";
 import { ResolveReviewBody } from "./reviews/model";
-import { CreateApiKeyBody, ExchangeApiKeyBody } from "./auth/model";
+import { CreateVendorBody, UpdateVendorBody } from "./vendors/model";
 
 // ---------------------------------------------------------------------------
 // Helper: build a string of N characters

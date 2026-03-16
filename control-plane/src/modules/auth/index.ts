@@ -29,7 +29,7 @@ import {
   ExchangeCodeBody,
   RevokeApiKeyParams,
 } from "./model";
-import { RateLimiter, createRateLimitHook } from "./rate-limiter";
+import { createRateLimitHook, RateLimiter } from "./rate-limiter";
 import { createSamlRoutes } from "./saml/handlers";
 import { type AuthenticatedUser, type AuthService, createAuthService } from "./service";
 

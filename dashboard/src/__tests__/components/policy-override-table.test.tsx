@@ -55,11 +55,7 @@ describe("PolicyOverrideTable", () => {
     ];
 
     render(
-      <PolicyOverrideTable
-        policies={policies}
-        departmentId="dept-1"
-        userRole="department_admin"
-      />,
+      <PolicyOverrideTable policies={policies} departmentId="dept-1" userRole="department_admin" />,
     );
 
     expect(screen.getByText("Block PII")).toBeInTheDocument();
@@ -70,16 +66,10 @@ describe("PolicyOverrideTable", () => {
 
   it("calls setOverride when toggle is clicked", async () => {
     const user = userEvent.setup();
-    const policies = [
-      makePolicy({ policyId: "pol-1", name: "Block PII", effectiveEnabled: true }),
-    ];
+    const policies = [makePolicy({ policyId: "pol-1", name: "Block PII", effectiveEnabled: true })];
 
     render(
-      <PolicyOverrideTable
-        policies={policies}
-        departmentId="dept-1"
-        userRole="department_admin"
-      />,
+      <PolicyOverrideTable policies={policies} departmentId="dept-1" userRole="department_admin" />,
     );
 
     const toggle = screen.getByRole("switch", { name: "Toggle Block PII" });
@@ -98,11 +88,7 @@ describe("PolicyOverrideTable", () => {
     ];
 
     render(
-      <PolicyOverrideTable
-        policies={policies}
-        departmentId="dept-1"
-        userRole="department_admin"
-      />,
+      <PolicyOverrideTable policies={policies} departmentId="dept-1" userRole="department_admin" />,
     );
 
     const toggle = screen.getByRole("switch", { name: "Toggle Mandatory Policy" });
@@ -113,11 +99,7 @@ describe("PolicyOverrideTable", () => {
     const policies = [makePolicy({ isMandatory: true })];
 
     render(
-      <PolicyOverrideTable
-        policies={policies}
-        departmentId="dept-1"
-        userRole="department_admin"
-      />,
+      <PolicyOverrideTable policies={policies} departmentId="dept-1" userRole="department_admin" />,
     );
 
     expect(screen.getByText("Locked")).toBeInTheDocument();
@@ -144,35 +126,21 @@ describe("PolicyOverrideTable", () => {
     const policies = [makePolicy()];
 
     render(
-      <PolicyOverrideTable
-        policies={policies}
-        departmentId="dept-1"
-        userRole="department_admin"
-      />,
+      <PolicyOverrideTable policies={policies} departmentId="dept-1" userRole="department_admin" />,
     );
 
     expect(screen.queryByText("Set Mandatory")).not.toBeInTheDocument();
   });
 
   it("renders empty state when no policies", () => {
-    render(
-      <PolicyOverrideTable
-        policies={[]}
-        departmentId="dept-1"
-        userRole="department_admin"
-      />,
-    );
+    render(<PolicyOverrideTable policies={[]} departmentId="dept-1" userRole="department_admin" />);
 
-    expect(
-      screen.getByText(/No policies found/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No policies found/)).toBeInTheDocument();
   });
 
   it("calls setMandatory when mandatory toggle is clicked by compliance_officer", async () => {
     const user = userEvent.setup();
-    const policies = [
-      makePolicy({ policyId: "pol-1", name: "Block PII", isMandatory: false }),
-    ];
+    const policies = [makePolicy({ policyId: "pol-1", name: "Block PII", isMandatory: false })];
 
     render(
       <PolicyOverrideTable

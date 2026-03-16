@@ -6,7 +6,7 @@
  * which exercises the same code path.
  */
 
-import { describe, expect, it, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { loadConfig } from "./config";
 
 describe("config", () => {
@@ -195,9 +195,7 @@ describe("config", () => {
 
       const config = loadConfig();
 
-      expect(config.databaseUrl).toBe(
-        "postgres://interdict:interdict@localhost:5432/interdict",
-      );
+      expect(config.databaseUrl).toBe("postgres://interdict:interdict@localhost:5432/interdict");
     });
 
     it("ignores ALLOW_DEV_DEFAULTS in production mode — missing DATABASE_URL still throws", () => {
@@ -219,9 +217,7 @@ describe("config", () => {
 
       const config = loadConfig();
 
-      expect(config.databaseUrl).toBe(
-        "postgres://interdict:interdict@localhost:5432/interdict",
-      );
+      expect(config.databaseUrl).toBe("postgres://interdict:interdict@localhost:5432/interdict");
       expect(config.clickhouseUrl).toBe("http://localhost:8123");
       expect(config.clickhouseDatabase).toBe("interdict");
       expect(config.wasmStorageDir).toBe("./data/wasm");

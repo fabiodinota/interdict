@@ -12,8 +12,18 @@ import { CategoryPicker } from "@/components/policies/CategoryPicker";
 // Mock rego-templates to control categories deterministically
 vi.mock("@/lib/rego-templates", () => ({
   POLICY_CATEGORIES: [
-    { id: "vendor_control", name: "Vendor Control", icon: "Building2", description: "Control vendors" },
-    { id: "content_inspection", name: "Content Inspection", icon: "Shield", description: "Inspect content" },
+    {
+      id: "vendor_control",
+      name: "Vendor Control",
+      icon: "Building2",
+      description: "Control vendors",
+    },
+    {
+      id: "content_inspection",
+      name: "Content Inspection",
+      icon: "Shield",
+      description: "Inspect content",
+    },
     { id: "rate_limiting", name: "Rate Limiting", icon: "Gauge", description: "Limit rates" },
     { id: "custom", name: "Custom", icon: "Code", description: "Write custom rules" },
   ],
@@ -77,9 +87,7 @@ describe("CategoryPicker", () => {
     );
 
     const cards = container.querySelectorAll("[class*='cursor-pointer']");
-    const unselectedCard = Array.from(cards).find((card) =>
-      card.textContent?.includes("Custom"),
-    );
+    const unselectedCard = Array.from(cards).find((card) => card.textContent?.includes("Custom"));
     expect(unselectedCard?.className).not.toContain("ring-2");
   });
 

@@ -62,9 +62,7 @@ describe("ModelList", () => {
 
     await user.click(screen.getByText("Add"));
 
-    expect(
-      screen.getByPlaceholderText("Model name (e.g. gpt-4o)"),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Model name (e.g. gpt-4o)")).toBeInTheDocument();
   });
 
   it("calls addModel.mutate on form submit", async () => {
@@ -110,14 +108,10 @@ describe("ModelList", () => {
     render(<ModelList vendorId="v-1" models={[]} />);
 
     await user.click(screen.getByText("Add"));
-    expect(
-      screen.getByPlaceholderText("Model name (e.g. gpt-4o)"),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Model name (e.g. gpt-4o)")).toBeInTheDocument();
 
     await user.click(screen.getByText("Cancel"));
-    expect(
-      screen.queryByPlaceholderText("Model name (e.g. gpt-4o)"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Model name (e.g. gpt-4o)")).not.toBeInTheDocument();
   });
 
   it("calls deleteModel.mutate on delete confirmation", async () => {

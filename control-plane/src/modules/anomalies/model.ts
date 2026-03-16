@@ -29,8 +29,14 @@ export const AnomalyAlertSchema = t.Object({
   severity: t.Union([t.Literal("info"), t.Literal("warning"), t.Literal("critical")]),
   actorIdentity: t.String({ maxLength: 500 }),
   summary: t.String({ maxLength: 5_000 }),
-  baseline: t.Record(t.String({ maxLength: 255 }), t.Union([t.Number(), t.String({ maxLength: 1_000 })])),
-  current: t.Record(t.String({ maxLength: 255 }), t.Union([t.Number(), t.String({ maxLength: 1_000 })])),
+  baseline: t.Record(
+    t.String({ maxLength: 255 }),
+    t.Union([t.Number(), t.String({ maxLength: 1_000 })]),
+  ),
+  current: t.Record(
+    t.String({ maxLength: 255 }),
+    t.Union([t.Number(), t.String({ maxLength: 1_000 })]),
+  ),
   detectedAt: t.String({ maxLength: 255 }),
   actions: t.Array(AnomalyAction),
 });

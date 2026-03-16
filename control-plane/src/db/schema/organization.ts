@@ -14,7 +14,9 @@ export const departments = pgTable("departments", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   displayName: varchar("display_name", { length: 255 }).notNull(),
-  parentDepartmentId: uuid("parent_department_id").references(() => departments.id, { onDelete: "set null" }),
+  parentDepartmentId: uuid("parent_department_id").references(() => departments.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

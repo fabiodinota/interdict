@@ -20,9 +20,7 @@ vi.mock("@/hooks/use-reviews", () => ({
 
 // Mock SlaTimer
 vi.mock("@/components/reviews/SlaTimer", () => ({
-  SlaTimer: ({ deadline }: { deadline: string }) => (
-    <span data-testid="sla-timer">{deadline}</span>
-  ),
+  SlaTimer: ({ deadline }: { deadline: string }) => <span data-testid="sla-timer">{deadline}</span>,
 }));
 
 // Mock radix Dialog to render inline (no portals)
@@ -42,10 +40,7 @@ vi.mock("@/components/ui/select", () => ({
     <div data-testid="resolution-select" data-value={value}>
       {children}
       {/* Expose a way to change value in tests */}
-      <button
-        data-testid="select-false-positive"
-        onClick={() => onValueChange("false_positive")}
-      >
+      <button data-testid="select-false-positive" onClick={() => onValueChange("false_positive")}>
         Select false_positive
       </button>
     </div>
@@ -141,9 +136,7 @@ describe("ReviewDialog", () => {
     const user = userEvent.setup();
     render(<ReviewDialog {...defaultProps} />);
 
-    const textarea = screen.getByPlaceholderText(
-      "Provide detailed reasoning for your decision...",
-    );
+    const textarea = screen.getByPlaceholderText("Provide detailed reasoning for your decision...");
     await user.type(textarea, "short");
 
     expect(screen.getByText(/more character\(s\) required/)).toBeInTheDocument();

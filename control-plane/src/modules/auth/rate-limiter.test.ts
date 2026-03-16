@@ -6,9 +6,9 @@
  * fail-open on internal error, getStats() diagnostics.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { Elysia } from "elysia";
-import { RateLimiter, createRateLimitHook } from "./rate-limiter";
+import { createRateLimitHook, RateLimiter } from "./rate-limiter";
 
 // ---------------------------------------------------------------------------
 // Unit: RateLimiter class
@@ -32,8 +32,8 @@ describe("RateLimiter", () => {
   test("blocks requests at the threshold", () => {
     limiter = new RateLimiter({ maxRequests: 2, windowMs: 60_000, cleanupIntervalMs: 0 });
 
-    expect(limiter.check("1.1.1.1").allowed).toBe(true);  // 1
-    expect(limiter.check("1.1.1.1").allowed).toBe(true);  // 2
+    expect(limiter.check("1.1.1.1").allowed).toBe(true); // 1
+    expect(limiter.check("1.1.1.1").allowed).toBe(true); // 2
     expect(limiter.check("1.1.1.1").allowed).toBe(false); // 3 → blocked
   });
 
@@ -138,10 +138,9 @@ describe("createRateLimitHook (Elysia per-route beforeHandle)", () => {
   });
 
   function createApp(lim: RateLimiter) {
-    return new Elysia()
-      .post("/test", () => ({ success: true }), {
-        beforeHandle: createRateLimitHook(lim),
-      });
+    return new Elysia().post("/test", () => ({ success: true }), {
+      beforeHandle: createRateLimitHook(lim),
+    });
   }
 
   test("returns 429 with Retry-After header when rate limited", async () => {
@@ -201,13 +200,14 @@ describe("createRateLimitHook (Elysia per-route beforeHandle)", () => {
 
     // Sabotage the limiter's check method to simulate internal error
     const brokenLimiter = {
-      check: () => { throw new Error("out of memory"); },
+      check: () => {
+        throw new Error("out of memory");
+      },
     } as unknown as RateLimiter;
 
-    const app = new Elysia()
-      .post("/test", () => ({ success: true }), {
-        beforeHandle: createRateLimitHook(brokenLimiter),
-      });
+    const app = new Elysia().post("/test", () => ({ success: true }), {
+      beforeHandle: createRateLimitHook(brokenLimiter),
+    });
 
     const r = await app.handle(
       new Request("http://localhost/test", {
@@ -233,10 +233,9 @@ describe("createRateLimitHook IP resolution fallback", () => {
 
   test("uses x-forwarded-for when both x-forwarded-for and x-real-ip are present", async () => {
     limiter = new RateLimiter({ maxRequests: 1, windowMs: 60_000, cleanupIntervalMs: 0 });
-    const app = new Elysia()
-      .post("/test", () => ({ success: true }), {
-        beforeHandle: createRateLimitHook(limiter),
-      });
+    const app = new Elysia().post("/test", () => ({ success: true }), {
+      beforeHandle: createRateLimitHook(limiter),
+    });
 
     // Use up quota for x-forwarded-for IP
     await app.handle(
@@ -258,10 +257,9 @@ describe("createRateLimitHook IP resolution fallback", () => {
 
   test("falls back to x-real-ip when x-forwarded-for is absent", async () => {
     limiter = new RateLimiter({ maxRequests: 1, windowMs: 60_000, cleanupIntervalMs: 0 });
-    const app = new Elysia()
-      .post("/test", () => ({ success: true }), {
-        beforeHandle: createRateLimitHook(limiter),
-      });
+    const app = new Elysia().post("/test", () => ({ success: true }), {
+      beforeHandle: createRateLimitHook(limiter),
+    });
 
     // First request with x-real-ip only — should be allowed
     const r1 = await app.handle(

@@ -9,7 +9,7 @@
  * never touched. Logging uses counts only (no PII, no tokens).
  */
 
-import { lt, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type * as schema from "../../db/schema";
 import { samlHandoffCodes, sessions } from "../../db/schema/auth";

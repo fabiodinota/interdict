@@ -6,7 +6,7 @@
  * configurable "returning" results to simulate batch behavior.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import type { CleanupHandle } from "./cleanup";
 import { runCleanup, startAuthCleanup } from "./cleanup";
 
@@ -90,10 +90,7 @@ describe("runCleanup", () => {
   });
 
   test("deletes both expired sessions and handoff codes", async () => {
-    const fakeDb = new CleanupFakeDb([
-      [{ id: "s1" }, { id: "s2" }],
-      [{ code: "h1" }],
-    ]);
+    const fakeDb = new CleanupFakeDb([[{ id: "s1" }, { id: "s2" }], [{ code: "h1" }]]);
 
     const result = await runCleanup(fakeDb as never, 1000);
 
@@ -160,7 +157,7 @@ describe("startAuthCleanup", () => {
 
   test("stop() clears the interval and prevents further ticks", async () => {
     let tickCount = 0;
-    const fakeDb = new CleanupFakeDb([]);
+    const _fakeDb = new CleanupFakeDb([]);
 
     // Override delete to count invocations
     const countingDb = {
@@ -222,10 +219,7 @@ describe("startAuthCleanup", () => {
             },
           };
         },
-        _responses: [
-          [{ id: "s1" }, { id: "s2" }],
-          [{ code: "h1" }],
-        ] as unknown[][],
+        _responses: [[{ id: "s1" }, { id: "s2" }], [{ code: "h1" }]] as unknown[][],
       };
 
       handle = startAuthCleanup(fakeDb as never, { intervalMs: 10 });

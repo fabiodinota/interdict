@@ -89,12 +89,7 @@ describe("TimeRangeSelector", () => {
 
   it("does not display last-updated text when lastUpdated is null", () => {
     render(
-      <TimeRangeSelector
-        value="7d"
-        onChange={onChange}
-        onRefresh={onRefresh}
-        lastUpdated={null}
-      />,
+      <TimeRangeSelector value="7d" onChange={onChange} onRefresh={onRefresh} lastUpdated={null} />,
     );
 
     expect(screen.queryByText(/Last updated/)).not.toBeInTheDocument();

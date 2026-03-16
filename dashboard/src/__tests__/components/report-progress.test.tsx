@@ -20,9 +20,7 @@ describe("ReportProgress", () => {
     render(<ReportProgress isGenerating={true} isSuccess={false} isError={false} />);
 
     expect(screen.getByText("Generating report...")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Querying audit data and building the report/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Querying audit data and building the report/)).toBeInTheDocument();
   });
 
   it("shows success state with default download message", () => {
@@ -50,9 +48,7 @@ describe("ReportProgress", () => {
     render(<ReportProgress isGenerating={false} isSuccess={false} isError={true} />);
 
     expect(screen.getByText("Report generation failed")).toBeInTheDocument();
-    expect(
-      screen.getByText("An unexpected error occurred. Please try again."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("An unexpected error occurred. Please try again.")).toBeInTheDocument();
   });
 
   it("shows error state with custom error message", () => {
@@ -66,9 +62,7 @@ describe("ReportProgress", () => {
     );
 
     expect(screen.getByText("Report generation failed")).toBeInTheDocument();
-    expect(
-      screen.getByText("Insufficient permissions for SOC2 report"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Insufficient permissions for SOC2 report")).toBeInTheDocument();
   });
 
   it("prioritizes generating state over success when both are true", () => {

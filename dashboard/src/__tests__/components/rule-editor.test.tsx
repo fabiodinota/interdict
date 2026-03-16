@@ -40,9 +40,7 @@ describe("RuleEditor", () => {
     render(<RuleEditor {...defaultProps} />);
 
     expect(screen.getByText("Visual Rule Editor")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Add additional conditions to your policy/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Add additional conditions to your policy/)).toBeInTheDocument();
   });
 
   it("renders navigation buttons", () => {
@@ -81,7 +79,13 @@ describe("RuleEditor", () => {
 
   it("renders condition rows when conditions are provided", () => {
     const conditions: RuleCondition[] = [
-      { id: "c1", field: "input.request.vendor", operator: "==", value: "openai", connector: "AND" },
+      {
+        id: "c1",
+        field: "input.request.vendor",
+        operator: "==",
+        value: "openai",
+        connector: "AND",
+      },
     ];
 
     render(<RuleEditor {...defaultProps} conditions={conditions} />);

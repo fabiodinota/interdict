@@ -29,9 +29,7 @@ describe("AddVendorDialog", () => {
   it("renders trigger button", () => {
     render(<AddVendorDialog />);
 
-    expect(
-      screen.getByRole("button", { name: /Add Vendor/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Add Vendor/ })).toBeInTheDocument();
   });
 
   it("opens dialog showing form fields when trigger is clicked", async () => {
@@ -101,9 +99,7 @@ describe("AddVendorDialog", () => {
     await user.type(screen.getByLabelText("Display Name *"), "OpenAI");
 
     // Create Vendor button should be disabled
-    expect(
-      screen.getByRole("button", { name: "Create Vendor" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create Vendor" })).toBeDisabled();
   });
 
   it("does not submit when required Display Name field is empty", async () => {
@@ -115,9 +111,7 @@ describe("AddVendorDialog", () => {
     // Only fill name, leave display name empty
     await user.type(screen.getByLabelText("Name *"), "openai");
 
-    expect(
-      screen.getByRole("button", { name: "Create Vendor" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create Vendor" })).toBeDisabled();
   });
 
   it("closes dialog on Cancel without submitting", async () => {

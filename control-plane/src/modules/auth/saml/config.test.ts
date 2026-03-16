@@ -16,10 +16,10 @@
  * - SP metadata endpoint works when SAML is configured
  */
 
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 // ---------------------------------------------------------------------------
 // Fixtures: self-signed cert/key and minimal IdP metadata
@@ -143,7 +143,9 @@ async function evalConfigInSubprocess(
   const exitCode = await proc.exited;
 
   // Clean up temp script
-  try { rmSync(scriptPath, { force: true }); } catch {}
+  try {
+    rmSync(scriptPath, { force: true });
+  } catch {}
 
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
 }

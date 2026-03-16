@@ -30,7 +30,9 @@ vi.mock("@/components/ui/command", () => ({
   CommandEmpty: ({ children }: any) => <div>{children}</div>,
   CommandGroup: ({ children }: any) => <div>{children}</div>,
   CommandItem: ({ children, onSelect }: any) => (
-    <div role="option" onClick={onSelect}>{children}</div>
+    <div role="option" onClick={onSelect}>
+      {children}
+    </div>
   ),
 }));
 
@@ -56,8 +58,7 @@ function makeTemplate(overrides?: Partial<PolicyTemplate>): PolicyTemplate {
         placeholder: "1000",
       },
     ],
-    generateRego: (params) =>
-      `package interdict.policy\n# vendor: ${params.vendor_name ?? "none"}`,
+    generateRego: (params) => `package interdict.policy\n# vendor: ${params.vendor_name ?? "none"}`,
     ...overrides,
   };
 }
@@ -147,9 +148,7 @@ describe("ParameterForm", () => {
     const user = userEvent.setup();
     const onNext = vi.fn();
 
-    render(
-      <ParameterForm {...defaultProps} values={{ vendor_name: "OpenAI" }} onNext={onNext} />,
-    );
+    render(<ParameterForm {...defaultProps} values={{ vendor_name: "OpenAI" }} onNext={onNext} />);
 
     await user.click(screen.getByText("Next"));
     expect(onNext).toHaveBeenCalledTimes(1);

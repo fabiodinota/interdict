@@ -13,17 +13,19 @@ vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => (
     <div data-testid="responsive-container">{children}</div>
   ),
-  BarChart: ({ children, data }: { children: ReactNode; data: Array<{ name: string; value: number }> }) => (
+  BarChart: ({
+    children,
+    data,
+  }: {
+    children: ReactNode;
+    data: Array<{ name: string; value: number }>;
+  }) => (
     <div data-testid="bar-chart" data-bars={JSON.stringify(data)}>
       {children}
     </div>
   ),
-  Bar: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="bar">{children}</div>
-  ),
-  XAxis: ({ dataKey }: { dataKey: string }) => (
-    <div data-testid="x-axis" data-key={dataKey} />
-  ),
+  Bar: ({ children }: { children?: ReactNode }) => <div data-testid="bar">{children}</div>,
+  XAxis: ({ dataKey }: { dataKey: string }) => <div data-testid="x-axis" data-key={dataKey} />,
   YAxis: () => <div data-testid="y-axis" />,
   Cell: ({ fill }: { fill: string }) => <div data-testid="cell" data-fill={fill} />,
 }));

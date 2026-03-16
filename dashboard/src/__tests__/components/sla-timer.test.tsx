@@ -138,9 +138,7 @@ describe("SlaTimer shared interval", () => {
     const { unmount: u3 } = render(<SlaTimer deadline={deadline3} />);
 
     // Only 1 setInterval should have been created, not 3
-    const intervalCalls = setIntervalSpy.mock.calls.filter(
-      ([, ms]) => ms === 1000,
-    );
+    const intervalCalls = setIntervalSpy.mock.calls.filter(([, ms]) => ms === 1000);
     expect(intervalCalls).toHaveLength(1);
 
     // All three timers render

@@ -23,7 +23,15 @@ const MOCK_DATA_UPDATED_AT = 1700000000000; // fixed timestamp
 
 vi.mock("@/hooks/use-dashboard-stats", () => ({
   useHourlyViolations: () => ({
-    data: [{ hour: "2024-01-01T00:00:00Z", policy_action: "block", violation_count: 5, unique_actors: 2, unique_vendors: 1 }],
+    data: [
+      {
+        hour: "2024-01-01T00:00:00Z",
+        policy_action: "block",
+        violation_count: 5,
+        unique_actors: 2,
+        unique_vendors: 1,
+      },
+    ],
     dataUpdatedAt: MOCK_DATA_UPDATED_AT,
     isLoading: false,
   }),

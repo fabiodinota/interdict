@@ -5,9 +5,9 @@
  * Mocks the four query functions to isolate service logic from ClickHouse.
  */
 
-import { describe, expect, it, mock, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { ClickHouseClient } from "@clickhouse/client";
-import type { VolumeAnomalyRow, OffHoursRow, VendorSwitchRow, TopicDriftRow } from "./queries";
+import type { OffHoursRow, TopicDriftRow, VendorSwitchRow, VolumeAnomalyRow } from "./queries";
 
 // ---------------------------------------------------------------------------
 // We need to test private functions computeSeverity/computeOffHoursSeverity
@@ -55,7 +55,13 @@ describe("AnomalyService", () => {
     it("returns info for ratio 1.19 (below warning threshold)", async () => {
       mockQueryVolumeAnomalies.mockImplementation(() =>
         Promise.resolve([
-          { actor_identity: "user-a", current_count: 119, baseline_avg: 100, baseline_std: 10, ratio: 1.19 },
+          {
+            actor_identity: "user-a",
+            current_count: 119,
+            baseline_avg: 100,
+            baseline_std: 10,
+            ratio: 1.19,
+          },
         ]),
       );
 
@@ -70,7 +76,13 @@ describe("AnomalyService", () => {
     it("returns warning for ratio exactly 2.0", async () => {
       mockQueryVolumeAnomalies.mockImplementation(() =>
         Promise.resolve([
-          { actor_identity: "user-b", current_count: 200, baseline_avg: 100, baseline_std: 10, ratio: 2.0 },
+          {
+            actor_identity: "user-b",
+            current_count: 200,
+            baseline_avg: 100,
+            baseline_std: 10,
+            ratio: 2.0,
+          },
         ]),
       );
 
@@ -84,7 +96,13 @@ describe("AnomalyService", () => {
     it("returns critical for ratio 5.0", async () => {
       mockQueryVolumeAnomalies.mockImplementation(() =>
         Promise.resolve([
-          { actor_identity: "user-c", current_count: 500, baseline_avg: 100, baseline_std: 10, ratio: 5.0 },
+          {
+            actor_identity: "user-c",
+            current_count: 500,
+            baseline_avg: 100,
+            baseline_std: 10,
+            ratio: 5.0,
+          },
         ]),
       );
 
@@ -98,7 +116,13 @@ describe("AnomalyService", () => {
     it("returns critical for ratio above 5.0", async () => {
       mockQueryVolumeAnomalies.mockImplementation(() =>
         Promise.resolve([
-          { actor_identity: "user-d", current_count: 1000, baseline_avg: 100, baseline_std: 10, ratio: 10.0 },
+          {
+            actor_identity: "user-d",
+            current_count: 1000,
+            baseline_avg: 100,
+            baseline_std: 10,
+            ratio: 10.0,
+          },
         ]),
       );
 
@@ -203,9 +227,27 @@ describe("AnomalyService", () => {
     it("sorts critical before warning before info", async () => {
       mockQueryVolumeAnomalies.mockImplementation(() =>
         Promise.resolve([
-          { actor_identity: "user-info", current_count: 119, baseline_avg: 100, baseline_std: 10, ratio: 1.19 },
-          { actor_identity: "user-crit", current_count: 500, baseline_avg: 100, baseline_std: 10, ratio: 5.0 },
-          { actor_identity: "user-warn", current_count: 200, baseline_avg: 100, baseline_std: 10, ratio: 2.0 },
+          {
+            actor_identity: "user-info",
+            current_count: 119,
+            baseline_avg: 100,
+            baseline_std: 10,
+            ratio: 1.19,
+          },
+          {
+            actor_identity: "user-crit",
+            current_count: 500,
+            baseline_avg: 100,
+            baseline_std: 10,
+            ratio: 5.0,
+          },
+          {
+            actor_identity: "user-warn",
+            current_count: 200,
+            baseline_avg: 100,
+            baseline_std: 10,
+            ratio: 2.0,
+          },
         ]),
       );
 
@@ -272,8 +314,18 @@ describe("AnomalyService", () => {
     it("computes severity from ratio using same thresholds as volume", async () => {
       mockQueryTopicDrift.mockImplementation(() =>
         Promise.resolve([
-          { actor_identity: "user-t1", current_unique_hashes: 50, baseline_avg_unique: 10, ratio: 5.0 },
-          { actor_identity: "user-t2", current_unique_hashes: 20, baseline_avg_unique: 10, ratio: 2.0 },
+          {
+            actor_identity: "user-t1",
+            current_unique_hashes: 50,
+            baseline_avg_unique: 10,
+            ratio: 5.0,
+          },
+          {
+            actor_identity: "user-t2",
+            current_unique_hashes: 20,
+            baseline_avg_unique: 10,
+            ratio: 2.0,
+          },
         ]),
       );
 
@@ -323,8 +375,20 @@ describe("AnomalyService", () => {
     it("aggregates alerts by severity and type", async () => {
       mockQueryVolumeAnomalies.mockImplementation(() =>
         Promise.resolve([
-          { actor_identity: "a", current_count: 500, baseline_avg: 100, baseline_std: 10, ratio: 5.0 },
-          { actor_identity: "b", current_count: 200, baseline_avg: 100, baseline_std: 10, ratio: 2.0 },
+          {
+            actor_identity: "a",
+            current_count: 500,
+            baseline_avg: 100,
+            baseline_std: 10,
+            ratio: 5.0,
+          },
+          {
+            actor_identity: "b",
+            current_count: 200,
+            baseline_avg: 100,
+            baseline_std: 10,
+            ratio: 2.0,
+          },
         ]),
       );
       mockQueryOffHoursUsage.mockImplementation(() =>

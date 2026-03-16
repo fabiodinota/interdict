@@ -22,9 +22,7 @@ vi.mock("recharts", () => ({
   Line: ({ dataKey, name }: { dataKey: string; name: string }) => (
     <div data-testid={`line-${dataKey}`} data-name={name} />
   ),
-  XAxis: ({ dataKey }: { dataKey: string }) => (
-    <div data-testid="x-axis" data-key={dataKey} />
-  ),
+  XAxis: ({ dataKey }: { dataKey: string }) => <div data-testid="x-axis" data-key={dataKey} />,
   YAxis: () => <div data-testid="y-axis" />,
   CartesianGrid: () => <div data-testid="cartesian-grid" />,
   Tooltip: () => <div data-testid="tooltip" />,
@@ -33,11 +31,7 @@ vi.mock("recharts", () => ({
 
 import { ViolationChart } from "@/components/dashboard/ViolationChart";
 
-const makeRecord = (
-  hour: string,
-  action: string,
-  count: number,
-): HourlyViolationRecord => ({
+const makeRecord = (hour: string, action: string, count: number): HourlyViolationRecord => ({
   hour,
   policy_action: action,
   violation_count: count,
@@ -66,9 +60,7 @@ describe("ViolationChart", () => {
   });
 
   it("renders three Line components for allow, block, redact", () => {
-    const data: HourlyViolationRecord[] = [
-      makeRecord("2025-01-01T01:00:00Z", "allow", 1),
-    ];
+    const data: HourlyViolationRecord[] = [makeRecord("2025-01-01T01:00:00Z", "allow", 1)];
 
     render(<ViolationChart data={data} isLoading={false} />);
 

@@ -37,9 +37,7 @@ describe("ReportForm", () => {
     render(<ReportForm onGenerate={mockOnGenerate} isGenerating={false} />);
 
     expect(screen.getByText("Report includes:")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Executive summary with key performance metrics/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Executive summary with key performance metrics/)).toBeInTheDocument();
     expect(
       screen.getByText(/Policy violations by type, department, and vendor/),
     ).toBeInTheDocument();

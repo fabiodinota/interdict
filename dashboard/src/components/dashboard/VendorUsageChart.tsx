@@ -66,9 +66,7 @@ function CustomTooltip({ active, payload }: VendorTooltipProps) {
   const item = payload[0].payload;
 
   return (
-    <div
-      className="rounded-md border border-border bg-card px-3 py-2 shadow-sm"
-    >
+    <div className="rounded-md border border-border bg-card px-3 py-2 shadow-sm">
       <p className="text-sm font-medium">{item.vendor}</p>
       <p className="text-xs text-muted-foreground">Models: {item.models}</p>
       <p className="text-sm font-semibold">

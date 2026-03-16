@@ -24,9 +24,7 @@ vi.mock("recharts", () => ({
       {children}
     </div>
   ),
-  XAxis: ({ dataKey }: { dataKey: string }) => (
-    <div data-testid="x-axis" data-key={dataKey} />
-  ),
+  XAxis: ({ dataKey }: { dataKey: string }) => <div data-testid="x-axis" data-key={dataKey} />,
   YAxis: () => <div data-testid="y-axis" />,
   CartesianGrid: () => <div data-testid="cartesian-grid" />,
   Tooltip: () => <div data-testid="tooltip" />,
@@ -35,11 +33,7 @@ vi.mock("recharts", () => ({
 
 import { VendorUsageChart } from "@/components/dashboard/VendorUsageChart";
 
-const makeRecord = (
-  vendor: string,
-  model: string,
-  count: number,
-): VendorUsageRecord => ({
+const makeRecord = (vendor: string, model: string, count: number): VendorUsageRecord => ({
   vendor,
   model,
   request_count: count,

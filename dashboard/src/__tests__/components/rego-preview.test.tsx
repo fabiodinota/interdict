@@ -43,9 +43,7 @@ describe("RegoPreview", () => {
 
     expect(screen.getByLabelText(/Policy Name/)).toHaveValue("Block PII");
     expect(screen.getByLabelText("Description")).toHaveValue("Blocks PII data");
-    expect(screen.getByLabelText("Entrypoint")).toHaveValue(
-      "interdict/policy/verdict",
-    );
+    expect(screen.getByLabelText("Entrypoint")).toHaveValue("interdict/policy/verdict");
   });
 
   it("calls onNameChange when policy name is changed", async () => {
@@ -87,14 +85,10 @@ describe("RegoPreview", () => {
   });
 
   it("displays submit error when present", () => {
-    render(
-      <RegoPreview {...defaultProps} submitError="Invalid Rego syntax at line 3" />,
-    );
+    render(<RegoPreview {...defaultProps} submitError="Invalid Rego syntax at line 3" />);
 
     expect(screen.getByText("Rego Validation Error")).toBeInTheDocument();
-    expect(
-      screen.getByText("Invalid Rego syntax at line 3"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Invalid Rego syntax at line 3")).toBeInTheDocument();
   });
 
   it("does not display error section when submitError is null", () => {

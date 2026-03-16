@@ -60,12 +60,7 @@ describe("FrameworkCard", () => {
   it("renders inactive badge when framework is not active", () => {
     const onSelect = vi.fn();
 
-    render(
-      <FrameworkCard
-        framework={makeFramework({ isActive: false })}
-        onSelect={onSelect}
-      />,
-    );
+    render(<FrameworkCard framework={makeFramework({ isActive: false })} onSelect={onSelect} />);
 
     expect(screen.getByText("Inactive")).toBeInTheDocument();
   });

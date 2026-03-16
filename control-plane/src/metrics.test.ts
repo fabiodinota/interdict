@@ -6,9 +6,9 @@
  * and that prom-client loads without crashing on Bun (no collectDefaultMetrics).
  */
 
-import { describe, expect, test, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Elysia } from "elysia";
-import { Registry, Counter, Histogram } from "prom-client";
+import { Counter, Histogram, Registry } from "prom-client";
 
 // Build a lightweight test app that mirrors production wiring
 function createTestApp() {
@@ -81,7 +81,7 @@ describe("Prometheus /metrics endpoint", () => {
   beforeAll(() => {
     const setup = createTestApp();
     app = setup.app;
-    baseUrl = `http://localhost:${app.server!.port}`;
+    baseUrl = `http://localhost:${app.server?.port}`;
   });
 
   afterAll(() => {
@@ -116,7 +116,7 @@ describe("Prometheus /metrics endpoint", () => {
       .find((l) => l.startsWith("http_requests_total") && l.includes("/health"));
     expect(healthLine).toBeDefined();
     // Value should be > 0
-    const value = Number(healthLine!.split(" ").pop());
+    const value = Number(healthLine?.split(" ").pop());
     expect(value).toBeGreaterThan(0);
   });
 

@@ -69,12 +69,13 @@ export class RateLimiter {
 
     // Start periodic cleanup
     if (this.config.cleanupIntervalMs > 0) {
-      this.cleanupTimer = setInterval(
-        () => this.evictExpired(),
-        this.config.cleanupIntervalMs,
-      );
+      this.cleanupTimer = setInterval(() => this.evictExpired(), this.config.cleanupIntervalMs);
       // Don't block process exit
-      if (this.cleanupTimer && typeof this.cleanupTimer === "object" && "unref" in this.cleanupTimer) {
+      if (
+        this.cleanupTimer &&
+        typeof this.cleanupTimer === "object" &&
+        "unref" in this.cleanupTimer
+      ) {
         this.cleanupTimer.unref();
       }
     }
@@ -104,8 +105,8 @@ export class RateLimiter {
       const retryAfterMs = Math.max(0, entry.resetAt - now);
       console.warn(
         `[rate-limiter] Rate limit exceeded for IP ${hashIP(ip)} — ` +
-        `${entry.count}/${this.config.maxRequests} in window, ` +
-        `retry after ${retryAfterMs}ms`,
+          `${entry.count}/${this.config.maxRequests} in window, ` +
+          `retry after ${retryAfterMs}ms`,
       );
       return { allowed: false, retryAfterMs };
     }
@@ -162,7 +163,11 @@ export class RateLimiter {
  * a warning — never blocks legitimate traffic due to limiter bugs.
  */
 export function createRateLimitHook(limiter: RateLimiter) {
-  return ({ request, set, server }: {
+  return ({
+    request,
+    set,
+    server,
+  }: {
     request: Request;
     set: { status: number; headers: Record<string, string> };
     server?: { requestIP: (req: Request) => { address: string } | null };

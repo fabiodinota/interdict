@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { generateCSV, escapeCSV } from "./csv-generator";
+import { escapeCSV, generateCSV } from "./csv-generator";
 import type { ReportData } from "./service";
 
 // ---------------------------------------------------------------------------
@@ -43,15 +43,9 @@ function createMinimalReportData(overrides: Partial<ReportData> = {}): ReportDat
         tokenCount: 5000,
       },
     ],
-    activePolicies: [
-      { name: "PII Detection", enabled: true, compilationStatus: "compiled" },
-    ],
-    vendorStatus: [
-      { name: "openai", displayName: "OpenAI", status: "approved", modelCount: 5 },
-    ],
-    activeFrameworks: [
-      { name: "EU AI Act", jurisdiction: "EU", activePolicyCount: 3 },
-    ],
+    activePolicies: [{ name: "PII Detection", enabled: true, compilationStatus: "compiled" }],
+    vendorStatus: [{ name: "openai", displayName: "OpenAI", status: "approved", modelCount: 5 }],
+    activeFrameworks: [{ name: "EU AI Act", jurisdiction: "EU", activePolicyCount: 3 }],
     ...overrides,
   };
 }
@@ -242,19 +236,19 @@ describe("generateCSV", () => {
 
 describe("escapeCSV", () => {
   describe("formula injection defense", () => {
-    it("sanitizes = prefix: =CMD(\"calc\") becomes \"'=CMD(\"\"calc\"\")\"", () => {
-      expect(escapeCSV('=CMD("calc")')).toBe(`"'=CMD(""calc"")"`)
+    it('sanitizes = prefix: =CMD("calc") becomes "\'=CMD(""calc"")"', () => {
+      expect(escapeCSV('=CMD("calc")')).toBe(`"'=CMD(""calc"")"`);
     });
 
-    it("sanitizes + prefix: +1-1 becomes \"'+1-1\"", () => {
+    it('sanitizes + prefix: +1-1 becomes "\'+1-1"', () => {
       expect(escapeCSV("+1-1")).toBe(`"'+1-1"`);
     });
 
-    it("sanitizes @ prefix: @SUM(A1:A10) becomes \"'@SUM(A1:A10)\"", () => {
+    it('sanitizes @ prefix: @SUM(A1:A10) becomes "\'@SUM(A1:A10)"', () => {
       expect(escapeCSV("@SUM(A1:A10)")).toBe(`"'@SUM(A1:A10)"`);
     });
 
-    it("sanitizes - prefix: -1+1 becomes \"'-1+1\"", () => {
+    it('sanitizes - prefix: -1+1 becomes "\'-1+1"', () => {
       expect(escapeCSV("-1+1")).toBe(`"'-1+1"`);
     });
 
@@ -263,7 +257,7 @@ describe("escapeCSV", () => {
     });
 
     it("sanitizes formula prefix even when value also contains quotes", () => {
-      expect(escapeCSV('=HYPERLINK("http://evil")')).toBe(`"'=HYPERLINK(""http://evil"")"`)
+      expect(escapeCSV('=HYPERLINK("http://evil")')).toBe(`"'=HYPERLINK(""http://evil"")"`);
     });
 
     it("sanitizes formula prefix with newlines in value", () => {
@@ -333,7 +327,7 @@ describe("escapeCSV", () => {
 describe("generateCSV — formula injection in data fields", () => {
   it("sanitizes formula-prefixed vendor names", () => {
     const data = createMinimalReportData({
-      violationsByVendor: [{ vendor: "=CMD(\"calc\")", count: 1 }],
+      violationsByVendor: [{ vendor: '=CMD("calc")', count: 1 }],
     });
     const csv = generateCSV(data);
 

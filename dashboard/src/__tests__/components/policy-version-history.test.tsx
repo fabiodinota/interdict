@@ -45,9 +45,7 @@ describe("PolicyVersionHistory", () => {
       isLoading: false,
     } as ReturnType<typeof usePolicyVersions>);
 
-    render(
-      <PolicyVersionHistory policyId="pol-1" currentRegoSource="package p2" />,
-    );
+    render(<PolicyVersionHistory policyId="pol-1" currentRegoSource="package p2" />);
 
     expect(screen.getByText("Version History")).toBeInTheDocument();
     expect(screen.getByText("v1")).toBeInTheDocument();
@@ -65,9 +63,7 @@ describe("PolicyVersionHistory", () => {
       isLoading: false,
     } as ReturnType<typeof usePolicyVersions>);
 
-    render(
-      <PolicyVersionHistory policyId="pol-1" currentRegoSource="package current" />,
-    );
+    render(<PolicyVersionHistory policyId="pol-1" currentRegoSource="package current" />);
 
     // Click to expand
     await user.click(screen.getByText("v1"));
@@ -80,17 +76,12 @@ describe("PolicyVersionHistory", () => {
     const user = userEvent.setup();
     mockedUsePolicyVersions.mockReturnValue({
       data: {
-        data: [
-          makeVersion("v1", 1, "package old"),
-          makeVersion("v2", 2, "package new"),
-        ],
+        data: [makeVersion("v1", 1, "package old"), makeVersion("v2", 2, "package new")],
       },
       isLoading: false,
     } as ReturnType<typeof usePolicyVersions>);
 
-    render(
-      <PolicyVersionHistory policyId="pol-1" currentRegoSource="package new" />,
-    );
+    render(<PolicyVersionHistory policyId="pol-1" currentRegoSource="package new" />);
 
     // Expand the non-current version (v1)
     await user.click(screen.getByText("v1"));
@@ -100,9 +91,7 @@ describe("PolicyVersionHistory", () => {
 
     // Dialog should show
     expect(screen.getByText("Restore Version")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Are you sure you want to restore version 1/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to restore version 1/)).toBeInTheDocument();
 
     // Confirm restore
     await user.click(screen.getByRole("button", { name: /^Restore$/ }));
@@ -117,17 +106,12 @@ describe("PolicyVersionHistory", () => {
     const user = userEvent.setup();
     mockedUsePolicyVersions.mockReturnValue({
       data: {
-        data: [
-          makeVersion("v1", 1, "package old"),
-          makeVersion("v2", 2, "package new"),
-        ],
+        data: [makeVersion("v1", 1, "package old"), makeVersion("v2", 2, "package new")],
       },
       isLoading: false,
     } as ReturnType<typeof usePolicyVersions>);
 
-    render(
-      <PolicyVersionHistory policyId="pol-1" currentRegoSource="package new" />,
-    );
+    render(<PolicyVersionHistory policyId="pol-1" currentRegoSource="package new" />);
 
     await user.click(screen.getByText("v1"));
     await user.click(screen.getByText("Restore"));
@@ -144,13 +128,9 @@ describe("PolicyVersionHistory", () => {
       isLoading: false,
     } as ReturnType<typeof usePolicyVersions>);
 
-    render(
-      <PolicyVersionHistory policyId="pol-1" currentRegoSource="" />,
-    );
+    render(<PolicyVersionHistory policyId="pol-1" currentRegoSource="" />);
 
-    expect(
-      screen.getByText("No version history available."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No version history available.")).toBeInTheDocument();
   });
 
   it("renders loading skeletons when data is loading", () => {
@@ -159,9 +139,7 @@ describe("PolicyVersionHistory", () => {
       isLoading: true,
     } as ReturnType<typeof usePolicyVersions>);
 
-    render(
-      <PolicyVersionHistory policyId="pol-1" currentRegoSource="" />,
-    );
+    render(<PolicyVersionHistory policyId="pol-1" currentRegoSource="" />);
 
     // Should not show version history heading or empty state
     expect(screen.queryByText("Version History")).not.toBeInTheDocument();

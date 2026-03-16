@@ -37,10 +37,7 @@ vi.mock("@/hooks/use-policies", () => ({
 vi.mock("@/components/policies/CategoryPicker", () => ({
   CategoryPicker: ({ onSelect }: any) => (
     <div data-testid="category-picker">
-      <button
-        data-testid="select-category"
-        onClick={() => onSelect("vendor_control")}
-      >
+      <button data-testid="select-category" onClick={() => onSelect("vendor_control")}>
         Pick Category
       </button>
     </div>
@@ -103,12 +100,7 @@ vi.mock("@/components/policies/RuleEditor", () => ({
 }));
 
 vi.mock("@/components/policies/RegoPreview", () => ({
-  RegoPreview: ({
-    onSubmit,
-    onBack,
-    onNameChange,
-    policyName,
-  }: any) => (
+  RegoPreview: ({ onSubmit, onBack, onNameChange, policyName }: any) => (
     <div data-testid="rego-preview">
       <button
         data-testid="preview-submit"

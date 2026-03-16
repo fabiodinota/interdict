@@ -5,14 +5,14 @@
  * and broadcastUpdate with mock gRPC streams.
  */
 
-import { describe, expect, it, beforeEach, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type * as grpc from "@grpc/grpc-js";
 import {
-  KernelTracker,
   broadcastUpdate,
+  KernelTracker,
   kernelTracker,
-  type SubscribeRequestMessage,
   type PolicyUpdateMessage,
+  type SubscribeRequestMessage,
 } from "./tracker";
 
 // ---------------------------------------------------------------------------
@@ -22,7 +22,10 @@ import {
 function createMockStream() {
   const writeFn = mock(() => true);
   return {
-    stream: { write: writeFn } as unknown as grpc.ServerWritableStream<SubscribeRequestMessage, PolicyUpdateMessage>,
+    stream: { write: writeFn } as unknown as grpc.ServerWritableStream<
+      SubscribeRequestMessage,
+      PolicyUpdateMessage
+    >,
     writeFn,
   };
 }
@@ -46,12 +49,12 @@ describe("KernelTracker", () => {
       expect(tracker.connectedCount()).toBe(1);
       const conn = tracker.getConnection("k1");
       expect(conn).toBeDefined();
-      expect(conn!.kernelId).toBe("k1");
-      expect(conn!.orgId).toBe("org1");
-      expect(conn!.deptId).toBe("dept1");
-      expect(conn!.teamId).toBe("team1");
-      expect(conn!.currentVersion).toBe(0);
-      expect(conn!.lastAckAt).toBeNull();
+      expect(conn?.kernelId).toBe("k1");
+      expect(conn?.orgId).toBe("org1");
+      expect(conn?.deptId).toBe("dept1");
+      expect(conn?.teamId).toBe("team1");
+      expect(conn?.currentVersion).toBe(0);
+      expect(conn?.lastAckAt).toBeNull();
     });
 
     it("replaces existing connection on reconnect", () => {
@@ -63,7 +66,7 @@ describe("KernelTracker", () => {
 
       expect(tracker.connectedCount()).toBe(1);
       const conn = tracker.getConnection("k1");
-      expect(conn!.stream).toBe(stream2);
+      expect(conn?.stream).toBe(stream2);
     });
 
     it("supports multiple concurrent kernels", () => {
@@ -111,9 +114,9 @@ describe("KernelTracker", () => {
       tracker.acknowledge("k1", 42, true, "");
 
       const conn = tracker.getConnection("k1");
-      expect(conn!.currentVersion).toBe(42);
-      expect(conn!.lastAckAt).toBeDefined();
-      expect(conn!.lastAckAt).toBeInstanceOf(Date);
+      expect(conn?.currentVersion).toBe(42);
+      expect(conn?.lastAckAt).toBeDefined();
+      expect(conn?.lastAckAt).toBeInstanceOf(Date);
     });
 
     it("does not update version on NACK", () => {
@@ -123,8 +126,8 @@ describe("KernelTracker", () => {
       tracker.acknowledge("k1", 42, false, "compilation error");
 
       const conn = tracker.getConnection("k1");
-      expect(conn!.currentVersion).toBe(0);
-      expect(conn!.lastAckAt).toBeNull();
+      expect(conn?.currentVersion).toBe(0);
+      expect(conn?.lastAckAt).toBeNull();
     });
 
     it("handles ACK from unknown kernel gracefully", () => {
@@ -194,7 +197,10 @@ describe("broadcastUpdate", () => {
     const failWriteFn = mock(() => {
       throw new Error("stream closed");
     });
-    const sFail = { write: failWriteFn } as unknown as grpc.ServerWritableStream<SubscribeRequestMessage, PolicyUpdateMessage>;
+    const sFail = { write: failWriteFn } as unknown as grpc.ServerWritableStream<
+      SubscribeRequestMessage,
+      PolicyUpdateMessage
+    >;
 
     kernelTracker.register("good", "org", "d", "t", sGood);
     kernelTracker.register("bad", "org", "d", "t", sFail);

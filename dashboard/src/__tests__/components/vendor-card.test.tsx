@@ -78,9 +78,7 @@ describe("VendorCard", () => {
   });
 
   it("uses name as fallback when display_name is empty", () => {
-    render(
-      <VendorCard vendor={makeVendor({ display_name: "", name: "anthropic" })} />,
-    );
+    render(<VendorCard vendor={makeVendor({ display_name: "", name: "anthropic" })} />);
 
     // When display_name is empty string, the `||` falls through to name
     expect(screen.getByText("anthropic")).toBeInTheDocument();

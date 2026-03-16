@@ -9,7 +9,7 @@
  * exercising it via a lightweight Elysia test app.
  */
 
-import { describe, expect, it, mock, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 // ---------------------------------------------------------------------------
 // We mock the DB and auth service to test middleware logic in isolation.
@@ -17,8 +17,12 @@ import { describe, expect, it, mock, beforeEach } from "bun:test";
 // so we mock those modules.
 // ---------------------------------------------------------------------------
 
-const mockAuthenticateByApiKey = mock(async (_token: string) => null as { id: string; role: string; orgId: string } | null);
-const mockAuthenticateBySessionToken = mock(async (_token: string) => null as { id: string; role: string; orgId: string } | null);
+const mockAuthenticateByApiKey = mock(
+  async (_token: string) => null as { id: string; role: string; orgId: string } | null,
+);
+const mockAuthenticateBySessionToken = mock(
+  async (_token: string) => null as { id: string; role: string; orgId: string } | null,
+);
 
 mock.module("../../db/postgres", () => ({
   db: {},
@@ -63,9 +67,7 @@ describe("authPlugin", () => {
     it("rejects request with no Authorization header", async () => {
       const app = createTestApp();
 
-      const res = await app.handle(
-        new Request("http://localhost/protected"),
-      );
+      const res = await app.handle(new Request("http://localhost/protected"));
 
       expect(res.status).toBe(401);
       const body = await res.json();
@@ -227,9 +229,7 @@ describe("authPlugin", () => {
     it("does not require auth for unprotected routes", async () => {
       const app = createTestApp();
 
-      const res = await app.handle(
-        new Request("http://localhost/public"),
-      );
+      const res = await app.handle(new Request("http://localhost/public"));
 
       expect(res.status).toBe(200);
       const body = await res.json();

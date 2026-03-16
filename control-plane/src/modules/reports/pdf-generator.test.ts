@@ -99,15 +99,9 @@ function createMinimalReportData(overrides: Partial<ReportData> = {}): ReportDat
         tokenCount: 1000,
       },
     ],
-    activePolicies: [
-      { name: "PII Detection", enabled: true, compilationStatus: "compiled" },
-    ],
-    vendorStatus: [
-      { name: "openai", displayName: "OpenAI", status: "approved", modelCount: 5 },
-    ],
-    activeFrameworks: [
-      { name: "EU AI Act", jurisdiction: "EU", activePolicyCount: 2 },
-    ],
+    activePolicies: [{ name: "PII Detection", enabled: true, compilationStatus: "compiled" }],
+    vendorStatus: [{ name: "openai", displayName: "OpenAI", status: "approved", modelCount: 5 }],
+    activeFrameworks: [{ name: "EU AI Act", jurisdiction: "EU", activePolicyCount: 2 }],
     ...overrides,
   };
 }

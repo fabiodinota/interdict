@@ -12,7 +12,7 @@
  *   rate_limit_rejections_total  — Counter {path}
  */
 
-import { Registry, Counter, Histogram } from "prom-client";
+import { Counter, Histogram, Registry } from "prom-client";
 
 // Dedicated registry — avoids polluting the global default
 export const metricsRegistry = new Registry();

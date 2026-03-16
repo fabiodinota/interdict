@@ -16,7 +16,7 @@
  * AuthService is also mocked to avoid database dependencies.
  */
 
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { Elysia } from "elysia";
 
 // ---------------------------------------------------------------------------
@@ -59,7 +59,13 @@ function makeMockAuthService(overrides: Record<string, unknown> = {}) {
     authenticateByApiKey: mock(async () => null),
     authenticateBySessionToken: mock(async () => null),
     exchangeApiKeyForSession: mock(async () => null),
-    createApiKey: mock(async () => ({ plaintext: "", keyId: "", prefix: "", label: null, createdAt: new Date() })),
+    createApiKey: mock(async () => ({
+      plaintext: "",
+      keyId: "",
+      prefix: "",
+      label: null,
+      createdAt: new Date(),
+    })),
     revokeApiKey: mock(async () => {}),
     listApiKeys: mock(async () => ({ items: [], nextCursor: null })),
     whoAmI: mock(async () => makeUser()),
@@ -204,7 +210,7 @@ function buildTestApp(opts: {
         }
 
         // Clear session cookie
-        if (cookie && cookie.interdict_session) {
+        if (cookie?.interdict_session) {
           cookie.interdict_session.set({
             value: "",
             httpOnly: true,
@@ -241,7 +247,10 @@ function buildTestApp(opts: {
           return Response.json(
             {
               success: false,
-              error: { code: "CODE_EXPIRED", message: "Code is invalid, expired, or already used." },
+              error: {
+                code: "CODE_EXPIRED",
+                message: "Code is invalid, expired, or already used.",
+              },
             },
             { status: 410 },
           );
@@ -684,9 +693,7 @@ describe("SAML Handlers", () => {
       const authService = makeMockAuthService();
       const app = buildTestApp({ authService });
 
-      const res = await app.handle(
-        new Request("http://localhost/api/v1/auth/saml/slo"),
-      );
+      const res = await app.handle(new Request("http://localhost/api/v1/auth/saml/slo"));
 
       expect(res.status).toBe(302);
       expect(authService.revokeSession).not.toHaveBeenCalled();

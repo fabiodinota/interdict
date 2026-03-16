@@ -58,36 +58,20 @@ describe("BundleDetailPanel", () => {
 
   it("renders nothing when closed", () => {
     const { container } = render(
-      <BundleDetailPanel
-        open={false}
-        onOpenChange={onOpenChange}
-        bundle={mockBundle}
-      />,
+      <BundleDetailPanel open={false} onOpenChange={onOpenChange} bundle={mockBundle} />,
     );
     expect(screen.queryByTestId("sheet")).not.toBeInTheDocument();
   });
 
   it("shows 'No bundle selected' when open with no bundle", () => {
-    render(
-      <BundleDetailPanel
-        open={true}
-        onOpenChange={onOpenChange}
-        bundle={null}
-      />,
-    );
+    render(<BundleDetailPanel open={true} onOpenChange={onOpenChange} bundle={null} />);
 
     expect(screen.getByText("No bundle selected")).toBeInTheDocument();
     expect(screen.getByText("Bundle Details")).toBeInTheDocument();
   });
 
   it("displays bundle metadata when open with bundle data", () => {
-    render(
-      <BundleDetailPanel
-        open={true}
-        onOpenChange={onOpenChange}
-        bundle={mockBundle}
-      />,
-    );
+    render(<BundleDetailPanel open={true} onOpenChange={onOpenChange} bundle={mockBundle} />);
 
     // Title truncated
     expect(screen.getByText(/bundle-abc123/)).toBeInTheDocument();
@@ -100,13 +84,7 @@ describe("BundleDetailPanel", () => {
   });
 
   it("displays raw cryptographic data", () => {
-    render(
-      <BundleDetailPanel
-        open={true}
-        onOpenChange={onOpenChange}
-        bundle={mockBundle}
-      />,
-    );
+    render(<BundleDetailPanel open={true} onOpenChange={onOpenChange} bundle={mockBundle} />);
 
     expect(screen.getByText("sha256:aabbccdd")).toBeInTheDocument();
     expect(screen.getByText("sha256:00112233")).toBeInTheDocument();
@@ -129,13 +107,7 @@ describe("BundleDetailPanel", () => {
   });
 
   it("omits verification section when no verification result", () => {
-    render(
-      <BundleDetailPanel
-        open={true}
-        onOpenChange={onOpenChange}
-        bundle={mockBundle}
-      />,
-    );
+    render(<BundleDetailPanel open={true} onOpenChange={onOpenChange} bundle={mockBundle} />);
 
     expect(screen.queryByTestId("verification-stepper")).not.toBeInTheDocument();
   });

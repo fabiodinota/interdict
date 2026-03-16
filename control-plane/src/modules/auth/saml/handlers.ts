@@ -15,7 +15,7 @@
 
 import { Elysia } from "elysia";
 import { db as pgDb } from "../../../db/postgres";
-import { type RateLimiter, createRateLimitHook } from "../rate-limiter";
+import { createRateLimitHook, type RateLimiter } from "../rate-limiter";
 import { type AuthService, createAuthService } from "../service";
 import { idp, samlEnabled, sp } from "./config";
 import { getSpMetadata } from "./metadata";
@@ -108,51 +108,57 @@ export function createSamlRoutes(rateLimiter?: RateLimiter) {
       // POST /acs -- Assertion Consumer Service
       // Rate limited (H-02): prevents brute-force SAML assertion replay
       // -----------------------------------------------------------------------
-      .post("/acs", async (rawCtx) => {
-        const { body, store, redirect } = rawCtx as {
-          body: Record<string, unknown>;
-          store: { db?: typeof pgDb };
-          redirect: (url: string) => Response;
-        };
-        try {
-          // Parse and validate the SAML response
-          const parseResult = await spRef.parseLoginResponse(idpRef, "post", {
-            body,
-          });
-
-          const { email, displayName, roleHint } = extractAttributes(
-            parseResult.extract as SamlExtract,
-          );
-
-          if (!email) {
-            return new Response("SAML assertion missing email/nameID", {
-              status: 400,
+      .post(
+        "/acs",
+        async (rawCtx) => {
+          const { body, store, redirect } = rawCtx as {
+            body: Record<string, unknown>;
+            store: { db?: typeof pgDb };
+            redirect: (url: string) => Response;
+          };
+          try {
+            // Parse and validate the SAML response
+            const parseResult = await spRef.parseLoginResponse(idpRef, "post", {
+              body,
             });
+
+            const { email, displayName, roleHint } = extractAttributes(
+              parseResult.extract as SamlExtract,
+            );
+
+            if (!email) {
+              return new Response("SAML assertion missing email/nameID", {
+                status: 400,
+              });
+            }
+
+            // JIT provision user and create session
+            const authService: AuthService = createAuthService(store.db ?? pgDb);
+            const user = await authService.findOrCreateSamlUser(
+              email,
+              displayName,
+              (parseResult.extract as SamlExtract).nameID || email,
+              roleHint,
+            );
+
+            // CRIT-002 + Phase 17: issue a short-lived (60s) one-time code.
+            // No session is created here — it is minted on-the-fly during the
+            // backchannel code exchange so no raw token ever sits in Postgres.
+            const code = await authService.createSamlHandoffCode(user.id);
+            const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?code=${code}`;
+            return redirect(callbackUrl);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("[SAML] ACS error:", msg);
+            return new Response("SAML authentication failed", { status: 401 });
           }
-
-          // JIT provision user and create session
-          const authService: AuthService = createAuthService(store.db ?? pgDb);
-          const user = await authService.findOrCreateSamlUser(
-            email,
-            displayName,
-            (parseResult.extract as SamlExtract).nameID || email,
-            roleHint,
-          );
-
-          // CRIT-002 + Phase 17: issue a short-lived (60s) one-time code.
-          // No session is created here — it is minted on-the-fly during the
-          // backchannel code exchange so no raw token ever sits in Postgres.
-          const code = await authService.createSamlHandoffCode(user.id);
-          const callbackUrl = `${DASHBOARD_URL}/api/auth/saml-callback?code=${code}`;
-          return redirect(callbackUrl);
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          console.error("[SAML] ACS error:", msg);
-          return new Response("SAML authentication failed", { status: 401 });
-        }
-      }, rateLimiter ? {
-        beforeHandle: createRateLimitHook(rateLimiter),
-      } : {})
+        },
+        rateLimiter
+          ? {
+              beforeHandle: createRateLimitHook(rateLimiter),
+            }
+          : {},
+      )
 
       // -----------------------------------------------------------------------
       // GET /slo -- Single Logout

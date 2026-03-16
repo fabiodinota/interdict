@@ -41,8 +41,7 @@ function checkOpaBinary(path: string): void {
 
 export function loadConfig(): Config {
   const isProduction = process.env.NODE_ENV === "production";
-  const allowDevDefaults =
-    !isProduction && process.env.ALLOW_DEV_DEFAULTS === "true";
+  const allowDevDefaults = !isProduction && process.env.ALLOW_DEV_DEFAULTS === "true";
 
   function devFallback(value: string): string | undefined {
     return allowDevDefaults ? value : undefined;

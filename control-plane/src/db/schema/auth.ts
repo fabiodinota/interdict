@@ -7,15 +7,7 @@
  * membership, and SAML SSO browser sessions.
  */
 
-import {
-  boolean,
-  index,
-  pgTable,
-  primaryKey,
-  timestamp,
-  uuid,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, primaryKey, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { departments, users } from "./organization";
 
 // ---------------------------------------------------------------------------
@@ -147,5 +139,3 @@ export const signingKeys = pgTable(
   },
   (table) => [index("signing_keys_active_idx").on(table.isActive)],
 );
-
-

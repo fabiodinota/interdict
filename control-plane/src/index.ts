@@ -9,17 +9,13 @@ import { Elysia } from "elysia";
 import { getConfig } from "./config";
 import { clickhouse } from "./db/clickhouse";
 import { db } from "./db/postgres";
-import {
-  metricsRegistry,
-  metricsOnBeforeHandle,
-  metricsOnAfterResponse,
-} from "./metrics";
+import { metricsOnAfterResponse, metricsOnBeforeHandle, metricsRegistry } from "./metrics";
 import { anomaliesModule } from "./modules/anomalies";
 import { auditModule } from "./modules/audit";
 import { authModule } from "./modules/auth";
+import { startAuthCleanup } from "./modules/auth/cleanup";
 import { authPlugin } from "./modules/auth/middleware";
 import { compilerModule } from "./modules/compiler";
-import { startAuthCleanup } from "./modules/auth/cleanup";
 import { startCompilationWorker } from "./modules/compiler/worker";
 import { departmentOverridesModule } from "./modules/department-overrides";
 import { startDistributionServer, stopDistributionServer } from "./modules/distribution";

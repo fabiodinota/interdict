@@ -45,9 +45,7 @@ describe("AnomalyList", () => {
     render(<AnomalyList alerts={[]} />);
 
     expect(screen.getByText("No anomalies detected")).toBeInTheDocument();
-    expect(
-      screen.getByText(/monitoring for volume spikes/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/monitoring for volume spikes/i)).toBeInTheDocument();
     expect(screen.queryByTestId("anomaly-card")).not.toBeInTheDocument();
   });
 });

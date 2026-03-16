@@ -18,9 +18,7 @@ describe("RouteError", () => {
     render(<RouteError error={error} reset={reset} />);
 
     expect(screen.getByText("Dashboard Error")).toBeInTheDocument();
-    expect(
-      screen.getByText("This workspace view failed to load."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("This workspace view failed to load.")).toBeInTheDocument();
     expect(screen.getByText("Network timeout")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
@@ -42,9 +40,7 @@ describe("RouteError", () => {
 
     render(<RouteError error={error} reset={reset} />);
 
-    expect(
-      screen.getByText("An unexpected error interrupted the dashboard."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("An unexpected error interrupted the dashboard.")).toBeInTheDocument();
   });
 
   it("has no axe-core accessibility violations", async () => {

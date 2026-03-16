@@ -8,10 +8,10 @@
 import { describe, expect, it, mock } from "bun:test";
 import type { ClickHouseClient } from "@clickhouse/client";
 import {
-  queryVolumeAnomalies,
   queryOffHoursUsage,
-  queryVendorSwitching,
   queryTopicDrift,
+  queryVendorSwitching,
+  queryVolumeAnomalies,
 } from "./queries";
 
 // ---------------------------------------------------------------------------
@@ -19,9 +19,11 @@ import {
 // ---------------------------------------------------------------------------
 
 function createMockClickhouse(rows: unknown[] = []) {
-  const queryFn = mock(async (opts: { query: string; format?: string; query_params?: Record<string, unknown> }) => ({
-    json: async () => rows,
-  }));
+  const queryFn = mock(
+    async (_opts: { query: string; format?: string; query_params?: Record<string, unknown> }) => ({
+      json: async () => rows,
+    }),
+  );
 
   return {
     client: { query: queryFn } as unknown as ClickHouseClient,
@@ -52,7 +54,13 @@ describe("queryVolumeAnomalies", () => {
 
   it("returns rows from ClickHouse response", async () => {
     const rows = [
-      { actor_identity: "alice", current_count: 500, baseline_avg: 100, baseline_std: 20, ratio: 5.0 },
+      {
+        actor_identity: "alice",
+        current_count: 500,
+        baseline_avg: 100,
+        baseline_std: 20,
+        ratio: 5.0,
+      },
     ];
     const { client } = createMockClickhouse(rows);
 

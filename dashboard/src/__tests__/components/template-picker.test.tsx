@@ -59,9 +59,7 @@ describe("TemplatePicker", () => {
     expect(screen.getByText("2 configurable parameters")).toBeInTheDocument();
 
     await user.click(screen.getByText("Block Vendor"));
-    expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "block-vendor" }),
-    );
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: "block-vendor" }));
   });
 
   it("calls onBack when back button is clicked", async () => {
@@ -75,15 +73,8 @@ describe("TemplatePicker", () => {
   });
 
   it("shows empty state when category has no templates", () => {
-    render(
-      <TemplatePicker
-        {...defaultProps}
-        category={"custom" as const}
-      />,
-    );
+    render(<TemplatePicker {...defaultProps} category={"custom" as const} />);
 
-    expect(
-      screen.getByText(/no templates available/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/no templates available/i)).toBeInTheDocument();
   });
 });
