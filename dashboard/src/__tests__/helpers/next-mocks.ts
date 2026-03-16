@@ -9,6 +9,32 @@
 import { vi } from "vitest";
 
 // ---------------------------------------------------------------------------
+// Module-level mock store — vi.mock must be at top level for proper hoisting
+// ---------------------------------------------------------------------------
+let mockCookieJar = new Map<string, string>();
+
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({
+    get(name: string) {
+      const v = mockCookieJar.get(name);
+      return v !== undefined ? { name, value: v } : undefined;
+    },
+    getAll() {
+      return [...mockCookieJar.entries()].map(([name, value]) => ({ name, value }));
+    },
+    set(...args: unknown[]) {
+      if (typeof args[0] === "string") {
+        mockCookieJar.set(args[0], String(args[1]));
+      }
+    },
+    delete(name: string) {
+      mockCookieJar.delete(name);
+    },
+    _jar: mockCookieJar,
+  })),
+}));
+
+// ---------------------------------------------------------------------------
 // Mock cookie jar used by next/headers cookies()
 // ---------------------------------------------------------------------------
 export function createMockCookieStore(initial: Record<string, string> = {}): {
@@ -73,14 +99,28 @@ export function buildNextRequest(
 }
 
 // ---------------------------------------------------------------------------
-// Setup vi.mock for next/headers so getSessionToken() works
+// Configure the module-level next/headers mock with specific cookie values
 // ---------------------------------------------------------------------------
 export function mockNextHeadersCookies(jar: Record<string, string>) {
-  const store = createMockCookieStore(jar);
-  vi.mock("next/headers", () => ({
-    cookies: vi.fn(async () => store),
-  }));
-  return store;
+  mockCookieJar = new Map(Object.entries(jar));
+  return {
+    get(name: string) {
+      const v = mockCookieJar.get(name);
+      return v !== undefined ? { name, value: v } : undefined;
+    },
+    getAll() {
+      return [...mockCookieJar.entries()].map(([name, value]) => ({ name, value }));
+    },
+    set(...args: unknown[]) {
+      if (typeof args[0] === "string") {
+        mockCookieJar.set(args[0], String(args[1]));
+      }
+    },
+    delete(name: string) {
+      mockCookieJar.delete(name);
+    },
+    _jar: mockCookieJar,
+  };
 }
 
 // ---------------------------------------------------------------------------
