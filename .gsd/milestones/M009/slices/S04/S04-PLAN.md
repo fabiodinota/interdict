@@ -44,7 +44,7 @@
   - Verify: `cd dashboard && npx vitest run home-page review-queue-simple`
   - Done when: Both tests pass, no render-phase state updates remain in either component
 
-- [ ] **T02: SlaTimer shared interval + SAML cookie consolidation** `est:45m`
+- [x] **T02: SlaTimer shared interval + SAML cookie consolidation** `est:45m`
   - Why: SlaTimer creates one `setInterval` per mounted instance — 50 review items means 50 intervals. SAML callback hardcodes cookie options instead of using the shared `getSessionCookieOptions()` helper (D057).
   - Files: `dashboard/src/components/reviews/SlaTimer.tsx`, `dashboard/src/__tests__/components/sla-timer.test.tsx`, `dashboard/src/app/api/auth/saml-callback/route.ts`, `dashboard/src/__tests__/api/auth-saml-callback.test.ts`
   - Do:

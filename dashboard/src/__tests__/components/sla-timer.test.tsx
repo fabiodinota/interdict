@@ -2,10 +2,11 @@
  * Tests for dashboard/src/components/reviews/SlaTimer.tsx
  *
  * Validates countdown display, color-coded severity transitions at SLA thresholds,
- * and EXPIRED state using fake timers.
+ * EXPIRED state using fake timers, and shared interval consolidation (one
+ * setInterval for any number of mounted instances).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, cleanup } from "@testing-library/react";
 import { SlaTimer } from "@/components/reviews/SlaTimer";
 
 describe("SlaTimer", () => {
@@ -108,5 +109,94 @@ describe("SlaTimer", () => {
     });
 
     expect(screen.getByText("0m 25s")).toBeInTheDocument();
+  });
+});
+
+describe("SlaTimer shared interval", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // Ensure clean module-level state — unmount any leftover instances
+    cleanup();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("uses a single setInterval for multiple mounted instances", () => {
+    const setIntervalSpy = vi.spyOn(global, "setInterval");
+    const now = new Date("2025-06-01T12:00:00Z");
+    vi.setSystemTime(now);
+
+    const deadline1 = new Date("2025-06-01T13:00:00Z").toISOString(); // 1h
+    const deadline2 = new Date("2025-06-01T14:00:00Z").toISOString(); // 2h
+    const deadline3 = new Date("2025-06-01T15:00:00Z").toISOString(); // 3h
+
+    const { unmount: u1 } = render(<SlaTimer deadline={deadline1} />);
+    const { unmount: u2 } = render(<SlaTimer deadline={deadline2} />);
+    const { unmount: u3 } = render(<SlaTimer deadline={deadline3} />);
+
+    // Only 1 setInterval should have been created, not 3
+    const intervalCalls = setIntervalSpy.mock.calls.filter(
+      ([, ms]) => ms === 1000,
+    );
+    expect(intervalCalls).toHaveLength(1);
+
+    // All three timers render
+    expect(screen.getByText("1h 0m")).toBeInTheDocument();
+    expect(screen.getByText("2h 0m")).toBeInTheDocument();
+    expect(screen.getByText("3h 0m")).toBeInTheDocument();
+
+    u1();
+    u2();
+    u3();
+    setIntervalSpy.mockRestore();
+  });
+
+  it("clears the interval when all instances unmount", () => {
+    const clearIntervalSpy = vi.spyOn(global, "clearInterval");
+    const now = new Date("2025-06-01T12:00:00Z");
+    vi.setSystemTime(now);
+
+    const deadline1 = new Date("2025-06-01T13:00:00Z").toISOString();
+    const deadline2 = new Date("2025-06-01T14:00:00Z").toISOString();
+
+    const { unmount: u1 } = render(<SlaTimer deadline={deadline1} />);
+    const { unmount: u2 } = render(<SlaTimer deadline={deadline2} />);
+
+    clearIntervalSpy.mockClear();
+
+    // Unmount first — interval should NOT be cleared yet (one subscriber remains)
+    u1();
+    expect(clearIntervalSpy).not.toHaveBeenCalled();
+
+    // Unmount last — interval MUST be cleared
+    u2();
+    expect(clearIntervalSpy).toHaveBeenCalled();
+
+    clearIntervalSpy.mockRestore();
+  });
+
+  it("advances all instances in sync from the shared interval", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    vi.setSystemTime(now);
+
+    const deadline1 = new Date("2025-06-01T12:00:20Z").toISOString(); // 20s
+    const deadline2 = new Date("2025-06-01T12:00:40Z").toISOString(); // 40s
+
+    render(<SlaTimer deadline={deadline1} />);
+    render(<SlaTimer deadline={deadline2} />);
+
+    expect(screen.getByText("0m 20s")).toBeInTheDocument();
+    expect(screen.getByText("0m 40s")).toBeInTheDocument();
+
+    // Advance 1 second — both should decrement
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+
+    expect(screen.getByText("0m 19s")).toBeInTheDocument();
+    expect(screen.getByText("0m 39s")).toBeInTheDocument();
   });
 });

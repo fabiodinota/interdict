@@ -90,6 +90,13 @@ Two behavioral correctness fixes:
 cd dashboard && npx vitest run sla-timer auth-saml-callback
 ```
 
+## Observability Impact
+
+- **SlaTimer interval count**: In React DevTools Profiler, all mounted SlaTimer instances share a single interval source visible in the hooks inspector. The module-level `subscribers` set size equals the number of mounted timers — inspectable via breakpoint in `subscribe()`.
+- **Interval leak detection**: If all SlaTimer instances unmount, `tickInterval` becomes `null` and `subscribers.size === 0`. A leaked interval would show as a non-null `tickInterval` with an empty subscriber set — impossible by construction since cleanup is symmetric.
+- **SAML cookie config**: The cookie options are now driven by `COOKIE_SECURE` env var (D057). In non-production environments, set `COOKIE_SECURE=true` to force secure cookies. Incorrect cookie config surfaces as login failures after SAML redirect — check `Set-Cookie` header in browser DevTools Network tab.
+- **Test suite**: `npx vitest run sla-timer auth-saml-callback` — 19 tests. Regressions reintroducing per-instance intervals will be caught by the `setInterval` spy assertion.
+
 ## Inputs
 
 - `dashboard/src/components/reviews/SlaTimer.tsx` — per-instance `setInterval` at line ~29
