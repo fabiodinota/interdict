@@ -75,6 +75,13 @@ docker compose config | grep -A 30 "cert-init:"
 - D053 decision: `apk --root /tmp/apkroot` pattern for read-only rootfs with runtime package install
 - D059 decision: CA validity already reduced to 1 year (cert script is correct, only the comment was stale which T01 fixes)
 
+## Observability Impact
+
+- **Container startup:** cert-init logs `[cert-init]` prefixed messages to stdout via `json-file` logging driver. Failures surface as non-zero exit code — inspect with `docker compose ps cert-init` and `docker compose logs cert-init`.
+- **Security posture:** `docker compose config | grep -A 30 "cert-init:"` shows all hardening properties (`read_only`, `user`, `security_opt`, `tmpfs`) and confirms no `data` network membership. Future agents verify posture by grepping config output.
+- **apk install path:** If `apk --root /tmp/apkroot` fails (e.g. network unreachable, package not found), the `&&` chain aborts before cert generation — container exits non-zero with apk error in logs.
+- **Cert volume writes:** The `certs:/certs` named volume remains writable despite `read_only: true`. Cert generation output lands in the volume and is inspectable via `docker run --rm -v interdict_certs:/certs alpine ls -la /certs/`.
+
 ## Expected Output
 
 - `docker-compose.yml` cert-init service block includes `user`, `read_only`, `security_opt`, `tmpfs`

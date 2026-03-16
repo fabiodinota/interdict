@@ -38,7 +38,7 @@
   - Verify: `cargo clippy --workspace --all-targets -- -D warnings` passes; `grep -c "10-year" docker/certs/generate-internal-ca.sh` returns `0`; `grep "cargo fmt" package.json` matches new handler
   - Done when: all three verifications pass
 
-- [ ] **T02: Docker Compose cert-init hardening** `est:30m`
+- [x] **T02: Docker Compose cert-init hardening** `est:30m`
   - Why: Closes M-07 and L-14 — cert-init currently runs as root with full network access and writable rootfs. Must match Helm cert-init's security posture. The tricky part: `read_only: true` prevents `apk add openssl`, solved by D053's `apk --root /tmp/apkroot` pattern. Network isolation: remove from `data` network entirely (gets default bridge for internet/apk, can't reach app services).
   - Files: `docker-compose.yml`
   - Do: Edit the cert-init service block (lines 126-144) to add: `user: "1000:1000"`, `read_only: true`, `security_opt: ["no-new-privileges:true"]`, `tmpfs: ["/tmp"]`. Remove `networks: - data` entirely so cert-init is not on any named network (gets default bridge for apk internet access). Modify the `command` to use the `apk --root /tmp/apkroot` pattern: `apk --root /tmp/apkroot --initdb add --no-cache openssl && /tmp/apkroot/usr/bin/openssl version && sh /scripts/generate-internal-ca.sh`. The openssl binary path changes because it's installed under `/tmp/apkroot/usr/bin/`. The generate-internal-ca.sh script calls `openssl` directly — either add `/tmp/apkroot/usr/bin` to PATH in the command, or set `PATH=/tmp/apkroot/usr/bin:$PATH` before invoking the script. Preferred approach: `PATH=/tmp/apkroot/usr/bin:$PATH sh /scripts/generate-internal-ca.sh`.

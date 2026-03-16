@@ -125,6 +125,12 @@ services:
 
   cert-init:
     image: alpine:3.21
+    user: "1000:1000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     logging:
       driver: json-file
       options:
@@ -133,13 +139,13 @@ services:
     entrypoint: /bin/sh
     command:
       - -c
-      - "apk add --no-cache openssl && sh /scripts/generate-internal-ca.sh"
+      - |
+        apk --root /tmp/apkroot --initdb add --no-cache openssl &&
+        PATH=/tmp/apkroot/usr/bin:$$PATH sh /scripts/generate-internal-ca.sh
     volumes:
       - ./docker/certs/generate-internal-ca.sh:/scripts/generate-internal-ca.sh:ro
       - certs:/certs
     restart: "no"
-    networks:
-      - data
 
   # ---------------------------------------------------------------------------
   # Interdict Services
