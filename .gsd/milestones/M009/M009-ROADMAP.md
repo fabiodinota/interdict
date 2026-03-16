@@ -67,7 +67,7 @@ This milestone is complete only when all are true:
 
 ## Slices
 
-- [ ] **S01: Evidence Pipeline Resilience** `risk:high` `depends:[]`
+- [x] **S01: Evidence Pipeline Resilience** `risk:high` `depends:[]`
   > After this: ClickHouse writes retry with exponential backoff (5 attempts) and spill to dead-letter files on exhaustion. S3 Merkle anchors are persisted locally before tree reset, with retry (3 attempts) and startup recovery of pending anchors. ClickHouse retention TTL uses configured `retention_days`. Bundle ID duplicates are rejected. Inserter batch settings are configurable via env vars. `cargo test -p evidence-collector` passes with all new tests.
 
 - [ ] **S02: Security Hardening — Proxy, Helm, Secrets** `risk:high` `depends:[]`
