@@ -38,8 +38,14 @@ Usage:
       {{- end }}
       echo "iptables traffic redirect configured"
   securityContext:
-    capabilities:
-      add: ["NET_ADMIN"]
     runAsUser: 0
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+      add:
+        - NET_ADMIN
+    seccompProfile:
+      type: RuntimeDefault
   restartPolicy: Never  # Not a sidecar -- runs once during init
 {{- end }}

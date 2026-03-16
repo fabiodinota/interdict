@@ -45,7 +45,7 @@
   - Verify: `docker compose config` (from repo root) succeeds and output shows cert-init with `read_only: true`, `user: "1000:1000"`, no `data` network listed under cert-init's networks
   - Done when: `docker compose config` validates; cert-init has `user`, `read_only`, `security_opt`, `tmpfs`, and does NOT appear on the `data` network
 
-- [ ] **T03: Helm minio-init and sidecar-init security contexts** `est:30m`
+- [x] **T03: Helm minio-init and sidecar-init security contexts** `est:30m`
   - Why: Closes M-08 (minio-init missing security fields) and L-15 (sidecar-init missing `drop: [ALL]`). The sidecar container template (`_sidecar-container.tpl` lines 84-92) is the reference pattern for full securityContext.
   - Files: `helm/interdict/templates/minio-init-job.yaml`, `helm/interdict/templates/sidecar/_sidecar-init.tpl`
   - Do: (1) In `minio-init-job.yaml`, add to the existing securityContext block (currently lines 61-65: `runAsNonRoot: true`, `runAsUser: 1000`, `runAsGroup: 1000`, `allowPrivilegeEscalation: false`): add `readOnlyRootFilesystem: true`, `capabilities: { drop: [ALL] }`, `seccompProfile: { type: RuntimeDefault }`. (2) In `_sidecar-init.tpl`, the current securityContext (lines 40-43) has only `capabilities: { add: ["NET_ADMIN"] }` and `runAsUser: 0`. Replace with: `capabilities: { drop: [ALL], add: [NET_ADMIN] }`, add `allowPrivilegeEscalation: false` (NET_ADMIN is granted at container start via capabilities, not via privilege escalation — works on standard runtimes), add `seccompProfile: { type: RuntimeDefault }`. Keep `runAsUser: 0` (iptables requires root).

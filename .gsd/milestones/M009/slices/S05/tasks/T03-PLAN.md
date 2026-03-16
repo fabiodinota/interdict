@@ -84,6 +84,17 @@ helm template interdict helm/interdict | grep -B2 -A5 "NET_ADMIN"  # should show
 - `helm/interdict/templates/sidecar/_sidecar-init.tpl` lines 40-43: missing `drop: [ALL]` and other fields
 - Reference pattern: `helm/interdict/templates/sidecar/_sidecar-container.tpl` lines 84-92
 
+## Observability Impact
+
+These are declarative Helm template changes — no runtime signals change. Inspection surfaces:
+
+- `helm template interdict helm/interdict | grep -A 15 "name: minio-init"` — shows complete securityContext for minio-init
+- `helm template interdict helm/interdict | grep -B2 -A10 "NET_ADMIN"` — shows drop/add capabilities and seccompProfile for sidecar-init
+- `kubectl describe pod <pod>` — at deploy time, the Pod spec will show the enforced security fields
+- Kubernetes admission controllers (OPA/Gatekeeper, Kyverno) that require `drop: [ALL]` or `seccompProfile` will now pass these init containers
+
+Failure shape: if capabilities are misconfigured, the init container will fail at runtime with a permission-denied error in pod events (`kubectl describe pod`).
+
 ## Expected Output
 
 - Both init containers have complete securityContext blocks
