@@ -79,7 +79,7 @@ This milestone is complete only when all are true:
 - [x] **S04: Dashboard Quality & Accessibility** `risk:medium` `depends:[]`
   > After this: Render-phase side effects in dashboard home page and ReviewQueue replaced with `useEffect`. SAML callback uses shared cookie options. SlaTimer uses single shared interval instead of per-instance. BatchVerifyTable checkboxes have aria-labels. VendorCard has aria-expanded. Anomaly severity tabs have proper ARIA roles. `npx vitest run` passes with zero warnings.
 
-- [ ] **S05: Infrastructure & CI Hardening** `risk:medium` `depends:[]`
+- [x] **S05: Infrastructure & CI Hardening** `risk:medium` `depends:[]`
   > After this: Docker Compose cert-init runs as non-root with read-only rootfs and no network access. hadolint and kube-score CI downloads verified by SHA256 checksum. minio-init job has full security context. Sidecar-init drops all capabilities except NET_ADMIN. Control-plane Dockerfile separates devDependencies. Workspace `unsafe_code` lint is `deny` with per-crate exceptions. Stale cert comment fixed. lint-staged Rust handler improved. `docker compose config`, `helm lint`, and `cargo clippy` pass.
 
 - [ ] **S06: Proto Safety, Observability & Testing** `risk:medium` `depends:[S01]`

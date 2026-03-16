@@ -40,7 +40,7 @@ Flaky kernel test uses notification channel. Render-phase side effects replaced 
 
 ### FH-INFRA-01 — Docker/Helm security contexts consistent, CI tool integrity verified, container hardening complete.
 
-- Status: active
+- Status: validated
 - Class: security
 - Source: v1.6 foundation assessment (M-07, M-08, L-14, L-15, L-16, L-17, L-18, L-19, L-22, L-25)
 - Primary Slice: M009/S05
