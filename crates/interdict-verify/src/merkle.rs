@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
-use rs_merkle::{MerkleTree, algorithms::Sha256 as MerkleSha256};
+use rs_merkle::{MerkleProof, MerkleTree, algorithms::Sha256 as MerkleSha256};
 
 use crate::proto::EvidenceBundle;
 
@@ -156,6 +156,23 @@ pub fn parse_anchor_json(json_str: &str) -> Result<MerkleAnchor> {
     })
 }
 
+/// Verify a Merkle inclusion proof for a single bundle.
+///
+/// Returns `true` if the proof is valid for the given leaf hash and expected root.
+/// Returns `false` on invalid/corrupted proof bytes or verification failure (never panics).
+pub fn verify_bundle_proof(
+    proof_bytes: &[u8],
+    leaf_hash: &[u8; 32],
+    leaf_index: usize,
+    total_leaves: usize,
+    expected_root: &[u8; 32],
+) -> bool {
+    let Ok(proof) = MerkleProof::<MerkleSha256>::from_bytes(proof_bytes) else {
+        return false;
+    };
+    proof.verify(*expected_root, &[leaf_index], &[*leaf_hash], total_leaves)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -258,5 +275,69 @@ mod tests {
     #[test]
     fn compute_merkle_root_empty_returns_none() {
         assert!(compute_merkle_root(&[]).is_none());
+    }
+
+    #[test]
+    fn verify_bundle_proof_valid() {
+        let hashes: Vec<[u8; 32]> = (0..5)
+            .map(|i| {
+                let mut h = [0u8; 32];
+                h[0] = i;
+                h
+            })
+            .collect();
+
+        let tree = MerkleTree::<MerkleSha256>::from_leaves(&hashes);
+        let root = tree.root().unwrap();
+
+        // Prove leaf at index 3
+        let proof = tree.proof(&[3]);
+        let proof_bytes = proof.to_bytes();
+
+        assert!(verify_bundle_proof(
+            &proof_bytes,
+            &hashes[3],
+            3,
+            hashes.len(),
+            &root,
+        ));
+    }
+
+    #[test]
+    fn verify_bundle_proof_corrupted_returns_false() {
+        let hashes: Vec<[u8; 32]> = (0..4)
+            .map(|i| {
+                let mut h = [0u8; 32];
+                h[0] = i;
+                h
+            })
+            .collect();
+
+        let tree = MerkleTree::<MerkleSha256>::from_leaves(&hashes);
+        let root = tree.root().unwrap();
+        let proof = tree.proof(&[1]);
+        let mut proof_bytes = proof.to_bytes();
+
+        // Corrupt the proof bytes
+        if let Some(b) = proof_bytes.last_mut() {
+            *b ^= 0xFF;
+        }
+
+        assert!(!verify_bundle_proof(
+            &proof_bytes,
+            &hashes[1],
+            1,
+            hashes.len(),
+            &root,
+        ));
+
+        // Also test completely garbage bytes
+        assert!(!verify_bundle_proof(
+            &[0xFF; 7],
+            &hashes[1],
+            1,
+            hashes.len(),
+            &root,
+        ));
     }
 }

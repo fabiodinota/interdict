@@ -394,7 +394,7 @@ fn test_clickhouse_row_serialization() {
     assert_eq!(row, decoded, "ClickHouse row roundtrip should be lossless");
 
     // Verify field names match the DDL schema.
-    let ddl = evidence_collector::storage::clickhouse::table_ddl();
+    let ddl = evidence_collector::storage::clickhouse::table_ddl(2555);
     assert!(ddl.contains("bundle_id"), "DDL should contain bundle_id");
     assert!(ddl.contains("kernel_id"), "DDL should contain kernel_id");
     assert!(

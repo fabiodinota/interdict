@@ -1,8 +1,7 @@
 /**
  * Seed Script - Identity Bootstrap & Regulatory Framework Policy Packs
  *
- * Seeds identity data (departments, users, service accounts, API keys,
- * role permissions) and regulatory framework definitions with Rego policies
+ * Seeds identity data (departments, users, service accounts, API keys) and regulatory framework definitions with Rego policies
  * into PostgreSQL on first deployment. Idempotent -- skips records that
  * already exist.
  *
@@ -23,7 +22,6 @@ import {
   frameworks,
   policies,
   policyVersions,
-  rolePermissions,
   userDepartments,
   users,
 } from "../db/schema/index";
@@ -71,7 +69,7 @@ function generateApiKey(): { plaintext: string; hash: string; prefix: string } {
 
 /**
  * Seeds identity data: departments, users, service accounts, API keys,
- * user-department memberships, and default role permissions.
+ * user-department memberships.
  *
  * Idempotent: skips existing records by unique key (name/email/role+permission).
  * API keys are only generated for users that have no existing keys.
@@ -240,29 +238,7 @@ async function seedIdentity(): Promise<void> {
     }
   }
 
-  // 4. Seed default role permissions
-  console.log("[seed] Seeding default role permissions...");
-
-  for (const [role, perms] of Object.entries(seedData.defaultPermissions)) {
-    for (const permission of perms) {
-      const existing = await db
-        .select({ id: rolePermissions.id })
-        .from(rolePermissions)
-        .where(and(eq(rolePermissions.role, role), eq(rolePermissions.permission, permission)))
-        .limit(1);
-
-      if (existing.length === 0) {
-        await db.insert(rolePermissions).values({
-          role,
-          permission,
-          isGranted: true,
-        });
-      }
-    }
-    console.log(`[seed]   Role '${role}': ${perms.length} permissions seeded`);
-  }
-
-  // 5. Print generated API key metadata without revealing secrets
+  // 4. Print generated API key metadata without revealing secrets
   if (generatedKeys.length > 0) {
     for (const line of buildSeedKeyOutput(generatedKeys)) {
       console.log(line);

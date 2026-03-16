@@ -191,4 +191,22 @@ describe("BatchVerifyTable", () => {
     await user.click(screen.getByText("Previous"));
     expect(onPreviousPage).toHaveBeenCalledTimes(1);
   });
+
+  it("header checkbox has aria-label 'Select all bundles'", () => {
+    const bundles = makeBundles(3);
+    render(<BatchVerifyTable {...defaultProps} data={makeResponse(bundles)} />);
+
+    expect(screen.getByRole("checkbox", { name: "Select all bundles" })).toBeInTheDocument();
+  });
+
+  it("row checkboxes have aria-labels with bundle identifiers", () => {
+    const bundles = makeBundles(3);
+    render(<BatchVerifyTable {...defaultProps} data={makeResponse(bundles)} />);
+
+    const rowCheckboxes = screen.getAllByRole("checkbox", { name: /Select bundle/ });
+    expect(rowCheckboxes).toHaveLength(3);
+    expect(rowCheckboxes[0]).toHaveAttribute("aria-label", "Select bundle bundle-1");
+    expect(rowCheckboxes[1]).toHaveAttribute("aria-label", "Select bundle bundle-2");
+    expect(rowCheckboxes[2]).toHaveAttribute("aria-label", "Select bundle bundle-3");
+  });
 });

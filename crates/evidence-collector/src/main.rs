@@ -7,10 +7,13 @@ use evidence_collector::config::{CollectorConfig, SigningMode};
 use evidence_collector::grpc::proto::evidence_collector_service_server::EvidenceCollectorServiceServer;
 use evidence_collector::grpc::service::EvidenceCollectorGrpcService;
 use evidence_collector::merkle::builder::{self, HourlyMerkleBuilder};
+use evidence_collector::merkle::persistence::{anchor_dir, recover_pending_anchors};
+use evidence_collector::metrics::{CollectorMetrics, serve_metrics};
 use evidence_collector::signing::{
     KmsSigningProvider, LocalSigningProvider, RotatingSigningProvider, SigningProvider,
 };
-use evidence_collector::storage::clickhouse::ClickHouseWriter;
+use evidence_collector::storage::clickhouse::{ClickHouseWriter, InserterBatchSettings};
+use evidence_collector::storage::dead_letter::dead_letter_dir;
 use evidence_collector::storage::s3::S3Anchor;
 use tokio::sync::{Mutex, mpsc};
 use tokio_util::sync::CancellationToken;
@@ -76,6 +79,16 @@ async fn main() -> Result<()> {
     // Initialize chain manager for per-kernel hash linkage.
     let chain_manager = Arc::new(Mutex::new(ChainManager::new()));
 
+    // Ensure dead-letter directory exists at startup.
+    tokio::fs::create_dir_all(dead_letter_dir(&cfg.data_dir))
+        .await
+        .context("failed to create dead-letter directory")?;
+
+    // Ensure merkle-anchors directory exists at startup.
+    tokio::fs::create_dir_all(anchor_dir(&cfg.data_dir))
+        .await
+        .context("failed to create merkle-anchors directory")?;
+
     // Initialize ClickHouse batched writer (runs DDL on startup).
     let clickhouse_writer = Arc::new(
         ClickHouseWriter::new(
@@ -83,6 +96,13 @@ async fn main() -> Result<()> {
             &cfg.clickhouse_database,
             &cfg.clickhouse_user,
             &cfg.clickhouse_password,
+            cfg.data_dir.clone(),
+            cfg.retention_days,
+            InserterBatchSettings {
+                max_rows: cfg.ch_max_rows,
+                period_ms: cfg.ch_period_ms,
+                max_bytes: cfg.ch_max_bytes,
+            },
         )
         .await?,
     );
@@ -93,6 +113,23 @@ async fn main() -> Result<()> {
         .and_then(|dt| dt.with_second(0))
         .and_then(|dt| dt.with_nanosecond(0))
         .unwrap_or_else(Utc::now);
+
+    // Initialize Prometheus metrics (reads WriterHealth atomics directly).
+    let collector_metrics = Arc::new(CollectorMetrics::new(Arc::clone(
+        clickhouse_writer.health(),
+    )));
+
+    let metrics_port: u16 = std::env::var("COLLECTOR_METRICS_PORT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(9090);
+
+    let metrics_handle = Arc::clone(&collector_metrics);
+    tokio::spawn(async move {
+        if let Err(error) = serve_metrics(metrics_handle, metrics_port).await {
+            tracing::error!(error = %error, port = metrics_port, "metrics HTTP server failed");
+        }
+    });
 
     let merkle_builder = Arc::new(Mutex::new(HourlyMerkleBuilder::new(
         current_hour,
@@ -121,6 +158,10 @@ async fn main() -> Result<()> {
     // Cancellation token for graceful shutdown.
     let cancel = CancellationToken::new();
 
+    // Recover any pending merkle anchors from a previous run before starting
+    // the gRPC server. Retries S3 upload for each pending anchor.
+    recover_pending_anchors(&cfg.data_dir, &s3_anchor).await;
+
     // Spawn signing key file watcher if SIGNING_KEY_WATCH_PATH is set.
     if let Some(watch_path) = &cfg.signing_key_watch_path {
         let watcher_provider = Arc::clone(&signing_provider);
@@ -136,9 +177,16 @@ async fn main() -> Result<()> {
     let rotation_cancel = cancel.clone();
     let rotation_builder = Arc::clone(&merkle_builder);
     let rotation_s3 = s3_anchor.clone();
+    let rotation_data_dir = cfg.data_dir.clone();
     tokio::spawn(async move {
-        builder::merkle_rotation_task(rotation_builder, rotation_s3, overflow_rx, rotation_cancel)
-            .await;
+        builder::merkle_rotation_task(
+            rotation_builder,
+            rotation_s3,
+            rotation_data_dir,
+            overflow_rx,
+            rotation_cancel,
+        )
+        .await;
     });
 
     // Build the gRPC service.
@@ -148,6 +196,7 @@ async fn main() -> Result<()> {
         clickhouse_writer.clone(),
         merkle_builder.clone(),
         Some(overflow_tx),
+        Some(collector_metrics),
     );
 
     let grpc_addr = cfg.grpc_listen_addr.parse()?;

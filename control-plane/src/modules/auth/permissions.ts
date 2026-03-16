@@ -51,7 +51,7 @@ export const PERMISSIONS = {
 
 /**
  * Default role-to-permission mapping.
- * Loaded from seed into the role_permissions table.
+ * Used in-memory by the authorization middleware.
  * Enterprise customers can customize via API.
  *
  * Super Admin gets wildcard ("*") which grants all permissions.

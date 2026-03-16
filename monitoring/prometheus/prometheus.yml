@@ -6,9 +6,9 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # Control plane — HTTP health endpoint
+  # Control plane — HTTP /metrics endpoint (prom-client)
   - job_name: control-plane
-    metrics_path: /health
+    metrics_path: /metrics
     static_configs:
       - targets: ["control-plane:3000"]
         labels:
@@ -22,11 +22,11 @@ scrape_configs:
         labels:
           service: kernel
 
-  # Evidence collector — TCP port probe (gRPC, no native /metrics)
+  # Evidence collector — HTTP /metrics endpoint (hand-rolled exposition)
   - job_name: evidence-collector
-    metrics_path: /probe
+    metrics_path: /metrics
     static_configs:
-      - targets: ["evidence-collector:50051"]
+      - targets: ["evidence-collector:9090"]
         labels:
           service: evidence-collector
 

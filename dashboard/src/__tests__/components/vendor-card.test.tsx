@@ -99,4 +99,19 @@ describe("VendorCard", () => {
     await user.click(screen.getByText("Hide models"));
     expect(screen.queryByTestId("model-list")).not.toBeInTheDocument();
   });
+
+  it("toggle button has aria-expanded reflecting visibility state", async () => {
+    const user = userEvent.setup();
+
+    render(<VendorCard vendor={makeVendor({ models: [] })} />);
+
+    const toggleBtn = screen.getByText("Show models (0)");
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(toggleBtn);
+    expect(screen.getByText("Hide models")).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(screen.getByText("Hide models"));
+    expect(screen.getByText("Show models (0)")).toHaveAttribute("aria-expanded", "false");
+  });
 });

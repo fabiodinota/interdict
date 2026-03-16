@@ -256,4 +256,154 @@ describe("BFF Proxy Route", () => {
       expect(body.error.message).toBe("Empty upstream response body");
     });
   });
+
+  // -----------------------------------------------------------------------
+  // Path allowlist (H-03)
+  // -----------------------------------------------------------------------
+  describe("Path allowlist", () => {
+    it("returns 403 for disallowed path prefix", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/evil/path");
+      const res = await GET(req as never, makeParams(["evil", "path"]));
+
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body).toEqual({ success: false, error: { message: "Forbidden" } });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("returns 403 for empty path", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/");
+      const res = await GET(req as never, makeParams([]));
+
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body.error.message).toBe("Forbidden");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it.each(["policies", "auth", "evidence", "admin"])(
+      "allows known prefix: %s",
+      async (prefix) => {
+        const req = buildNextRequest(`http://localhost:3001/api/proxy/${prefix}`);
+        const res = await GET(req as never, makeParams([prefix]));
+
+        // Should reach upstream (not blocked by allowlist)
+        expect(res.status).not.toBe(403);
+        expect(fetchSpy).toHaveBeenCalledOnce();
+      },
+    );
+
+    it("allows nested path under known prefix", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/policies/123/compile");
+      const res = await GET(req as never, makeParams(["policies", "123", "compile"]));
+
+      expect(res.status).not.toBe(403);
+      expect(fetchSpy).toHaveBeenCalledOnce();
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toBe("http://control-plane:3000/api/v1/policies/123/compile");
+    });
+
+    it("allows department-overrides (hyphenated prefix)", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/department-overrides");
+      const res = await GET(req as never, makeParams(["department-overrides"]));
+
+      expect(res.status).not.toBe(403);
+      expect(fetchSpy).toHaveBeenCalledOnce();
+    });
+
+    it("rejects path traversal attempts", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/../etc/passwd");
+      const res = await GET(req as never, makeParams(["..", "etc", "passwd"]));
+
+      expect(res.status).toBe(403);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Body size limit
+  // -----------------------------------------------------------------------
+  describe("Body size limit", () => {
+    const oversizedLength = String(3 * 1024 * 1024); // 3MB
+    const exactLimit = String(2 * 1024 * 1024); // exactly 2MB
+
+    it("returns 413 for POST with Content-Length over 2MB", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/policies", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+      });
+      // Set content-length after construction — the Request constructor normalizes it.
+      req.headers.set("content-length", oversizedLength);
+      const res = await POST(req as never, makeParams(["policies"]));
+
+      expect(res.status).toBe(413);
+      const body = await res.json();
+      expect(body).toEqual({
+        success: false,
+        error: { message: "Request body too large", maxBytes: 2 * 1024 * 1024 },
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("allows POST with Content-Length exactly at 2MB", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/policies", {
+        method: "POST",
+        body: "{}",
+        headers: {
+          "content-type": "application/json",
+          "content-length": exactLimit,
+        },
+      });
+      const res = await POST(req as never, makeParams(["policies"]));
+
+      expect(res.status).not.toBe(413);
+      expect(fetchSpy).toHaveBeenCalledOnce();
+    });
+
+    it("allows POST without Content-Length header (streaming)", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/policies", {
+        method: "POST",
+        body: "{}",
+        headers: { "content-type": "application/json" },
+      });
+      const res = await POST(req as never, makeParams(["policies"]));
+
+      expect(res.status).not.toBe(413);
+      expect(fetchSpy).toHaveBeenCalledOnce();
+    });
+
+    it("does not check body size for GET requests", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/policies", {
+        headers: { "content-length": oversizedLength },
+      });
+      const res = await GET(req as never, makeParams(["policies"]));
+
+      expect(res.status).not.toBe(413);
+      expect(fetchSpy).toHaveBeenCalledOnce();
+    });
+
+    it("returns 413 for PUT with oversized body", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/policies/1", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+      });
+      req.headers.set("content-length", oversizedLength);
+      const res = await PUT(req as never, makeParams(["policies", "1"]));
+
+      expect(res.status).toBe(413);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("returns 413 for DELETE with oversized body", async () => {
+      const req = buildNextRequest("http://localhost:3001/api/proxy/policies/1", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+      });
+      req.headers.set("content-length", oversizedLength);
+      const res = await DELETE(req as never, makeParams(["policies", "1"]));
+
+      expect(res.status).toBe(413);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+  });
 });

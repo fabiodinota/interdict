@@ -9,6 +9,11 @@ import { Elysia } from "elysia";
 import { getConfig } from "./config";
 import { clickhouse } from "./db/clickhouse";
 import { db } from "./db/postgres";
+import {
+  metricsRegistry,
+  metricsOnBeforeHandle,
+  metricsOnAfterResponse,
+} from "./metrics";
 import { anomaliesModule } from "./modules/anomalies";
 import { auditModule } from "./modules/audit";
 import { authModule } from "./modules/auth";
@@ -120,6 +125,14 @@ const app = new Elysia()
     status: "ok",
     timestamp: Date.now(),
   }))
+  .get("/metrics", async () => {
+    const body = await metricsRegistry.metrics();
+    return new Response(body, {
+      headers: { "content-type": metricsRegistry.contentType },
+    });
+  })
+  .onBeforeHandle(metricsOnBeforeHandle as never)
+  .onAfterResponse(metricsOnAfterResponse as never)
   .use(authPlugin)
   .use(authModule)
   .use(policiesModule)

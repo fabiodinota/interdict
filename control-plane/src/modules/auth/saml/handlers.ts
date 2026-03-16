@@ -27,7 +27,6 @@ if (!DASHBOARD_URL) {
   throw new Error("[saml] DASHBOARD_URL env var is required in production");
 }
 const SESSION_COOKIE_NAME = "interdict_session";
-const _SESSION_MAX_AGE_SECONDS = 8 * 60 * 60; // 8 hours
 
 /** Shape returned by samlify's parseLoginResponse */
 interface SamlExtract {
@@ -159,10 +158,26 @@ export function createSamlRoutes(rateLimiter?: RateLimiter) {
       // GET /slo -- Single Logout
       // -----------------------------------------------------------------------
       .get("/slo", async (rawCtx) => {
-        const { cookie, redirect } = rawCtx as {
-          cookie: Record<string, { set: (opts: Record<string, unknown>) => void }>;
+        const { cookie, redirect, store } = rawCtx as {
+          cookie: Record<string, { value?: string; set: (opts: Record<string, unknown>) => void }>;
           redirect: (url: string) => Response;
+          store: { db?: typeof pgDb };
         };
+
+        // Revoke server-side session before clearing cookie
+        const sessionToken = cookie[SESSION_COOKIE_NAME]?.value;
+        if (sessionToken) {
+          try {
+            const db = store.db ?? pgDb;
+            const authService = createAuthService(db);
+            await authService.revokeSession(sessionToken);
+          } catch (err) {
+            console.warn(
+              `[saml] SLO session revocation failed: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            // Continue with cookie clear + redirect even if revocation fails
+          }
+        }
 
         // Clear session cookie
         cookie[SESSION_COOKIE_NAME].set({

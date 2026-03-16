@@ -11,9 +11,17 @@ import { buildNextRequest, jsonResponse, mockFetch } from "../helpers/next-mocks
 vi.mock("@/lib/auth", () => ({
   getControlPlaneUrl: vi.fn(() => "http://control-plane:3000"),
   SESSION_COOKIE_NAME: "interdict_session",
+  getSessionCookieOptions: vi.fn(() => ({
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    maxAge: 28800,
+    path: "/",
+  })),
 }));
 
 import { GET } from "@/app/api/auth/saml-callback/route";
+import { getSessionCookieOptions } from "@/lib/auth";
 
 describe("GET /api/auth/saml-callback", () => {
   let fetchSpy: ReturnType<typeof mockFetch>;
@@ -106,5 +114,24 @@ describe("GET /api/auth/saml-callback", () => {
     const location = res.headers.get("location") ?? "";
     expect(location).not.toContain("session-jwt-abc");
     expect(location).not.toContain("token=");
+  });
+
+  it("uses getSessionCookieOptions() for cookie config (D057)", async () => {
+    const req = buildNextRequest("http://localhost:3001/api/auth/saml-callback?code=valid-code");
+    await GET(req as never);
+
+    // Verify the shared cookie helper was called
+    expect(getSessionCookieOptions).toHaveBeenCalled();
+  });
+
+  it("sets cookie attributes matching getSessionCookieOptions() output", async () => {
+    const req = buildNextRequest("http://localhost:3001/api/auth/saml-callback?code=valid-code");
+    const res = await GET(req as never);
+
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    // The mock returns secure: false, so Secure flag should NOT be present
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Path=/");
+    expect(setCookie).toContain("Max-Age=28800");
   });
 });

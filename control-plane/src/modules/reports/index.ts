@@ -11,6 +11,8 @@ import { db as pgDb } from "../../db/postgres";
 import type { AppStore, RouteContext } from "../../shared/types";
 import { ValidationError } from "../../shared/utilities";
 import { authPlugin } from "../auth/middleware";
+import { apiRateLimiter } from "../auth";
+import { createRateLimitHook } from "../auth/rate-limiter";
 import { generateCSV } from "./csv-generator";
 import { generatePDF } from "./pdf-generator";
 import { ReportService } from "./service";
@@ -91,5 +93,6 @@ export const reportsModule = new Elysia({ prefix: "/api/v1/reports" })
         from_date: t.String(),
         to_date: t.String(),
       }),
+      beforeHandle: createRateLimitHook(apiRateLimiter),
     },
   );

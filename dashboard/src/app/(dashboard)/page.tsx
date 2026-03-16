@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { KpiCards } from "@/components/dashboard/KpiCards";
 import { TimeRangeSelector, getDateRange } from "@/components/dashboard/TimeRangeSelector";
@@ -32,14 +32,12 @@ export default function HomePage() {
   // Derive KPI values from violation data
   const { totalRequests, violationsToday } = useViolationKpis(violations.data);
 
-  // Track when data was last fetched
-  if (
-    violations.dataUpdatedAt &&
-    (!lastUpdated || violations.dataUpdatedAt > lastUpdated.getTime())
-  ) {
-    // Schedule the state update to avoid setting state during render
-    queueMicrotask(() => setLastUpdated(new Date(violations.dataUpdatedAt)));
-  }
+  // Track when data was last fetched (via effect, not during render)
+  useEffect(() => {
+    if (violations.dataUpdatedAt) {
+      setLastUpdated(new Date(violations.dataUpdatedAt));
+    }
+  }, [violations.dataUpdatedAt]);
 
   const handleRefresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["audit", "stats"] });

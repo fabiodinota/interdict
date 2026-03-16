@@ -7,6 +7,30 @@ import { Badge } from "@/components/ui/badge";
 // Total SLA = 4 hours = 14400 seconds
 const TOTAL_SLA_SECONDS = 4 * 60 * 60;
 
+// ---------------------------------------------------------------------------
+// Module-level tick manager: one setInterval drives all mounted SlaTimer
+// instances. The interval starts when the first subscriber mounts and stops
+// when the last one unmounts — no leaked timers.
+// ---------------------------------------------------------------------------
+const subscribers = new Set<() => void>();
+let tickInterval: ReturnType<typeof setInterval> | null = null;
+
+function subscribe(callback: () => void): () => void {
+  subscribers.add(callback);
+  if (subscribers.size === 1 && !tickInterval) {
+    tickInterval = setInterval(() => {
+      subscribers.forEach((cb) => cb());
+    }, 1000);
+  }
+  return () => {
+    subscribers.delete(callback);
+    if (subscribers.size === 0 && tickInterval) {
+      clearInterval(tickInterval);
+      tickInterval = null;
+    }
+  };
+}
+
 interface SlaTimerProps {
   deadline: string; // ISO UTC timestamp
   className?: string;
@@ -26,11 +50,11 @@ export function SlaTimer({ deadline, className }: SlaTimerProps) {
   );
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    const tick = () => {
       setRemainingSeconds(differenceInSeconds(new Date(deadline), new Date()));
-    }, 1000);
-
-    return () => clearInterval(timer);
+    };
+    tick(); // fire immediately so value is current
+    return subscribe(tick);
   }, [deadline]);
 
   // Format the display

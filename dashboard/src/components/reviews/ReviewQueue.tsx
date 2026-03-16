@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -85,10 +85,16 @@ export function ReviewQueue({ onStatsUpdate, currentUserId }: ReviewQueueProps) 
   const { data, isLoading } = useReviewQueue(statusFilter, currentCursor);
   const claimReview = useClaimReview();
 
-  // Propagate stats to parent for KPI cards
-  if (data?.stats && onStatsUpdate) {
-    onStatsUpdate(data.stats);
-  }
+  // Stabilize callback identity so the effect doesn't re-trigger on parent re-renders
+  const onStatsUpdateRef = useRef(onStatsUpdate);
+  onStatsUpdateRef.current = onStatsUpdate;
+
+  // Propagate stats to parent via effect (not during render)
+  useEffect(() => {
+    if (data?.stats && onStatsUpdateRef.current) {
+      onStatsUpdateRef.current(data.stats);
+    }
+  }, [data?.stats]);
 
   const handleNextPage = useCallback(
     (cursor: string) => setCursors((prev) => [...prev, cursor]),

@@ -177,6 +177,7 @@ impl S3Anchor {
             root,
             bundle_count,
             hour: anchor_hour,
+            chain_hashes: Vec::new(), // S3 anchor JSON doesn't store individual chain hashes
         }))
     }
 }

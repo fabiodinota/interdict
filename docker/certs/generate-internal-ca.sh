@@ -32,7 +32,7 @@ fi
 echo "[cert-init] Generating internal CA and service certificates..."
 
 # ---------------------------------------------------------------------------
-# 1. Internal CA (10-year validity, ECDSA P-256)
+# 1. Internal CA (1-year validity, ECDSA P-256)
 # ---------------------------------------------------------------------------
 # 1-year validity — rotate before expiry. See docs/operator/guide.md for rotation procedure.
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \

@@ -138,6 +138,7 @@ export function BatchVerifyTable({
             type="checkbox"
             checked={bundles.length > 0 && selectedIds.size === bundles.length}
             onChange={toggleAll}
+            aria-label="Select all bundles"
             className="rounded border-border"
           />
         ),
@@ -146,6 +147,7 @@ export function BatchVerifyTable({
             type="checkbox"
             checked={selectedIds.has(info.row.original.bundle_id)}
             onChange={() => toggleSelection(info.row.original.bundle_id)}
+            aria-label={`Select bundle ${info.row.original.bundle_id}`}
             className="rounded border-border"
           />
         ),

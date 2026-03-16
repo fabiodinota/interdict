@@ -18,8 +18,6 @@ export interface Config {
   grpcMaxMessageSize: number;
 }
 
-const isProduction = process.env.NODE_ENV === "production";
-
 function requireEnv(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
   if (!value) {
@@ -42,18 +40,26 @@ function checkOpaBinary(path: string): void {
 }
 
 export function loadConfig(): Config {
+  const isProduction = process.env.NODE_ENV === "production";
+  const allowDevDefaults =
+    !isProduction && process.env.ALLOW_DEV_DEFAULTS === "true";
+
+  function devFallback(value: string): string | undefined {
+    return allowDevDefaults ? value : undefined;
+  }
+
   const config: Config = {
     port: parseInt(process.env.PORT ?? "3000", 10),
     databaseUrl: requireEnv(
       "DATABASE_URL",
-      isProduction ? undefined : "postgres://interdict:interdict@localhost:5432/interdict",
+      devFallback("postgres://interdict:interdict@localhost:5432/interdict"),
     ),
-    clickhouseUrl: requireEnv("CLICKHOUSE_URL", "http://localhost:8123"),
-    clickhouseDatabase: requireEnv("CLICKHOUSE_DATABASE", "interdict"),
+    clickhouseUrl: requireEnv("CLICKHOUSE_URL", devFallback("http://localhost:8123")),
+    clickhouseDatabase: requireEnv("CLICKHOUSE_DATABASE", devFallback("interdict")),
     clickhouseUser: process.env.CLICKHOUSE_USER ?? "default",
     clickhousePassword: process.env.CLICKHOUSE_PASSWORD ?? "",
-    wasmStorageDir: requireEnv("WASM_STORAGE_DIR", "./data/wasm"),
-    opaBinaryPath: requireEnv("OPA_BINARY_PATH", "opa"),
+    wasmStorageDir: requireEnv("WASM_STORAGE_DIR", devFallback("./data/wasm")),
+    opaBinaryPath: requireEnv("OPA_BINARY_PATH", devFallback("opa")),
     grpcPort: parseInt(process.env.INTERDICT_GRPC_PORT ?? "50052", 10),
     grpcMaxMessageSize: parseInt(
       process.env.INTERDICT_GRPC_MAX_MESSAGE_SIZE ?? String(16 * 1024 * 1024),

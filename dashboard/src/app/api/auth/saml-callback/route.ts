@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getControlPlaneUrl, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { getControlPlaneUrl, getSessionCookieOptions, SESSION_COOKIE_NAME } from "@/lib/auth";
 
 /**
  * GET /api/auth/saml-callback?code=<oneTimeCode>
@@ -50,13 +50,7 @@ export async function GET(request: NextRequest) {
   // Set cookie on dashboard origin and redirect to home
   const response = NextResponse.redirect(new URL("/", request.url));
 
-  response.cookies.set(SESSION_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 8 * 60 * 60, // 8 hours, matching session expiry
-    path: "/",
-  });
+  response.cookies.set(SESSION_COOKIE_NAME, token, getSessionCookieOptions());
 
   return response;
 }

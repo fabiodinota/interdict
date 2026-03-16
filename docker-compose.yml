@@ -125,6 +125,12 @@ services:
 
   cert-init:
     image: alpine:3.21
+    user: "1000:1000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     logging:
       driver: json-file
       options:
@@ -133,13 +139,13 @@ services:
     entrypoint: /bin/sh
     command:
       - -c
-      - "apk add --no-cache openssl && sh /scripts/generate-internal-ca.sh"
+      - |
+        apk --root /tmp/apkroot --initdb add --no-cache openssl &&
+        PATH=/tmp/apkroot/usr/bin:$$PATH sh /scripts/generate-internal-ca.sh
     volumes:
       - ./docker/certs/generate-internal-ca.sh:/scripts/generate-internal-ca.sh:ro
       - certs:/certs
     restart: "no"
-    networks:
-      - data
 
   # ---------------------------------------------------------------------------
   # Interdict Services
@@ -191,7 +197,7 @@ services:
       - "3001:3000"
     volumes:
       - certs:/certs:ro
-      - signing_keys:/data/keys
+      - signing_keys:/data/keys:ro
       - ./config:/config:ro
       - wasm_data:/app/data/wasm
     healthcheck:
@@ -257,7 +263,7 @@ services:
       MTLS_KEY_PATH: ${MTLS_KEY_PATH:-/certs/evidence-collector-key.pem}
       RUST_LOG: ${RUST_LOG:-info}
     volumes:
-      - signing_keys:/data/keys
+      - signing_keys:/data/keys:ro
       - certs:/certs:ro
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "50051"]

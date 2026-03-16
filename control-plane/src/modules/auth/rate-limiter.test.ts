@@ -219,3 +219,163 @@ describe("createRateLimitHook (Elysia per-route beforeHandle)", () => {
     expect(r.status).toBe(200);
   });
 });
+
+// ---------------------------------------------------------------------------
+// IP Resolution Fallback Chain
+// ---------------------------------------------------------------------------
+
+describe("createRateLimitHook IP resolution fallback", () => {
+  let limiter: RateLimiter;
+
+  afterEach(() => {
+    limiter?.destroy();
+  });
+
+  test("uses x-forwarded-for when both x-forwarded-for and x-real-ip are present", async () => {
+    limiter = new RateLimiter({ maxRequests: 1, windowMs: 60_000, cleanupIntervalMs: 0 });
+    const app = new Elysia()
+      .post("/test", () => ({ success: true }), {
+        beforeHandle: createRateLimitHook(limiter),
+      });
+
+    // Use up quota for x-forwarded-for IP
+    await app.handle(
+      new Request("http://localhost/test", {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.1", "x-real-ip": "10.0.0.2" },
+      }),
+    );
+
+    // x-real-ip IP (10.0.0.2) should still be allowed if x-forwarded-for was used
+    const r = await app.handle(
+      new Request("http://localhost/test", {
+        method: "POST",
+        headers: { "x-real-ip": "10.0.0.2" },
+      }),
+    );
+    expect(r.status).toBe(200);
+  });
+
+  test("falls back to x-real-ip when x-forwarded-for is absent", async () => {
+    limiter = new RateLimiter({ maxRequests: 1, windowMs: 60_000, cleanupIntervalMs: 0 });
+    const app = new Elysia()
+      .post("/test", () => ({ success: true }), {
+        beforeHandle: createRateLimitHook(limiter),
+      });
+
+    // First request with x-real-ip only — should be allowed
+    const r1 = await app.handle(
+      new Request("http://localhost/test", {
+        method: "POST",
+        headers: { "x-real-ip": "10.0.0.5" },
+      }),
+    );
+    expect(r1.status).toBe(200);
+
+    // Second request from same x-real-ip — should be blocked
+    const r2 = await app.handle(
+      new Request("http://localhost/test", {
+        method: "POST",
+        headers: { "x-real-ip": "10.0.0.5" },
+      }),
+    );
+    expect(r2.status).toBe(429);
+  });
+
+  test("falls back to server.requestIP when headers are absent", async () => {
+    limiter = new RateLimiter({ maxRequests: 1, windowMs: 60_000, cleanupIntervalMs: 0 });
+    const hook = createRateLimitHook(limiter);
+
+    const mockServer = {
+      requestIP: (_req: Request) => ({ address: "10.0.0.99" }),
+    };
+
+    const set = { status: 200, headers: {} as Record<string, string> };
+
+    // First call — allowed
+    const result1 = hook({
+      request: new Request("http://localhost/test", { method: "POST" }),
+      set,
+      server: mockServer,
+    });
+    expect(result1).toBeUndefined(); // no early return = allowed
+
+    // Second call — blocked (same IP via server.requestIP)
+    const set2 = { status: 200, headers: {} as Record<string, string> };
+    const result2 = hook({
+      request: new Request("http://localhost/test", { method: "POST" }),
+      set: set2,
+      server: mockServer,
+    });
+    expect(set2.status).toBe(429);
+    expect(result2).toHaveProperty("error");
+  });
+
+  test("falls back to 'unknown' when all IP sources are absent", async () => {
+    limiter = new RateLimiter({ maxRequests: 1, windowMs: 60_000, cleanupIntervalMs: 0 });
+    const hook = createRateLimitHook(limiter);
+
+    const set = { status: 200, headers: {} as Record<string, string> };
+
+    // First call — allowed (IP = "unknown")
+    const result1 = hook({
+      request: new Request("http://localhost/test", { method: "POST" }),
+      set,
+    });
+    expect(result1).toBeUndefined();
+
+    // Second call — blocked (same "unknown" IP)
+    const set2 = { status: 200, headers: {} as Record<string, string> };
+    const result2 = hook({
+      request: new Request("http://localhost/test", { method: "POST" }),
+      set: set2,
+    });
+    expect(set2.status).toBe(429);
+    expect(result2).toHaveProperty("error");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// API Rate Limiter Threshold
+// ---------------------------------------------------------------------------
+
+describe("API rate limiter threshold (60/min)", () => {
+  let limiter: RateLimiter;
+
+  afterEach(() => {
+    limiter?.destroy();
+  });
+
+  test("returns 429 after 60 requests from the same IP", () => {
+    limiter = new RateLimiter({ maxRequests: 60, windowMs: 60_000, cleanupIntervalMs: 0 });
+    const hook = createRateLimitHook(limiter);
+
+    // Send 60 requests — all should be allowed
+    for (let i = 0; i < 60; i++) {
+      const set = { status: 200, headers: {} as Record<string, string> };
+      const result = hook({
+        request: new Request("http://localhost/test", {
+          method: "POST",
+          headers: { "x-forwarded-for": "10.0.0.1" },
+        }),
+        set,
+      });
+      expect(result).toBeUndefined();
+      expect(set.status).toBe(200);
+    }
+
+    // 61st request — should be blocked
+    const set = { status: 200, headers: {} as Record<string, string> };
+    const result = hook({
+      request: new Request("http://localhost/test", {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.1" },
+      }),
+      set,
+    });
+    expect(set.status).toBe(429);
+    expect(result).toHaveProperty("error");
+    expect((result as { error: { code: string } }).error.code).toBe("RATE_LIMITED");
+    expect(set.headers["Retry-After"]).toBeTruthy();
+  });
+});
