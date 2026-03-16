@@ -84,3 +84,11 @@ cd dashboard && npx vitest run  # full suite
 - Extended `vendor-card.test.tsx` with ≥1 new test case
 - New `dashboard/src/__tests__/pages/anomalies-page.test.tsx` with ≥3 test cases
 - `npx vitest run` passes with zero failures
+
+## Observability Impact
+
+These changes are purely additive ARIA attributes — no runtime behavior, API endpoints, or background processes change. Observable signals:
+
+- **Accessibility audits:** Lighthouse or axe-core scans should no longer flag missing labels on BatchVerifyTable checkboxes, the VendorCard toggle, or anomaly severity tabs. Run `npx axe` or use browser DevTools Lighthouse accessibility audit to verify.
+- **Test regression:** `getByRole("checkbox", { name: "Select all bundles" })`, `getByRole("tab")`, and `toHaveAttribute("aria-expanded")` assertions catch regressions if ARIA attributes are removed.
+- **No new failure states or diagnostic surfaces** — these are static markup additions with no runtime side effects.

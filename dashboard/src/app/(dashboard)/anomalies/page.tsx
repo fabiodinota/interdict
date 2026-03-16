@@ -128,10 +128,12 @@ export default function AnomaliesPage() {
       </div>
 
       {/* Severity Filter Tabs */}
-      <div className="flex gap-1 rounded-lg border bg-muted p-1">
+      <div className="flex gap-1 rounded-lg border bg-muted p-1" role="tablist">
         {SEVERITY_TABS.map((tab) => (
           <button
             key={tab.label}
+            role="tab"
+            aria-selected={severityFilter === tab.key}
             onClick={() => setSeverityFilter(tab.key)}
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",

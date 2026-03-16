@@ -69,6 +69,7 @@ export function VendorCard({ vendor }: VendorCardProps) {
         <button
           className="text-xs text-primary hover:underline cursor-pointer"
           onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
         >
           {expanded ? "Hide models" : `Show models (${vendor.models?.length ?? 0})`}
         </button>

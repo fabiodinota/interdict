@@ -55,7 +55,7 @@
   - Verify: `cd dashboard && npx vitest run sla-timer auth-saml-callback`
   - Done when: SlaTimer tests show single interval for multiple instances; SAML callback test confirms shared cookie options used
 
-- [ ] **T03: ARIA attributes on BatchVerifyTable, VendorCard, and anomaly tabs** `est:45m`
+- [x] **T03: ARIA attributes on BatchVerifyTable, VendorCard, and anomaly tabs** `est:45m`
   - Why: Three accessibility gaps identified in assessment — checkboxes without labels, toggle without expanded state, tabs without ARIA roles. All are additive attribute additions.
   - Files: `dashboard/src/components/evidence/BatchVerifyTable.tsx`, `dashboard/src/__tests__/components/batch-verify-table.test.tsx`, `dashboard/src/components/vendors/VendorCard.tsx`, `dashboard/src/__tests__/components/vendor-card.test.tsx`, `dashboard/src/app/(dashboard)/anomalies/page.tsx`, `dashboard/src/__tests__/pages/anomalies-page.test.tsx` (new)
   - Do:
