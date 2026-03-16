@@ -191,7 +191,7 @@ services:
       - "3001:3000"
     volumes:
       - certs:/certs:ro
-      - signing_keys:/data/keys
+      - signing_keys:/data/keys:ro
       - ./config:/config:ro
       - wasm_data:/app/data/wasm
     healthcheck:
@@ -257,7 +257,7 @@ services:
       MTLS_KEY_PATH: ${MTLS_KEY_PATH:-/certs/evidence-collector-key.pem}
       RUST_LOG: ${RUST_LOG:-info}
     volumes:
-      - signing_keys:/data/keys
+      - signing_keys:/data/keys:ro
       - certs:/certs:ro
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "50051"]

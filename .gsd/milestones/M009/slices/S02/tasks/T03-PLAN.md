@@ -91,6 +91,13 @@ The control-plane `config.ts` silently falls back to `postgres://interdict:inter
 - `docker-compose.yml` — evidence-collector has `signing_keys:/data/keys` (no `:ro`). Two occurrences of `signing_keys:/data/keys` in the file.
 - `docker-compose.test.yml` — port mappings use `!override` with ports like `"15432:5432"`, `"18123:8123"`, `"19000:9000"`, `"19001:9001"`, `"13001:3000"`, `"18443:8443"`. All need `127.0.0.1:` prefix.
 
+## Observability Impact
+
+- **Config startup errors:** Missing required env vars without `ALLOW_DEV_DEFAULTS=true` produce descriptive `Error: Required environment variable <NAME> is not set` on stderr at process startup. A future agent can detect this by running `bun run src/index.ts` with no env vars and checking exit code + stderr.
+- **Dev fallback activation:** When `ALLOW_DEV_DEFAULTS=true` is set, `loadConfig()` silently uses fallback values. There is no log line for this — absence of the startup error is the signal. A diagnostic agent can verify by checking `loadConfig()` return values in a test.
+- **Docker volume `:ro` violations:** If a container attempts to write to a read-only `signing_keys` volume, it produces `EROFS` (read-only filesystem) errors in container logs. Detectable via `docker logs <container>`.
+- **Localhost-bound ports:** `127.0.0.1:` prefix in test compose ports means the test databases are not reachable from other machines. If a remote test runner can't connect, `docker compose config` output will show the binding.
+
 ## Expected Output
 
 - `control-plane/src/config.ts` — dev fallbacks gated behind `ALLOW_DEV_DEFAULTS=true`
