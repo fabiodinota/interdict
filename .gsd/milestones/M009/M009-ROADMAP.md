@@ -73,7 +73,7 @@ This milestone is complete only when all are true:
 - [x] **S02: Security Hardening — Proxy, Helm, Secrets** `risk:high` `depends:[]`
   > After this: BFF proxy validates paths against an allowlist and rejects unknown paths with 403. Body size is capped at 2MB. Helm chart fails to render when required passwords are empty and no existingSecret is set. DATABASE_URL is constructed in Deployment env (not ConfigMap). Dev DB fallback requires explicit `ALLOW_DEV_DEFAULTS=true`. signing_keys volume is read-only on evidence-collector. busybox init images are digest-pinned. Test compose ports bind to 127.0.0.1. OpenAI test key replaced with placeholder. `helm lint`, `npx vitest run`, and `bun test` pass.
 
-- [ ] **S03: Auth, Rate Limiting & Session Fixes** `risk:medium` `depends:[]`
+- [x] **S03: Auth, Rate Limiting & Session Fixes** `risk:medium` `depends:[]`
   > After this: Rate limiting covers write endpoints and expensive operations (60/min API rate limit alongside 10/min auth rate limit). SAML SLO revokes server session before IdP redirect. Rate limiter falls back to socket remote address when x-forwarded-for is absent. Department schema has self-referencing FK. Dead code removed (rolePermissions table, unused session constant). `bun test` passes.
 
 - [ ] **S04: Dashboard Quality & Accessibility** `risk:medium` `depends:[]`
