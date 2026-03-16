@@ -76,7 +76,7 @@ This milestone is complete only when all are true:
 - [x] **S03: Auth, Rate Limiting & Session Fixes** `risk:medium` `depends:[]`
   > After this: Rate limiting covers write endpoints and expensive operations (60/min API rate limit alongside 10/min auth rate limit). SAML SLO revokes server session before IdP redirect. Rate limiter falls back to socket remote address when x-forwarded-for is absent. Department schema has self-referencing FK. Dead code removed (rolePermissions table, unused session constant). `bun test` passes.
 
-- [ ] **S04: Dashboard Quality & Accessibility** `risk:medium` `depends:[]`
+- [x] **S04: Dashboard Quality & Accessibility** `risk:medium` `depends:[]`
   > After this: Render-phase side effects in dashboard home page and ReviewQueue replaced with `useEffect`. SAML callback uses shared cookie options. SlaTimer uses single shared interval instead of per-instance. BatchVerifyTable checkboxes have aria-labels. VendorCard has aria-expanded. Anomaly severity tabs have proper ARIA roles. `npx vitest run` passes with zero warnings.
 
 - [ ] **S05: Infrastructure & CI Hardening** `risk:medium` `depends:[]`
