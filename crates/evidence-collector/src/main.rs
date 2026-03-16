@@ -11,7 +11,7 @@ use evidence_collector::merkle::persistence::{anchor_dir, recover_pending_anchor
 use evidence_collector::signing::{
     KmsSigningProvider, LocalSigningProvider, RotatingSigningProvider, SigningProvider,
 };
-use evidence_collector::storage::clickhouse::ClickHouseWriter;
+use evidence_collector::storage::clickhouse::{ClickHouseWriter, InserterBatchSettings};
 use evidence_collector::storage::dead_letter::dead_letter_dir;
 use evidence_collector::storage::s3::S3Anchor;
 use tokio::sync::{Mutex, mpsc};
@@ -96,6 +96,12 @@ async fn main() -> Result<()> {
             &cfg.clickhouse_user,
             &cfg.clickhouse_password,
             cfg.data_dir.clone(),
+            cfg.retention_days,
+            InserterBatchSettings {
+                max_rows: cfg.ch_max_rows,
+                period_ms: cfg.ch_period_ms,
+                max_bytes: cfg.ch_max_bytes,
+            },
         )
         .await?,
     );

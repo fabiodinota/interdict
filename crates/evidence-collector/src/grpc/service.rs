@@ -1,3 +1,4 @@
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow};
@@ -17,12 +18,55 @@ use super::proto::{
     evidence_collector_service_server::EvidenceCollectorService,
 };
 
+/// Default capacity for the bundle-ID deduplication tracker.
+const DEDUP_CAPACITY: usize = 100_000;
+
+/// Bounded deduplication tracker using insertion-order eviction.
+///
+/// Tracks recently-seen bundle IDs to reject duplicate submissions.
+/// When capacity is reached, the oldest entry is evicted to make room.
+struct DeduplicationTracker {
+    seen: HashMap<String, ()>,
+    order: VecDeque<String>,
+    capacity: usize,
+}
+
+impl DeduplicationTracker {
+    fn new(capacity: usize) -> Self {
+        Self {
+            seen: HashMap::with_capacity(capacity),
+            order: VecDeque::with_capacity(capacity),
+            capacity,
+        }
+    }
+
+    /// Returns `true` if the bundle_id is new (not previously seen),
+    /// `false` if it is a duplicate. On capacity overflow, evicts the
+    /// oldest entry before inserting.
+    fn check_and_track(&mut self, bundle_id: &str) -> bool {
+        if self.seen.contains_key(bundle_id) {
+            return false;
+        }
+
+        if self.order.len() >= self.capacity
+            && let Some(evicted) = self.order.pop_front()
+        {
+            self.seen.remove(&evicted);
+        }
+
+        self.seen.insert(bundle_id.to_string(), ());
+        self.order.push_back(bundle_id.to_string());
+        true
+    }
+}
+
 pub struct EvidenceCollectorGrpcService {
     chain_manager: Arc<Mutex<ChainManager>>,
     signing_provider: Arc<RotatingSigningProvider>,
     clickhouse_writer: Arc<ClickHouseWriter>,
     merkle_builder: Arc<Mutex<HourlyMerkleBuilder>>,
     merkle_overflow_tx: Option<mpsc::Sender<()>>,
+    dedup: Arc<Mutex<DeduplicationTracker>>,
 }
 
 impl EvidenceCollectorGrpcService {
@@ -39,6 +83,7 @@ impl EvidenceCollectorGrpcService {
             clickhouse_writer,
             merkle_builder,
             merkle_overflow_tx,
+            dedup: Arc::new(Mutex::new(DeduplicationTracker::new(DEDUP_CAPACITY))),
         }
     }
 
@@ -48,6 +93,19 @@ impl EvidenceCollectorGrpcService {
             return Err(anyhow!(
                 "bundle kernel_id does not match enclosing batch kernel_id"
             ));
+        }
+
+        // Reject duplicate bundle IDs.
+        {
+            let mut dedup = self.dedup.lock().await;
+            if !dedup.check_and_track(&bundle.bundle_id) {
+                tracing::warn!(
+                    bundle_id = %bundle.bundle_id,
+                    kernel_id = kernel_id,
+                    "rejected duplicate bundle_id"
+                );
+                return Err(anyhow!("duplicate bundle_id"));
+            }
         }
 
         let bundle_bytes = bundle.encode_to_vec();
@@ -265,7 +323,10 @@ fn validate_kernel_id(kernel_id: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{bundle_timestamp, decode_bundles_payload, map_bundle_to_row, validate_kernel_id};
+    use super::{
+        DeduplicationTracker, bundle_timestamp, decode_bundles_payload, map_bundle_to_row,
+        validate_kernel_id,
+    };
     use crate::grpc::proto::EvidenceBundle;
     use prost::Message;
     use prost_types::Timestamp;
@@ -385,5 +446,56 @@ mod tests {
 
         let error = bundle_timestamp(&bundle).expect_err("invalid timestamp should fail");
         assert!(error.to_string().contains("timestamp"));
+    }
+
+    // -- DeduplicationTracker tests --
+
+    #[test]
+    fn dedup_rejects_duplicate() {
+        let mut tracker = DeduplicationTracker::new(100);
+        assert!(
+            tracker.check_and_track("bundle-1"),
+            "first insert should succeed"
+        );
+        assert!(
+            !tracker.check_and_track("bundle-1"),
+            "duplicate should be rejected"
+        );
+    }
+
+    #[test]
+    fn dedup_accepts_unique() {
+        let mut tracker = DeduplicationTracker::new(100);
+        assert!(
+            tracker.check_and_track("bundle-1"),
+            "first bundle should be accepted"
+        );
+        assert!(
+            tracker.check_and_track("bundle-2"),
+            "second unique bundle should be accepted"
+        );
+    }
+
+    #[test]
+    fn dedup_evicts_at_capacity() {
+        let mut tracker = DeduplicationTracker::new(2);
+        assert!(tracker.check_and_track("a"), "first insert");
+        assert!(tracker.check_and_track("b"), "second insert");
+
+        // Capacity is 2; adding "c" should evict "a"
+        assert!(
+            tracker.check_and_track("c"),
+            "third insert should succeed (evicts oldest)"
+        );
+
+        // "a" was evicted, so it should be treated as new
+        assert!(
+            tracker.check_and_track("a"),
+            "evicted id should be accepted again"
+        );
+        // Re-adding "a" evicted "b" (oldest at that point), so "b" is also gone
+
+        // "c" is still tracked (it was second-oldest after "a" was re-added)
+        assert!(!tracker.check_and_track("c"), "c should still be tracked");
     }
 }

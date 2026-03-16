@@ -82,3 +82,10 @@ Three small, independent hardening changes: (1) ClickHouse DDL uses configured `
 - `crates/evidence-collector/src/config.rs` — `ch_max_rows`, `ch_period_ms`, `ch_max_bytes` fields with env var parsing and tests
 - `crates/evidence-collector/src/grpc/service.rs` — `DeduplicationTracker` struct, dedup check in `process_bundle`, dedup tests
 - `crates/evidence-collector/src/main.rs` — pass `retention_days` and batch settings to writer
+
+## Observability Impact
+
+- **Structured log on duplicate rejection**: `tracing::warn` with `bundle_id` and `kernel_id` when a duplicate `bundle_id` is rejected in `process_bundle`. Searchable in log aggregation by `bundle_id` field.
+- **ClickHouse DDL TTL**: The `table_ddl()` output now reflects the configured `retention_days` value. Inspect via `SHOW CREATE TABLE evidence_bundles` in ClickHouse to verify the active retention policy.
+- **Batch settings visibility**: `ch_max_rows`, `ch_period_ms`, `ch_max_bytes` are configurable via env vars. No runtime log emitted for these (they are constructor-time settings). Verify by inspecting `CollectorConfig` in startup logs or env var audit.
+- **Failure state**: Duplicate `bundle_id` submissions are rejected and counted in the `rejected_count` field of the `SubmitEvidenceResponse`. The caller sees the rejection in the gRPC response, but individual duplicate errors are not surfaced via `Status::already_exists` at the gRPC streaming level — they increment `rejected_count` in the batch response.

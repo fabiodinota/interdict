@@ -41,6 +41,12 @@ pub struct CollectorConfig {
     pub signing_key_watch_path: Option<String>,
     /// Base directory for persistent data (dead-letter files, merkle anchors, etc.).
     pub data_dir: PathBuf,
+    /// Maximum rows per ClickHouse inserter batch (default: 1000).
+    pub ch_max_rows: u64,
+    /// ClickHouse inserter flush period in milliseconds (default: 1000).
+    pub ch_period_ms: u64,
+    /// Maximum bytes per ClickHouse inserter batch (default: 52_428_800 = 50 MiB).
+    pub ch_max_bytes: u64,
 }
 
 impl Default for CollectorConfig {
@@ -65,6 +71,9 @@ impl Default for CollectorConfig {
             mtls_key_path: None,
             signing_key_watch_path: None,
             data_dir: PathBuf::from(DEFAULT_DATA_DIR),
+            ch_max_rows: 1000,
+            ch_period_ms: 1000,
+            ch_max_bytes: 52_428_800,
         }
     }
 }
@@ -151,6 +160,18 @@ impl CollectorConfig {
             data_dir: std::env::var("COLLECTOR_DATA_DIR")
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| PathBuf::from(DEFAULT_DATA_DIR)),
+            ch_max_rows: std::env::var("COLLECTOR_CH_MAX_ROWS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1000),
+            ch_period_ms: std::env::var("COLLECTOR_CH_PERIOD_MS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1000),
+            ch_max_bytes: std::env::var("COLLECTOR_CH_MAX_BYTES")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(52_428_800),
         })
     }
 }
@@ -185,6 +206,9 @@ mod tests {
             std::env::remove_var("COLLECTOR_REQUIRE_OBJECT_LOCK");
             std::env::remove_var("SIGNING_KEY_WATCH_PATH");
             std::env::remove_var("COLLECTOR_DATA_DIR");
+            std::env::remove_var("COLLECTOR_CH_MAX_ROWS");
+            std::env::remove_var("COLLECTOR_CH_PERIOD_MS");
+            std::env::remove_var("COLLECTOR_CH_MAX_BYTES");
         }
     }
 
@@ -209,6 +233,9 @@ mod tests {
             cfg.data_dir,
             std::path::PathBuf::from("/data/evidence-collector")
         );
+        assert_eq!(cfg.ch_max_rows, 1000);
+        assert_eq!(cfg.ch_period_ms, 1000);
+        assert_eq!(cfg.ch_max_bytes, 52_428_800);
     }
 
     #[test]
@@ -293,6 +320,38 @@ mod tests {
             let cfg = CollectorConfig::from_env().expect("config from env");
             assert!(!cfg.full_text_storage, "expected false for '{}'", val);
         }
+
+        unsafe { clear_collector_env() };
+    }
+
+    #[test]
+    fn config_batch_settings_from_env() {
+        let _guard = ENV_MUTEX.lock().unwrap();
+        unsafe {
+            clear_collector_env();
+            std::env::set_var("COLLECTOR_CH_MAX_ROWS", "5000");
+            std::env::set_var("COLLECTOR_CH_PERIOD_MS", "2000");
+            std::env::set_var("COLLECTOR_CH_MAX_BYTES", "104857600");
+        }
+
+        let cfg = CollectorConfig::from_env().expect("config from env");
+        assert_eq!(cfg.ch_max_rows, 5000);
+        assert_eq!(cfg.ch_period_ms, 2000);
+        assert_eq!(cfg.ch_max_bytes, 104_857_600);
+
+        unsafe { clear_collector_env() };
+    }
+
+    #[test]
+    fn config_data_dir_from_env() {
+        let _guard = ENV_MUTEX.lock().unwrap();
+        unsafe {
+            clear_collector_env();
+            std::env::set_var("COLLECTOR_DATA_DIR", "/custom/data");
+        }
+
+        let cfg = CollectorConfig::from_env().expect("config from env");
+        assert_eq!(cfg.data_dir, std::path::PathBuf::from("/custom/data"));
 
         unsafe { clear_collector_env() };
     }

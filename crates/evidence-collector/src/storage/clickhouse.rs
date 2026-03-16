@@ -86,6 +86,24 @@ impl Default for WriterHealth {
     }
 }
 
+/// Configurable batch settings for the ClickHouse inserter.
+#[derive(Debug, Clone, Copy)]
+pub struct InserterBatchSettings {
+    pub max_rows: u64,
+    pub period_ms: u64,
+    pub max_bytes: u64,
+}
+
+impl Default for InserterBatchSettings {
+    fn default() -> Self {
+        Self {
+            max_rows: 1000,
+            period_ms: 1000,
+            max_bytes: 52_428_800,
+        }
+    }
+}
+
 enum WriteCommand {
     Row(Box<EvidenceRow>),
     Flush(oneshot::Sender<Result<()>>),
@@ -104,6 +122,8 @@ impl ClickHouseWriter {
         user: &str,
         password: &str,
         data_dir: PathBuf,
+        retention_days: u32,
+        batch: InserterBatchSettings,
     ) -> Result<Self> {
         let database =
             validate_clickhouse_identifier(database).context("invalid ClickHouse database name")?;
@@ -126,13 +146,13 @@ impl ClickHouseWriter {
             .with_database(database)
             .with_compression(Compression::Lz4);
 
-        initialize_schema(&client).await?;
+        initialize_schema(&client, retention_days).await?;
 
         let inserter = client
             .inserter::<EvidenceRow>(EVIDENCE_TABLE)
-            .with_max_rows(1000)
-            .with_period(Some(std::time::Duration::from_secs(1)))
-            .with_max_bytes(50_000_000);
+            .with_max_rows(batch.max_rows)
+            .with_period(Some(std::time::Duration::from_millis(batch.period_ms)))
+            .with_max_bytes(batch.max_bytes);
 
         let (sender, receiver) = mpsc::channel(8_192);
         let health = Arc::new(WriterHealth::new());
@@ -404,9 +424,9 @@ where
     }
 }
 
-async fn initialize_schema(client: &Client) -> Result<()> {
+async fn initialize_schema(client: &Client, retention_days: u32) -> Result<()> {
     client
-        .query(&table_ddl())
+        .query(&table_ddl(retention_days))
         .execute()
         .await
         .context("failed creating evidence_bundles table")?;
@@ -431,8 +451,9 @@ async fn initialize_schema(client: &Client) -> Result<()> {
     Ok(())
 }
 
-pub fn table_ddl() -> String {
-    "CREATE TABLE IF NOT EXISTS evidence_bundles (
+pub fn table_ddl(retention_days: u32) -> String {
+    format!(
+        "CREATE TABLE IF NOT EXISTS evidence_bundles (
 event_date Date DEFAULT toDate(timestamp),
 timestamp DateTime64(3),
 bundle_id String,
@@ -460,9 +481,9 @@ content_bytes String DEFAULT ''
 ) ENGINE = MergeTree
 PARTITION BY toYYYYMMDD(event_date)
 ORDER BY (kernel_id, sequence_number)
-TTL event_date + INTERVAL 7 YEAR DELETE
+TTL event_date + INTERVAL {retention_days} DAY DELETE
 SETTINGS index_granularity = 8192"
-        .to_string()
+    )
 }
 
 /// Returns DDL statements to add columns introduced after the initial schema.
@@ -530,17 +551,17 @@ mod tests {
 
     #[test]
     fn schema_ddl_contains_core_clauses() {
-        let ddl = table_ddl();
+        let ddl = table_ddl(2555);
         assert!(ddl.starts_with("CREATE TABLE IF NOT EXISTS evidence_bundles"));
         assert!(ddl.contains("PARTITION BY toYYYYMMDD(event_date)"));
-        assert!(ddl.contains("TTL event_date + INTERVAL 7 YEAR DELETE"));
+        assert!(ddl.contains("TTL event_date + INTERVAL 2555 DAY DELETE"));
         assert!(ddl.contains("ORDER BY (kernel_id, sequence_number)"));
         assert!(ddl.contains("content_bytes String DEFAULT ''"));
     }
 
     #[test]
     fn schema_ddl_contains_all_required_columns() {
-        let ddl = table_ddl();
+        let ddl = table_ddl(2555);
         let required_columns = [
             "event_date",
             "timestamp",
@@ -570,6 +591,27 @@ mod tests {
         for col in &required_columns {
             assert!(ddl.contains(col), "DDL missing required column: {col}");
         }
+    }
+
+    #[test]
+    fn schema_ddl_retention_days_configurable() {
+        let ddl_30 = table_ddl(30);
+        assert!(
+            ddl_30.contains("INTERVAL 30 DAY DELETE"),
+            "DDL should contain INTERVAL 30 DAY DELETE"
+        );
+
+        let ddl_2555 = table_ddl(2555);
+        assert!(
+            ddl_2555.contains("INTERVAL 2555 DAY DELETE"),
+            "DDL should contain INTERVAL 2555 DAY DELETE"
+        );
+
+        let ddl_365 = table_ddl(365);
+        assert!(
+            ddl_365.contains("INTERVAL 365 DAY DELETE"),
+            "DDL should contain INTERVAL 365 DAY DELETE"
+        );
     }
 
     #[test]
