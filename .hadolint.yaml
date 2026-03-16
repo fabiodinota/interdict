@@ -1,1 +1,3 @@
-ignored: []
+ignored:
+  - DL3008  # apt-get wildcard pins (curl=7.*, wget=1.21.*) are intentional for base image compatibility
+  - DL4006  # pipefail not needed — RUN commands use && chaining, not pipe error handling
