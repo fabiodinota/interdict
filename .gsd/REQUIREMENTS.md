@@ -2,9 +2,11 @@
 
 ## Active
 
+## Validated
+
 ### FH-INTEGRITY-01 — Evidence pipeline retries ClickHouse writes with backoff and persists Merkle anchors locally before S3 upload.
 
-- Status: active
+- Status: validated
 - Class: core-capability
 - Source: v1.6 foundation assessment (H-01, H-02, M-02, M-03, L-04)
 - Primary Slice: M009/S01
@@ -13,7 +15,7 @@ Evidence pipeline retries ClickHouse writes with exponential backoff (5 attempts
 
 ### FH-SECURITY-01 — BFF proxy validates paths, Helm requires credentials, dev fallbacks require explicit opt-in.
 
-- Status: active
+- Status: validated
 - Class: security
 - Source: v1.6 foundation assessment (H-03, H-04, M-06, M-09, M-10)
 - Primary Slice: M009/S02
@@ -22,7 +24,7 @@ BFF proxy validates paths against an allowlist and rejects disallowed paths with
 
 ### FH-SECURITY-02 — Rate limiting covers write endpoints and expensive operations.
 
-- Status: active
+- Status: validated
 - Class: security
 - Source: v1.6 foundation assessment (M-01, M-05, L-05, L-06)
 - Primary Slice: M009/S03
@@ -31,7 +33,7 @@ Rate limiting applied to policy creation, compilation, report generation, signin
 
 ### FH-QUALITY-01 — Zero flaky tests, render-phase side effects fixed, dead code removed, accessibility improved.
 
-- Status: active
+- Status: validated
 - Class: code-quality
 - Source: v1.6 foundation assessment (M-04, L-01, L-08, L-09, L-10, L-11, L-12, L-23, L-24)
 - Primary Slice: M009/S04, M009/S06
@@ -49,23 +51,21 @@ Docker Compose cert-init runs non-root with read-only rootfs and no network. CI 
 
 ### FH-OBSERVABILITY-01 — Prometheus metrics endpoints on evidence-collector and control-plane.
 
-- Status: active
+- Status: validated
 - Class: core-capability
 - Source: v1.6 foundation assessment (systemic gap)
 - Primary Slice: M009/S06
 
-Evidence-collector exposes /metrics with evidence_bundles_received_total, written_total, retried_total, dead_lettered_total, write_latency_seconds, merkle_anchors_written_total, signing_operations_total. Control-plane exposes /metrics with http_requests_total, request_duration_seconds, rate_limit_rejections_total, session_cleanup_rows_total, policy_compilations_total.
+Evidence-collector exposes /metrics on port 9090 with evidence_bundles_received_total, written_total, retried_total, dead_lettered_total, merkle_anchors_written_total, signing_operations_total. Control-plane exposes /metrics on port 3000 with http_requests_total, http_request_duration_seconds, rate_limit_rejections_total.
 
 ### FH-TESTING-01 — Collector→verifier roundtrip test and Merkle proof generation/verification.
 
-- Status: active
+- Status: validated
 - Class: core-capability
 - Source: v1.6 foundation assessment (M-12, systemic gap)
 - Primary Slice: M009/S06
 
-Roundtrip integration test creates bundles via collector, signs and chains them, then verifies with interdict-verify. Merkle proof generation supports individual bundle inclusion verification.
-
-## Validated
+Roundtrip integration test creates bundles, chains them, generates Merkle proofs, and verifies all via interdict-verify. MerkleAnchor::proof_for_bundle() generates inclusion proofs. verify_bundle_proof() validates against expected root.
 
 ### HR-OPS-01 — Docker, Helm, proto, shell, and YAML artifacts have explicit lint/validation coverage in CI.
 

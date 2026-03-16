@@ -82,7 +82,7 @@ This milestone is complete only when all are true:
 - [x] **S05: Infrastructure & CI Hardening** `risk:medium` `depends:[]`
   > After this: Docker Compose cert-init runs as non-root with read-only rootfs and no network access. hadolint and kube-score CI downloads verified by SHA256 checksum. minio-init job has full security context. Sidecar-init drops all capabilities except NET_ADMIN. Control-plane Dockerfile separates devDependencies. Workspace `unsafe_code` lint is `deny` with per-crate exceptions. Stale cert comment fixed. lint-staged Rust handler improved. `docker compose config`, `helm lint`, and `cargo clippy` pass.
 
-- [ ] **S06: Proto Safety, Observability & Testing** `risk:medium` `depends:[S01]`
+- [x] **S06: Proto Safety, Observability & Testing** `risk:medium` `depends:[S01]`
   > After this: Deprecated proto fields reject non-empty content. Flaky kernel test is deterministic (notification channel replaces sleep). Timestamp nanos uses safe cast. PEM parser validates ASN.1 structure. Merkle proof generation and verification work for individual bundles. Collector→verifier roundtrip integration test passes. Prometheus metrics endpoints on evidence-collector (9090) and control-plane expose pipeline health, HTTP request rates, and rate limit stats. vitest mock hoisting warning fixed. `cargo test --workspace`, `buf lint`, `bun test`, and `npx vitest run` all pass.
 
 ## Boundary Map
