@@ -218,8 +218,8 @@ describe("SigningKeysService", () => {
       const result = await service.getActiveKey();
 
       expect(result).not.toBeNull();
-      expect(result?.key_id).toBe("active-key");
-      expect(result?.is_active).toBe(true);
+      expect(result!.key_id).toBe("active-key");
+      expect(result!.is_active).toBe(true);
     });
 
     test("returns null when no active key exists", async () => {

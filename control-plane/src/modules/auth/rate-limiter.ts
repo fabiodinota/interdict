@@ -169,7 +169,7 @@ export function createRateLimitHook(limiter: RateLimiter) {
     server,
   }: {
     request: Request;
-    set: { status?: number | string; headers: Record<string, string> };
+    set: { status: number; headers: Record<string, string> };
     server?: { requestIP: (req: Request) => { address: string } | null };
   }) => {
     try {

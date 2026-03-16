@@ -49,12 +49,12 @@ describe("KernelTracker", () => {
       expect(tracker.connectedCount()).toBe(1);
       const conn = tracker.getConnection("k1");
       expect(conn).toBeDefined();
-      expect(conn?.kernelId).toBe("k1");
-      expect(conn?.orgId).toBe("org1");
-      expect(conn?.deptId).toBe("dept1");
-      expect(conn?.teamId).toBe("team1");
-      expect(conn?.currentVersion).toBe(0);
-      expect(conn?.lastAckAt).toBeNull();
+      expect(conn!.kernelId).toBe("k1");
+      expect(conn!.orgId).toBe("org1");
+      expect(conn!.deptId).toBe("dept1");
+      expect(conn!.teamId).toBe("team1");
+      expect(conn!.currentVersion).toBe(0);
+      expect(conn!.lastAckAt).toBeNull();
     });
 
     it("replaces existing connection on reconnect", () => {
@@ -66,7 +66,7 @@ describe("KernelTracker", () => {
 
       expect(tracker.connectedCount()).toBe(1);
       const conn = tracker.getConnection("k1");
-      expect(conn?.stream).toBe(stream2);
+      expect(conn!.stream).toBe(stream2);
     });
 
     it("supports multiple concurrent kernels", () => {
@@ -114,9 +114,9 @@ describe("KernelTracker", () => {
       tracker.acknowledge("k1", 42, true, "");
 
       const conn = tracker.getConnection("k1");
-      expect(conn?.currentVersion).toBe(42);
-      expect(conn?.lastAckAt).toBeDefined();
-      expect(conn?.lastAckAt).toBeInstanceOf(Date);
+      expect(conn!.currentVersion).toBe(42);
+      expect(conn!.lastAckAt).toBeDefined();
+      expect(conn!.lastAckAt).toBeInstanceOf(Date);
     });
 
     it("does not update version on NACK", () => {
@@ -126,8 +126,8 @@ describe("KernelTracker", () => {
       tracker.acknowledge("k1", 42, false, "compilation error");
 
       const conn = tracker.getConnection("k1");
-      expect(conn?.currentVersion).toBe(0);
-      expect(conn?.lastAckAt).toBeNull();
+      expect(conn!.currentVersion).toBe(0);
+      expect(conn!.lastAckAt).toBeNull();
     });
 
     it("handles ACK from unknown kernel gracefully", () => {

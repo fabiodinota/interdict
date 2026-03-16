@@ -210,7 +210,7 @@ function buildTestApp(opts: {
         }
 
         // Clear session cookie
-        if (cookie?.interdict_session) {
+        if (cookie && cookie.interdict_session) {
           cookie.interdict_session.set({
             value: "",
             httpOnly: true,

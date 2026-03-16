@@ -33,7 +33,7 @@ describe("Body size limit", () => {
       })
       .listen(0); // Random port
 
-    baseUrl = `http://localhost:${app.server?.port}`;
+    baseUrl = `http://localhost:${app.server!.port}`;
   });
 
   afterAll(() => {
@@ -83,7 +83,7 @@ describe("Body size limit", () => {
       .get("/health", () => ({ status: "ok" }))
       .listen(0);
 
-    const res = await fetch(`http://localhost:${getApp.server?.port}/health`);
+    const res = await fetch(`http://localhost:${getApp.server!.port}/health`);
     expect(res.status).toBe(200);
     getApp.stop();
   });
