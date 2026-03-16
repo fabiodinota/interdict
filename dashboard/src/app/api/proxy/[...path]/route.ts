@@ -4,6 +4,25 @@ import { getSessionToken, getControlPlaneUrl } from "@/lib/auth";
 // Disable static caching for all proxy routes; required for SSE streaming to work
 export const dynamic = "force-dynamic";
 
+// H-03: Only forward requests to known control-plane API module prefixes.
+// The check matches the first path segment — e.g. "admin" covers "admin/signing-keys".
+const ALLOWED_PATH_PREFIXES = [
+  "auth",
+  "policies",
+  "vendors",
+  "regulatory",
+  "audit",
+  "reports",
+  "admin",
+  "evidence",
+  "reviews",
+  "department-overrides",
+  "anomalies",
+] as const;
+
+// Cap proxied request bodies at 2 MB to prevent abuse.
+const MAX_BODY_SIZE = 2 * 1024 * 1024; // 2MB
+
 async function proxyRequest(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
@@ -20,6 +39,27 @@ async function proxyRequest(
   const { path } = await params;
   const controlPlaneUrl = getControlPlaneUrl();
   const targetPath = path.join("/");
+
+  // H-03: Reject paths that don't match a known control-plane module prefix.
+  const firstSegment = path[0];
+  if (!firstSegment || !ALLOWED_PATH_PREFIXES.includes(firstSegment as any)) {
+    return NextResponse.json(
+      { success: false, error: { message: "Forbidden" } },
+      { status: 403 },
+    );
+  }
+
+  // Reject oversized request bodies before forwarding.
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
+      return NextResponse.json(
+        { success: false, error: { message: "Request body too large", maxBytes: MAX_BODY_SIZE } },
+        { status: 413 },
+      );
+    }
+  }
+
   const searchParams = request.nextUrl.searchParams.toString();
   const url = `${controlPlaneUrl}/api/v1/${targetPath}${searchParams ? `?${searchParams}` : ""}`;
 

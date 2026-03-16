@@ -85,6 +85,13 @@ Add a path allowlist that matches the first segment of the target path against k
 - `npx vitest run` — all dashboard tests pass
 - `npx vitest run dashboard/src/__tests__/api/proxy.test.ts` — proxy-specific tests pass, count is ≥25 (18 existing + 7+ new)
 
+## Observability Impact
+
+- **New signal:** HTTP 403 response for disallowed proxy paths (structured JSON with `{ success: false, error: { message: "Forbidden" } }`). HTTP 413 for oversized bodies (includes `maxBytes` field for diagnostics).
+- **How to inspect:** Send a request to `/api/proxy/evil/path` — should get 403. Send a POST with `Content-Length: 3000000` — should get 413 with `maxBytes: 2097152`.
+- **Failure visibility:** Blocked requests never reach the upstream control plane — no upstream fetch is made. The 403/413 is returned early in `proxyRequest`, before URL construction.
+- **No secrets involved:** The allowlist checks path segments only. Body size check reads the `Content-Length` header value, never the body content.
+
 ## Inputs
 
 - `dashboard/src/app/api/proxy/[...path]/route.ts` — current proxy implementation (121 lines, zero path validation). Exports: `GET`, `POST`, `PUT`, `DELETE`. Uses `proxyRequest` helper that builds URL as `${controlPlaneUrl}/api/v1/${targetPath}`. Has special SSE streaming branch for `audit/stream`.

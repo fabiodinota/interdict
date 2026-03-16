@@ -41,7 +41,7 @@
 
 ## Tasks
 
-- [ ] **T01: Add BFF proxy path allowlist and body size cap** `est:45m`
+- [x] **T01: Add BFF proxy path allowlist and body size cap** `est:45m`
   - Why: Assessment finding H-03 — the proxy forwards any path to the control plane with zero validation. This is the highest-risk finding in the slice.
   - Files: `dashboard/src/app/api/proxy/[...path]/route.ts`, `dashboard/src/__tests__/api/proxy.test.ts`
   - Do: Add `ALLOWED_PREFIXES` array matching control-plane module prefixes. Validate first path segment against allowlist before URL construction — return 403 for disallowed paths. Add `Content-Length` check before forwarding — return 413 for bodies over 2MB. Add tests for: disallowed path returns 403, each allowed prefix succeeds, body over 2MB returns 413, body at 2MB succeeds, missing Content-Length on POST is allowed (for streaming).
@@ -59,6 +59,13 @@
   - Do: (1) In `config.ts` `loadConfig()`, change the DATABASE_URL dev fallback: only apply the `"postgres://interdict:interdict@localhost:5432/interdict"` fallback when `!isProduction && process.env.ALLOW_DEV_DEFAULTS === "true"`. Apply same pattern to other dev fallbacks (clickhouseUrl, etc.) — they all should require `ALLOW_DEV_DEFAULTS=true`. (2) Update `config.test.ts` with tests: without `ALLOW_DEV_DEFAULTS`, missing `DATABASE_URL` throws; with `ALLOW_DEV_DEFAULTS=true`, fallback works; production mode ignores `ALLOW_DEV_DEFAULTS`. (3) In `docker-compose.yml`, change `signing_keys:/data/keys` to `signing_keys:/data/keys:ro` for evidence-collector. (4) In `docker-compose.test.yml`, prefix all port mappings with `127.0.0.1:` (e.g., `"127.0.0.1:15432:5432"`).
   - Verify: `bun test` passes. `docker compose config` validates. `docker compose -f docker-compose.yml -f docker-compose.test.yml config` validates.
   - Done when: missing DATABASE_URL without ALLOW_DEV_DEFAULTS throws in dev mode, signing_keys volume is :ro, all test ports bind to 127.0.0.1
+
+## Observability / Diagnostics
+
+- **Proxy 403/413 responses:** Rejected requests return structured JSON `{ success: false, error: { message } }` with appropriate HTTP status codes. No server-side logging added — the response itself is the signal. A future agent can verify enforcement by sending disallowed paths or oversized bodies and checking response codes.
+- **Helm validation failures:** `helm template` emits `fail` messages with the specific missing credential name. These are visible in CI output and local `helm template` runs.
+- **Config dev-fallback gating:** Missing `DATABASE_URL` without `ALLOW_DEV_DEFAULTS=true` throws a descriptive error including the env var name. This surfaces in process stderr at startup.
+- **Redaction constraints:** No secrets flow through the new code paths. The proxy allowlist and body cap operate on path segments and Content-Length headers only.
 
 ## Files Likely Touched
 
