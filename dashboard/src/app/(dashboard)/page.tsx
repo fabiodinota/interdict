@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { KpiCards } from "@/components/dashboard/KpiCards";
 import { TimeRangeSelector, getDateRange } from "@/components/dashboard/TimeRangeSelector";
@@ -18,7 +18,7 @@ import {
 
 export default function HomePage() {
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [manualRefreshAt, setManualRefreshAt] = useState<Date | null>(null);
   const queryClient = useQueryClient();
 
   const { from, to } = getDateRange(timeRange);
@@ -32,18 +32,18 @@ export default function HomePage() {
   // Derive KPI values from violation data
   const { totalRequests, violationsToday } = useViolationKpis(violations.data);
 
-  // Track when data was last fetched (via effect, not during render)
-  useEffect(() => {
-    if (violations.dataUpdatedAt) {
-      setLastUpdated(new Date(violations.dataUpdatedAt));
-    }
-  }, [violations.dataUpdatedAt]);
+  // Derive lastUpdated from query data or manual refresh
+  const lastUpdated = useMemo(() => {
+    if (manualRefreshAt) return manualRefreshAt;
+    if (violations.dataUpdatedAt) return new Date(violations.dataUpdatedAt);
+    return null;
+  }, [violations.dataUpdatedAt, manualRefreshAt]);
 
   const handleRefresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["audit", "stats"] });
     queryClient.invalidateQueries({ queryKey: ["policies"] });
     queryClient.invalidateQueries({ queryKey: ["vendors"] });
-    setLastUpdated(new Date());
+    setManualRefreshAt(new Date());
   }, [queryClient]);
 
   const isKpiLoading =
