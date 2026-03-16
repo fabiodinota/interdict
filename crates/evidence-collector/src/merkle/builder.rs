@@ -3,6 +3,9 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Timelike, Utc};
 use rs_merkle::{MerkleTree, algorithms::Sha256 as MerkleSha256};
+
+#[cfg(test)]
+use rs_merkle::MerkleProof;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
@@ -64,6 +67,19 @@ mod hex_array_vec {
     }
 }
 
+/// Merkle inclusion proof for a single bundle within an anchor's tree.
+#[derive(Debug, Clone)]
+pub struct MerkleProofData {
+    /// Serialized `MerkleProof<Sha256>` bytes (via `proof.to_bytes()`).
+    pub proof_bytes: Vec<u8>,
+    /// Index of the leaf (bundle chain hash) within the tree.
+    pub leaf_index: usize,
+    /// Total number of leaves in the tree.
+    pub total_leaves: usize,
+    /// Merkle root that this proof is relative to.
+    pub root: [u8; 32],
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MerkleAnchor {
     #[serde(with = "hex_array")]
@@ -72,6 +88,23 @@ pub struct MerkleAnchor {
     pub hour: DateTime<Utc>,
     #[serde(with = "hex_array_vec")]
     pub chain_hashes: Vec<[u8; 32]>,
+}
+
+impl MerkleAnchor {
+    /// Generate a Merkle inclusion proof for a specific bundle hash.
+    ///
+    /// Returns `None` if `bundle_hash` is not in `chain_hashes`.
+    pub fn proof_for_bundle(&self, bundle_hash: &[u8; 32]) -> Option<MerkleProofData> {
+        let leaf_index = self.chain_hashes.iter().position(|h| h == bundle_hash)?;
+        let tree = MerkleTree::<MerkleSha256>::from_leaves(&self.chain_hashes);
+        let proof = tree.proof(&[leaf_index]);
+        Some(MerkleProofData {
+            proof_bytes: proof.to_bytes(),
+            leaf_index,
+            total_leaves: self.chain_hashes.len(),
+            root: self.root,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -424,5 +457,60 @@ mod tests {
         assert_eq!(deserialized.bundle_count, anchor.bundle_count);
         assert_eq!(deserialized.hour, anchor.hour);
         assert_eq!(deserialized.chain_hashes, anchor.chain_hashes);
+    }
+
+    #[test]
+    fn test_proof_for_existing_bundle() {
+        let hashes: Vec<[u8; 32]> = (0..5)
+            .map(|i| {
+                let mut h = [0u8; 32];
+                h[0] = i;
+                h
+            })
+            .collect();
+
+        let mut builder = HourlyMerkleBuilder::new(hour(10), 1_000_000);
+        for h in &hashes {
+            builder.add_bundle_hash(*h);
+        }
+        let anchor = builder.finalize().unwrap();
+
+        let proof = anchor
+            .proof_for_bundle(&hashes[2])
+            .expect("should return proof for existing hash");
+        assert!(!proof.proof_bytes.is_empty());
+        assert_eq!(proof.leaf_index, 2);
+        assert_eq!(proof.total_leaves, 5);
+        assert_eq!(proof.root, anchor.root);
+    }
+
+    #[test]
+    fn test_proof_for_missing_bundle() {
+        let mut builder = HourlyMerkleBuilder::new(hour(10), 1_000_000);
+        builder.add_bundle_hash([1u8; 32]);
+        builder.add_bundle_hash([2u8; 32]);
+        let anchor = builder.finalize().unwrap();
+
+        let missing = [99u8; 32];
+        assert!(anchor.proof_for_bundle(&missing).is_none());
+    }
+
+    #[test]
+    fn test_proof_for_single_leaf() {
+        let hash = [42u8; 32];
+        let mut builder = HourlyMerkleBuilder::new(hour(10), 1_000_000);
+        builder.add_bundle_hash(hash);
+        let anchor = builder.finalize().unwrap();
+
+        let proof = anchor
+            .proof_for_bundle(&hash)
+            .expect("should return proof for single-leaf tree");
+        assert_eq!(proof.leaf_index, 0);
+        assert_eq!(proof.total_leaves, 1);
+        assert_eq!(proof.root, anchor.root);
+        // Single leaf proof — verify it's valid via rs_merkle directly
+        let mp = MerkleProof::<MerkleSha256>::from_bytes(&proof.proof_bytes)
+            .expect("should parse proof bytes");
+        assert!(mp.verify(proof.root, &[0], &[hash], 1));
     }
 }
