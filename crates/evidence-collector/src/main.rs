@@ -7,6 +7,7 @@ use evidence_collector::config::{CollectorConfig, SigningMode};
 use evidence_collector::grpc::proto::evidence_collector_service_server::EvidenceCollectorServiceServer;
 use evidence_collector::grpc::service::EvidenceCollectorGrpcService;
 use evidence_collector::merkle::builder::{self, HourlyMerkleBuilder};
+use evidence_collector::merkle::persistence::{anchor_dir, recover_pending_anchors};
 use evidence_collector::signing::{
     KmsSigningProvider, LocalSigningProvider, RotatingSigningProvider, SigningProvider,
 };
@@ -82,6 +83,11 @@ async fn main() -> Result<()> {
         .await
         .context("failed to create dead-letter directory")?;
 
+    // Ensure merkle-anchors directory exists at startup.
+    tokio::fs::create_dir_all(anchor_dir(&cfg.data_dir))
+        .await
+        .context("failed to create merkle-anchors directory")?;
+
     // Initialize ClickHouse batched writer (runs DDL on startup).
     let clickhouse_writer = Arc::new(
         ClickHouseWriter::new(
@@ -128,6 +134,10 @@ async fn main() -> Result<()> {
     // Cancellation token for graceful shutdown.
     let cancel = CancellationToken::new();
 
+    // Recover any pending merkle anchors from a previous run before starting
+    // the gRPC server. Retries S3 upload for each pending anchor.
+    recover_pending_anchors(&cfg.data_dir, &s3_anchor).await;
+
     // Spawn signing key file watcher if SIGNING_KEY_WATCH_PATH is set.
     if let Some(watch_path) = &cfg.signing_key_watch_path {
         let watcher_provider = Arc::clone(&signing_provider);
@@ -143,9 +153,16 @@ async fn main() -> Result<()> {
     let rotation_cancel = cancel.clone();
     let rotation_builder = Arc::clone(&merkle_builder);
     let rotation_s3 = s3_anchor.clone();
+    let rotation_data_dir = cfg.data_dir.clone();
     tokio::spawn(async move {
-        builder::merkle_rotation_task(rotation_builder, rotation_s3, overflow_rx, rotation_cancel)
-            .await;
+        builder::merkle_rotation_task(
+            rotation_builder,
+            rotation_s3,
+            rotation_data_dir,
+            overflow_rx,
+            rotation_cancel,
+        )
+        .await;
     });
 
     // Build the gRPC service.
