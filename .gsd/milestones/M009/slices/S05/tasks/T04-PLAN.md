@@ -98,3 +98,9 @@ docker compose config >/dev/null
 - CI workflow has `HADOLINT_SHA256` and `KUBESCORE_SHA256` variables with real checksums
 - Both download steps include `sha256sum -c` verification before `chmod`/`tar`
 - Dockerfile has `bun install --production --frozen-lockfile` followed by source COPY followed by `bun install --frozen-lockfile`
+
+## Observability Impact
+
+- **CI signal:** hadolint and kube-score install steps now fail with a `sha256sum: WARNING: 1 computed checksum did NOT match` line in CI logs if the downloaded binary is tampered or corrupted. Grep CI output for `sha256sum` to inspect. No new runtime signals — these are build-time checks only.
+- **Docker build cache:** `docker build` output shows separate layer cache hits/misses for production deps vs full deps. Source-only changes will show `CACHED` on the production install layer. Inspect with `docker history <image>` or `docker build --progress=plain`.
+- **No runtime changes:** Neither modification affects application runtime behavior, logging, or health endpoints.

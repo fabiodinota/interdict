@@ -104,7 +104,9 @@ jobs:
       - name: Install hadolint
         run: |
           HADOLINT_VERSION=v2.12.0
+          HADOLINT_SHA256=56de6d5e5ec427e17b74fa48d51271c7fc0d61244bf5c90e828aab8362d55010
           curl -fsSL "https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/hadolint-Linux-x86_64" -o hadolint
+          echo "${HADOLINT_SHA256}  hadolint" | sha256sum -c -
           chmod +x hadolint
           sudo mv hadolint /usr/local/bin/hadolint
 
@@ -121,7 +123,9 @@ jobs:
       - name: Install kube-score
         run: |
           KUBESCORE_VERSION=v1.18.0
+          KUBESCORE_SHA256=2f4c3a43045ac4006fa1adcf970660828d2df09c4e9165bafe27d36479fa355a
           curl -fsSL "https://github.com/zegl/kube-score/releases/download/${KUBESCORE_VERSION}/kube-score_${KUBESCORE_VERSION#v}_linux_amd64.tar.gz" -o kube-score.tar.gz
+          echo "${KUBESCORE_SHA256}  kube-score.tar.gz" | sha256sum -c -
           tar xzf kube-score.tar.gz kube-score
           chmod +x kube-score
           sudo mv kube-score /usr/local/bin/kube-score

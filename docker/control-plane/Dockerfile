@@ -43,12 +43,15 @@ RUN groupadd -g 1000 interdict && \
 
 WORKDIR /app
 
-# Install dependencies (including devDependencies for drizzle-kit migrations)
+# Install production dependencies first (cached layer — changes rarely)
 COPY control-plane/package.json control-plane/bun.lock ./
-RUN bun install --frozen-lockfile
+RUN bun install --production --frozen-lockfile
 
 # Copy control plane source
 COPY control-plane/ .
+
+# Install remaining devDependencies (drizzle-kit needed for entrypoint migrations)
+RUN bun install --frozen-lockfile
 
 # Copy proto files -- gRPC distribution module resolves proto relative to
 # control-plane/src/modules/distribution/ as ../../../../proto/
