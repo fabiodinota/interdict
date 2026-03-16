@@ -48,6 +48,10 @@ pub struct ReviewQueue {
     semaphore: Arc<Semaphore>,
     /// Default timeout for human review before fail-mode applies.
     default_timeout: Duration,
+    /// Test-only: signals after `pending.insert()` so tests can synchronize
+    /// on escalation readiness instead of racing against wall-clock sleeps.
+    #[cfg(test)]
+    pub escalation_notify: Option<tokio::sync::mpsc::UnboundedSender<()>>,
 }
 
 impl ReviewQueue {
@@ -67,6 +71,8 @@ impl ReviewQueue {
             pending: Arc::new(DashMap::new()),
             semaphore: Arc::new(Semaphore::new(max_pending)),
             default_timeout,
+            #[cfg(test)]
+            escalation_notify: None,
         }
     }
 
@@ -144,6 +150,12 @@ impl ReviewQueue {
 
         // Step 4: Insert sender into pending map.
         self.pending.insert(request_id_str.clone(), tx);
+
+        // Signal test harness that the pending entry is ready for verdict submission.
+        #[cfg(test)]
+        if let Some(ref notify_tx) = self.escalation_notify {
+            let _ = notify_tx.send(());
+        }
 
         // Step 5: Await the receiver with timeout.
         let result = tokio::time::timeout(self.default_timeout, rx).await;
@@ -271,7 +283,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_escalate_holds_connection_until_verdict() {
-        let queue = Arc::new(make_queue(5000, 10)); // 5s timeout
+        let mut queue = make_queue(5000, 10); // 5s timeout
+        let (notify_tx, mut notify_rx) = tokio::sync::mpsc::unbounded_channel();
+        queue.escalation_notify = Some(notify_tx);
+        let queue = Arc::new(queue);
         let request_id = uuid::Uuid::new_v4();
         let trace = make_test_trace(request_id);
 
@@ -286,8 +301,8 @@ mod tests {
                 .unwrap()
         });
 
-        // Give the escalation a moment to register.
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        // Wait for the escalation to register in the pending map.
+        notify_rx.recv().await.unwrap();
 
         // Submit a verdict from the "reviewer".
         let delivered = queue
@@ -342,7 +357,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_escalate_concurrent_limit() {
-        let queue = Arc::new(make_queue(5000, 2)); // Max 2 concurrent
+        let mut queue = make_queue(5000, 2); // Max 2 concurrent
+        let (notify_tx, mut notify_rx) = tokio::sync::mpsc::unbounded_channel();
+        queue.escalation_notify = Some(notify_tx);
+        let queue = Arc::new(queue);
         let mut handles = Vec::new();
 
         // Fill up both semaphore slots.
@@ -358,8 +376,9 @@ mod tests {
             }));
         }
 
-        // Give them a moment to acquire permits.
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        // Wait for both escalations to acquire permits and register.
+        notify_rx.recv().await.unwrap();
+        notify_rx.recv().await.unwrap();
 
         // Third escalation should immediately return fail-mode (no waiting).
         let request_id = uuid::Uuid::new_v4();
@@ -437,7 +456,10 @@ mod tests {
     async fn test_escalate_at_capacity_returns_fail_closed_immediately() {
         // Queue with max_pending=1. First escalation acquires the permit,
         // second should immediately return fail-mode default without blocking.
-        let queue = Arc::new(make_queue(5000, 1)); // max 1 concurrent
+        let mut queue = make_queue(5000, 1); // max 1 concurrent
+        let (notify_tx, mut notify_rx) = tokio::sync::mpsc::unbounded_channel();
+        queue.escalation_notify = Some(notify_tx);
+        let queue = Arc::new(queue);
 
         let request_id_1 = uuid::Uuid::new_v4();
         let trace_1 = make_test_trace(request_id_1);
@@ -451,8 +473,8 @@ mod tests {
                 .unwrap()
         });
 
-        // Give the first escalation time to acquire the permit.
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        // Wait for the first escalation to acquire the permit.
+        notify_rx.recv().await.unwrap();
 
         // Second escalation with fail-closed: should get Block immediately.
         let request_id_2 = uuid::Uuid::new_v4();
@@ -474,7 +496,10 @@ mod tests {
     #[tokio::test]
     async fn test_escalate_at_capacity_returns_fail_open_immediately() {
         // Same as above but with fail-open: should get Allow immediately.
-        let queue = Arc::new(make_queue(5000, 1)); // max 1 concurrent
+        let mut queue = make_queue(5000, 1); // max 1 concurrent
+        let (notify_tx, mut notify_rx) = tokio::sync::mpsc::unbounded_channel();
+        queue.escalation_notify = Some(notify_tx);
+        let queue = Arc::new(queue);
 
         let request_id_1 = uuid::Uuid::new_v4();
         let trace_1 = make_test_trace(request_id_1);
@@ -487,7 +512,8 @@ mod tests {
                 .unwrap()
         });
 
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        // Wait for the first escalation to acquire the permit.
+        notify_rx.recv().await.unwrap();
 
         // Second escalation with fail-open: should get Allow immediately.
         let request_id_2 = uuid::Uuid::new_v4();

@@ -57,6 +57,12 @@ Four tests in `queue.rs` use `tokio::time::sleep(Duration::from_millis(50))` to 
 
 - `crates/kernel/src/policy/layer3/queue.rs` — 4 test functions with `sleep(Duration::from_millis(50))` at approximately lines 290, 362, 455, 490. The `ReviewQueue` struct and `escalate()` method are in the same file.
 
+## Observability Impact
+
+- **Test-only:** No production runtime signals change. The `escalation_notify` field is `#[cfg(test)]` — zero footprint in release builds.
+- **CI diagnostic:** Deterministic test synchronization eliminates intermittent failures. If a queue test fails after this change, it indicates a real logic bug rather than a timing race — the failure is meaningful and reproducible.
+- **Inspection:** No new runtime logs, metrics, or status surfaces. The watch channel is purely internal to the test harness.
+
 ## Expected Output
 
 - `crates/kernel/src/policy/layer3/queue.rs` — `ReviewQueue` gains `#[cfg(test)] escalation_notify` field, `escalate()` signals on insert, all 4 tests use channel-based synchronization instead of sleep
