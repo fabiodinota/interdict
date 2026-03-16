@@ -1,7 +1,7 @@
 # GSD State
 
 **Active Milestone:** M009: Foundation Hardening (v1.7)
-**Active Slice:** S05: Infrastructure & CI Hardening
+**Active Slice:** S06: Proto Safety, Observability & Testing
 **Phase:** executing
 **Requirements Status:** 7 active · 27 validated · 0 deferred · 0 out of scope
 
@@ -16,19 +16,19 @@
 - ✅ **M008:** Assessment Remediation (v1.6)
 - 🔄 **M009:** Foundation Hardening (v1.7)
 
-## Slice Progress (M009)
-- ✅ S01: Evidence Pipeline Resilience
-- ✅ S02: Security Hardening — Proxy, Helm, Secrets
-- ✅ S03: Auth, Rate Limiting & Session Fixes
-- ✅ S04: Dashboard Quality & Accessibility
-- 🔄 S05: Infrastructure & CI Hardening (planned — 4 tasks: T01-T04)
-- ⬚ S06: Proto Safety, Observability & Testing
+## S06 Task Status
+- [ ] T01: Proto max_len=0, timestamp safe cast, PEM ASN.1 validation
+- [ ] T02: Fix flaky kernel review queue tests with notification channel
+- [ ] T03: Merkle proof generation, verification, and roundtrip integration test
+- [ ] T04: Evidence-collector Prometheus /metrics endpoint
+- [ ] T05: Control-plane Prometheus, vitest mock fix, scrape config update
 
 ## Recent Decisions
-- D072: cert-init removed from `data` network instead of `network_mode: none` (apk needs internet)
+- D073: Hand-rolled Prometheus text format for evidence-collector (no `prometheus` crate)
+- D074: Merkle proof generation from persisted MerkleAnchor.chain_hashes
 
 ## Blockers
 - None
 
 ## Next Action
-Execute S05/T01 (unsafe_code deny, cert comment, lint-staged).
+Execute T01 (proto + timestamp + PEM safety fixes).
