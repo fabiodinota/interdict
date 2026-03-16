@@ -8,6 +8,7 @@ use evidence_collector::grpc::proto::evidence_collector_service_server::Evidence
 use evidence_collector::grpc::service::EvidenceCollectorGrpcService;
 use evidence_collector::merkle::builder::{self, HourlyMerkleBuilder};
 use evidence_collector::merkle::persistence::{anchor_dir, recover_pending_anchors};
+use evidence_collector::metrics::{CollectorMetrics, serve_metrics};
 use evidence_collector::signing::{
     KmsSigningProvider, LocalSigningProvider, RotatingSigningProvider, SigningProvider,
 };
@@ -113,6 +114,23 @@ async fn main() -> Result<()> {
         .and_then(|dt| dt.with_nanosecond(0))
         .unwrap_or_else(Utc::now);
 
+    // Initialize Prometheus metrics (reads WriterHealth atomics directly).
+    let collector_metrics = Arc::new(CollectorMetrics::new(Arc::clone(
+        clickhouse_writer.health(),
+    )));
+
+    let metrics_port: u16 = std::env::var("COLLECTOR_METRICS_PORT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(9090);
+
+    let metrics_handle = Arc::clone(&collector_metrics);
+    tokio::spawn(async move {
+        if let Err(error) = serve_metrics(metrics_handle, metrics_port).await {
+            tracing::error!(error = %error, port = metrics_port, "metrics HTTP server failed");
+        }
+    });
+
     let merkle_builder = Arc::new(Mutex::new(HourlyMerkleBuilder::new(
         current_hour,
         cfg.merkle_max_leaves as usize,
@@ -178,6 +196,7 @@ async fn main() -> Result<()> {
         clickhouse_writer.clone(),
         merkle_builder.clone(),
         Some(overflow_tx),
+        Some(collector_metrics),
     );
 
     let grpc_addr = cfg.grpc_listen_addr.parse()?;

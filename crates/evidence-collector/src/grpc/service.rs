@@ -1,5 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
+use std::sync::atomic::Ordering::Relaxed;
 
 use anyhow::{Context, Result, anyhow};
 use chrono::{TimeZone, Utc};
@@ -10,6 +11,7 @@ use tonic::{Request, Response, Status, Streaming};
 
 use crate::chain::{hasher::ChainManager, signer};
 use crate::merkle::builder::HourlyMerkleBuilder;
+use crate::metrics::CollectorMetrics;
 use crate::signing::RotatingSigningProvider;
 use crate::storage::clickhouse::{ClickHouseWriter, EvidenceRow};
 
@@ -67,6 +69,7 @@ pub struct EvidenceCollectorGrpcService {
     merkle_builder: Arc<Mutex<HourlyMerkleBuilder>>,
     merkle_overflow_tx: Option<mpsc::Sender<()>>,
     dedup: Arc<Mutex<DeduplicationTracker>>,
+    metrics: Option<Arc<CollectorMetrics>>,
 }
 
 impl EvidenceCollectorGrpcService {
@@ -76,6 +79,7 @@ impl EvidenceCollectorGrpcService {
         clickhouse_writer: Arc<ClickHouseWriter>,
         merkle_builder: Arc<Mutex<HourlyMerkleBuilder>>,
         merkle_overflow_tx: Option<mpsc::Sender<()>>,
+        metrics: Option<Arc<CollectorMetrics>>,
     ) -> Self {
         Self {
             chain_manager,
@@ -84,6 +88,7 @@ impl EvidenceCollectorGrpcService {
             merkle_builder,
             merkle_overflow_tx,
             dedup: Arc::new(Mutex::new(DeduplicationTracker::new(DEDUP_CAPACITY))),
+            metrics,
         }
     }
 
@@ -93,6 +98,11 @@ impl EvidenceCollectorGrpcService {
             return Err(anyhow!(
                 "bundle kernel_id does not match enclosing batch kernel_id"
             ));
+        }
+
+        // Increment received counter (before any validation that might reject).
+        if let Some(m) = &self.metrics {
+            m.bundles_received.fetch_add(1, Relaxed);
         }
 
         // Reject duplicate bundle IDs.
@@ -118,6 +128,11 @@ impl EvidenceCollectorGrpcService {
 
         let current_signer = self.signing_provider.current();
         let signed = signer::sign_bundle(&**current_signer, &bundle_bytes).await?;
+
+        // Track successful signing operations.
+        if let Some(m) = &self.metrics {
+            m.signing_operations.fetch_add(1, Relaxed);
+        }
 
         bundle.chain_hash = chain_hash.to_vec();
         bundle.previous_hash = previous_hash.to_vec();
