@@ -70,7 +70,7 @@ This milestone is complete only when all are true:
 - [x] **S01: Evidence Pipeline Resilience** `risk:high` `depends:[]`
   > After this: ClickHouse writes retry with exponential backoff (5 attempts) and spill to dead-letter files on exhaustion. S3 Merkle anchors are persisted locally before tree reset, with retry (3 attempts) and startup recovery of pending anchors. ClickHouse retention TTL uses configured `retention_days`. Bundle ID duplicates are rejected. Inserter batch settings are configurable via env vars. `cargo test -p evidence-collector` passes with all new tests.
 
-- [ ] **S02: Security Hardening — Proxy, Helm, Secrets** `risk:high` `depends:[]`
+- [x] **S02: Security Hardening — Proxy, Helm, Secrets** `risk:high` `depends:[]`
   > After this: BFF proxy validates paths against an allowlist and rejects unknown paths with 403. Body size is capped at 2MB. Helm chart fails to render when required passwords are empty and no existingSecret is set. DATABASE_URL is constructed in Deployment env (not ConfigMap). Dev DB fallback requires explicit `ALLOW_DEV_DEFAULTS=true`. signing_keys volume is read-only on evidence-collector. busybox init images are digest-pinned. Test compose ports bind to 127.0.0.1. OpenAI test key replaced with placeholder. `helm lint`, `npx vitest run`, and `bun test` pass.
 
 - [ ] **S03: Auth, Rate Limiting & Session Fixes** `risk:medium` `depends:[]`
