@@ -1,9 +1,10 @@
 /**
  * Auth Schema
  *
- * API keys, user-department join table, and role permissions.
+ * API keys, user-department join table, sessions, SAML handoff codes,
+ * and signing keys.
  * Supports API key authentication (SHA-256 hashed), multi-department
- * membership, and configurable per-role permission grants.
+ * membership, and SAML SSO browser sessions.
  */
 
 import {
@@ -12,7 +13,6 @@ import {
   pgTable,
   primaryKey,
   timestamp,
-  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -148,18 +148,4 @@ export const signingKeys = pgTable(
   (table) => [index("signing_keys_active_idx").on(table.isActive)],
 );
 
-// ---------------------------------------------------------------------------
-// Role Permissions
-// ---------------------------------------------------------------------------
 
-export const rolePermissions = pgTable(
-  "role_permissions",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    role: varchar("role", { length: 50 }).notNull(),
-    permission: varchar("permission", { length: 100 }).notNull(),
-    isGranted: boolean("is_granted").notNull().default(true),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [uniqueIndex("role_permissions_role_perm_idx").on(table.role, table.permission)],
-);

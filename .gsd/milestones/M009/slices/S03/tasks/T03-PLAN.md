@@ -82,6 +82,12 @@ ls control-plane/drizzle/
 
 New migration SQL file exists.
 
+## Observability Impact
+
+- **Schema change:** The self-referencing FK on `departments.parentDepartmentId` will cause Postgres to raise a constraint violation (23503) on `INSERT`/`UPDATE` if the referenced parent department doesn't exist, and will `SET NULL` on child rows when a parent is deleted — both visible via standard Postgres error logs.
+- **Dead code removal:** `rolePermissions` table drop is a one-way migration. If any external tool or legacy query references `role_permissions`, it will surface as a Postgres "relation does not exist" error (42P01). No runtime code references this table, so no application-level signals change.
+- **Migration inspection:** `ls control-plane/drizzle/` shows the generated migration file; the SQL can be reviewed for expected `ALTER TABLE` + `DROP TABLE` statements.
+
 ## Inputs
 
 - `control-plane/src/db/schema/organization.ts` — `departments` table with `parentDepartmentId` at ~line 17

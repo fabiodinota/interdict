@@ -8,7 +8,6 @@
 // Auth (API keys, sessions, user-department membership, role permissions, SAML handoff codes)
 export {
   apiKeys,
-  rolePermissions,
   samlHandoffCodes,
   sessions,
   signingKeys,

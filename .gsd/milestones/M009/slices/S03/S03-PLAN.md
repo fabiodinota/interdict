@@ -68,7 +68,7 @@
   - Verify: `cd control-plane && bun test src/modules/auth/saml/handlers.test.ts` passes with new SLO test
   - Done when: SLO test proves `revokeSession` called before redirect, `_SESSION_MAX_AGE_SECONDS` grep returns 0 hits
 
-- [ ] **T03: Department self-referencing FK and dead code removal** `est:25m`
+- [x] **T03: Department self-referencing FK and dead code removal** `est:25m`
   - Why: Closes the department FK gap (self-referencing constraint) and removes dead `rolePermissions` table + seed logic that was never read at runtime.
   - Files: `control-plane/src/db/schema/organization.ts`, `control-plane/src/db/schema/auth.ts`, `control-plane/src/db/schema/index.ts`, `control-plane/src/seed/run-seed.ts`
   - Do:
