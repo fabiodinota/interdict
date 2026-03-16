@@ -611,8 +611,7 @@ impl Service<Request<Incoming>> for ProxyService {
             if req.method() == Method::CONNECT {
                 // One-time warning when serving requests without a policy pipeline.
                 static NO_PIPELINE_WARNED: AtomicBool = AtomicBool::new(false);
-                if effective_pipeline.is_none()
-                    && !NO_PIPELINE_WARNED.swap(true, Ordering::Relaxed)
+                if effective_pipeline.is_none() && !NO_PIPELINE_WARNED.swap(true, Ordering::Relaxed)
                 {
                     tracing::warn!(
                         "ProxyService handling request with no policy pipeline — enforcement bypassed"

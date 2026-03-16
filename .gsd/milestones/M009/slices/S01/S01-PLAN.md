@@ -55,7 +55,7 @@
 
 ## Tasks
 
-- [ ] **T01: ClickHouse retry with exponential backoff, dead-letter spill, and WriterHealth counters** `est:2h`
+- [x] **T01: ClickHouse retry with exponential backoff, dead-letter spill, and WriterHealth counters** `est:2h`
   - Why: The inserter worker silently drops rows on `commit()` failure. This task adds retry with backoff, dead-letter file spill on exhaustion, and health counters — the core data-path resilience required by FH-INTEGRITY-01.
   - Files: `crates/evidence-collector/src/storage/dead_letter.rs` (new), `crates/evidence-collector/src/storage/clickhouse.rs`, `crates/evidence-collector/src/storage/mod.rs`, `crates/evidence-collector/src/config.rs`, `crates/evidence-collector/src/main.rs`
   - Do: (1) Add `data_dir` field to `CollectorConfig` with `COLLECTOR_DATA_DIR` env var (default `/data/evidence-collector`). (2) Create `storage/dead_letter.rs` module with `write_dead_letter(data_dir, bundle_id, row)` that serializes `EvidenceRow` to `{data_dir}/dead-letter/{timestamp}-{bundle_id}.json`. (3) Create `WriterHealth` struct with `AtomicU64` counters for `rows_written`, `rows_retried`, `rows_dead_lettered` and `increment_*()` methods. (4) Modify `run_inserter_worker` to retry `commit()` 5 times with exponential backoff (200ms base, 2x multiplier, 5s cap) using `tokio::time::sleep`, invoke dead-letter writer on exhaustion, increment WriterHealth counters. (5) Expose `WriterHealth` on `ClickHouseWriter` (pub field or accessor). (6) In `main.rs`, create dead-letter directory at startup via `tokio::fs::create_dir_all`. (7) Add unit tests: dead-letter roundtrip, WriterHealth counter increments. (8) Add retry logic test using extracted testable function with closure/callback pattern.

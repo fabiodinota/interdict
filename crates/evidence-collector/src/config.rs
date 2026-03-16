@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 
+/// Default base directory for evidence collector persistent data.
+const DEFAULT_DATA_DIR: &str = "/data/evidence-collector";
+
 #[derive(Debug, Clone)]
 pub enum SigningMode {
     Dev,
@@ -36,6 +39,8 @@ pub struct CollectorConfig {
     /// When set, the evidence collector polls this file every 30 seconds
     /// and hot-reloads the signing key when the file is modified.
     pub signing_key_watch_path: Option<String>,
+    /// Base directory for persistent data (dead-letter files, merkle anchors, etc.).
+    pub data_dir: PathBuf,
 }
 
 impl Default for CollectorConfig {
@@ -59,6 +64,7 @@ impl Default for CollectorConfig {
             mtls_cert_path: None,
             mtls_key_path: None,
             signing_key_watch_path: None,
+            data_dir: PathBuf::from(DEFAULT_DATA_DIR),
         }
     }
 }
@@ -85,6 +91,7 @@ impl CollectorConfig {
     /// - `MTLS_CERT_PATH` -- Server certificate
     /// - `MTLS_KEY_PATH` -- Server private key
     /// - `SIGNING_KEY_WATCH_PATH` -- Optional file path to poll for signing key hot-reload
+    /// - `COLLECTOR_DATA_DIR` (default: `/data/evidence-collector`) -- persistent data directory
     pub fn from_env() -> Result<Self> {
         let signing_mode = match std::env::var("COLLECTOR_SIGNING_MODE")
             .unwrap_or_else(|_| "dev".to_string())
@@ -141,6 +148,9 @@ impl CollectorConfig {
             mtls_cert_path: std::env::var("MTLS_CERT_PATH").ok(),
             mtls_key_path: std::env::var("MTLS_KEY_PATH").ok(),
             signing_key_watch_path: std::env::var("SIGNING_KEY_WATCH_PATH").ok(),
+            data_dir: std::env::var("COLLECTOR_DATA_DIR")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from(DEFAULT_DATA_DIR)),
         })
     }
 }
@@ -174,6 +184,7 @@ mod tests {
             std::env::remove_var("COLLECTOR_RETENTION_DAYS");
             std::env::remove_var("COLLECTOR_REQUIRE_OBJECT_LOCK");
             std::env::remove_var("SIGNING_KEY_WATCH_PATH");
+            std::env::remove_var("COLLECTOR_DATA_DIR");
         }
     }
 
@@ -194,6 +205,10 @@ mod tests {
         assert!(!cfg.full_text_storage);
         assert_eq!(cfg.retention_days, 2555);
         assert!(cfg.require_object_lock);
+        assert_eq!(
+            cfg.data_dir,
+            std::path::PathBuf::from("/data/evidence-collector")
+        );
     }
 
     #[test]

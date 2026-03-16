@@ -11,6 +11,7 @@ use evidence_collector::signing::{
     KmsSigningProvider, LocalSigningProvider, RotatingSigningProvider, SigningProvider,
 };
 use evidence_collector::storage::clickhouse::ClickHouseWriter;
+use evidence_collector::storage::dead_letter::dead_letter_dir;
 use evidence_collector::storage::s3::S3Anchor;
 use tokio::sync::{Mutex, mpsc};
 use tokio_util::sync::CancellationToken;
@@ -76,6 +77,11 @@ async fn main() -> Result<()> {
     // Initialize chain manager for per-kernel hash linkage.
     let chain_manager = Arc::new(Mutex::new(ChainManager::new()));
 
+    // Ensure dead-letter directory exists at startup.
+    tokio::fs::create_dir_all(dead_letter_dir(&cfg.data_dir))
+        .await
+        .context("failed to create dead-letter directory")?;
+
     // Initialize ClickHouse batched writer (runs DDL on startup).
     let clickhouse_writer = Arc::new(
         ClickHouseWriter::new(
@@ -83,6 +89,7 @@ async fn main() -> Result<()> {
             &cfg.clickhouse_database,
             &cfg.clickhouse_user,
             &cfg.clickhouse_password,
+            cfg.data_dir.clone(),
         )
         .await?,
     );
