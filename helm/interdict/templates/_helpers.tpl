@@ -87,3 +87,13 @@ imagePullSecrets:
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Validate that a required credential is provided either as a value or via existingSecret.
+Usage: {{ include "interdict.validateRequired" (dict "name" "postgresql.auth.password" "value" .Values.postgresql.auth.password "existingSecret" .Values.postgresql.auth.existingSecret) }}
+*/}}
+{{- define "interdict.validateRequired" -}}
+{{- if and (not .value) (not .existingSecret) -}}
+{{- fail (printf "%s is required — set it via --set or provide existingSecret" .name) -}}
+{{- end -}}
+{{- end -}}

@@ -97,6 +97,13 @@ Multiple Helm chart hardening items: (1) `helm template` silently renders with e
 - `rg "readOnly: true" helm/interdict/templates/evidence-collector/deployment.yaml` — matches signing-keys mount
 - `rg "busybox:1.36@sha256:" helm/interdict/templates/` — matches all four deployments
 
+## Observability Impact
+
+- **Helm validation failures:** `helm template` emits `fail` messages with the specific missing credential name (e.g. `postgresql.auth.password is required — set it via --set or provide existingSecret`). These surface in CI pipeline output and local `helm template` / `helm install --dry-run` runs. A future agent can verify enforcement by running `helm template` with empty credentials and checking for non-zero exit.
+- **ConfigMap cleanup:** No new signals — removes a duplicate `DATABASE_URL` that was shadowed by the Deployment env spec. Eliminates a confusing dual-source for that value.
+- **readOnly volume mount:** No runtime signal change — prevents accidental writes to signing-keys at the kubelet layer. Violation would surface as EROFS write errors in container logs.
+- **Image digest pinning:** No runtime signal change — ensures deterministic image pulls. Digest mismatch would surface as `ErrImagePull` in pod events.
+
 ## Inputs
 
 - `helm/interdict/templates/_helpers.tpl` — existing helpers (fullname, labels, selectorLabels, serviceAccountName). Append new helper at bottom.
