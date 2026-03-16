@@ -54,7 +54,8 @@ pub fn to_proto_bundle(event: &RawEvidenceEvent, kernel_id: &str) -> EvidenceBun
 fn to_proto_timestamp(ts: DateTime<Utc>) -> Timestamp {
     Timestamp {
         seconds: ts.timestamp(),
-        nanos: ts.timestamp_subsec_nanos() as i32,
+        nanos: i32::try_from(ts.timestamp_subsec_nanos())
+            .expect("subsec_nanos 0..999_999_999 fits i32"),
     }
 }
 

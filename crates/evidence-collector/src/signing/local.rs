@@ -75,9 +75,24 @@ fn decode_pem(raw: &[u8]) -> Result<Vec<u8>, SigningError> {
         .filter(|line| !line.starts_with("-----"))
         .collect();
 
-    base64::engine::general_purpose::STANDARD
+    let decoded = base64::engine::general_purpose::STANDARD
         .decode(payload.as_bytes())
-        .map_err(|e| SigningError::LocalKeyError(format!("invalid pem base64 payload: {e}")))
+        .map_err(|e| SigningError::LocalKeyError(format!("invalid pem base64 payload: {e}")))?;
+
+    // PKCS8 Ed25519 DER envelope is exactly 48 bytes.
+    // Validate ASN.1 OID before extracting the 32-byte key.
+    if decoded.len() == 48 {
+        // OID 1.3.101.112 (id-EdDSA / Ed25519) at bytes 7..12
+        const ED25519_OID: [u8; 5] = [0x06, 0x03, 0x2b, 0x65, 0x70];
+        if decoded[7..12] == ED25519_OID {
+            return Ok(decoded[16..48].to_vec());
+        }
+        return Err(SigningError::LocalKeyError(
+            "unrecognized PKCS8 key type: OID does not match Ed25519 (1.3.101.112)".to_string(),
+        ));
+    }
+
+    Ok(decoded)
 }
 
 #[async_trait]
@@ -258,5 +273,84 @@ mod tests {
             p2.key_id(),
             "same key bytes must produce same key_id"
         );
+    }
+
+    // --- PEM ASN.1 OID validation tests ---
+
+    /// Build a valid PKCS8 Ed25519 DER envelope (48 bytes).
+    /// Structure: SEQUENCE { SEQUENCE { OID 1.3.101.112 }, OCTET STRING { OCTET STRING { 32-byte key } } }
+    fn build_pkcs8_ed25519_der(key: &[u8; 32]) -> Vec<u8> {
+        let mut der = vec![
+            0x30, 0x2e, // SEQUENCE, 46 bytes
+            0x02, 0x01, 0x00, // INTEGER version 0
+            0x30, 0x05, // SEQUENCE, 5 bytes (AlgorithmIdentifier)
+            0x06, 0x03, 0x2b, 0x65, 0x70, // OID 1.3.101.112 (Ed25519)
+            0x04, 0x22, // OCTET STRING, 34 bytes
+            0x04, 0x20, // OCTET STRING, 32 bytes (actual key)
+        ];
+        der.extend_from_slice(key);
+        assert_eq!(der.len(), 48);
+        der
+    }
+
+    #[test]
+    fn test_decode_pem_valid_pkcs8() {
+        use base64::Engine;
+        let key_bytes: [u8; 32] = [0xAA; 32];
+        let der = build_pkcs8_ed25519_der(&key_bytes);
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&der);
+        let pem = format!("-----BEGIN PRIVATE KEY-----\n{b64}\n-----END PRIVATE KEY-----\n");
+
+        let decoded = super::decode_pem(pem.as_bytes()).expect("valid PKCS8 Ed25519 should decode");
+        assert_eq!(
+            decoded.len(),
+            32,
+            "should extract 32-byte key from PKCS8 envelope"
+        );
+        assert_eq!(
+            decoded,
+            key_bytes.to_vec(),
+            "extracted key must match input"
+        );
+    }
+
+    #[test]
+    fn test_decode_pem_invalid_oid() {
+        use base64::Engine;
+        let key_bytes: [u8; 32] = [0xBB; 32];
+        let mut der = build_pkcs8_ed25519_der(&key_bytes);
+        // Corrupt the OID: change bytes 7..12 to a bogus OID
+        der[7] = 0x06;
+        der[8] = 0x03;
+        der[9] = 0x2b;
+        der[10] = 0x65;
+        der[11] = 0x71; // 0x71 instead of 0x70 — wrong OID
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&der);
+        let pem = format!("-----BEGIN PRIVATE KEY-----\n{b64}\n-----END PRIVATE KEY-----\n");
+
+        let result = super::decode_pem(pem.as_bytes());
+        assert!(result.is_err(), "wrong OID must be rejected");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("unrecognized PKCS8 key type"),
+            "error should mention unrecognized key type, got: {err_msg}"
+        );
+    }
+
+    #[test]
+    fn test_decode_pem_raw_32_byte() {
+        use base64::Engine;
+        let key_bytes: [u8; 32] = [0xCC; 32];
+        let b64 = base64::engine::general_purpose::STANDARD.encode(key_bytes);
+        let pem = format!("-----BEGIN PRIVATE KEY-----\n{b64}\n-----END PRIVATE KEY-----\n");
+
+        let decoded =
+            super::decode_pem(pem.as_bytes()).expect("32-byte raw key should pass through");
+        assert_eq!(
+            decoded.len(),
+            32,
+            "raw 32-byte key should pass through unchanged"
+        );
+        assert_eq!(decoded, key_bytes.to_vec());
     }
 }

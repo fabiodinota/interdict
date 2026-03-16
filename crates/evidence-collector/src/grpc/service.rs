@@ -299,9 +299,12 @@ fn bundle_timestamp(bundle: &EvidenceBundle) -> Result<chrono::DateTime<Utc>> {
         .as_ref()
         .context("evidence bundle missing timestamp")?;
 
-    Utc.timestamp_opt(timestamp.seconds, timestamp.nanos as u32)
-        .single()
-        .ok_or_else(|| anyhow!("evidence bundle timestamp is invalid"))
+    Utc.timestamp_opt(
+        timestamp.seconds,
+        u32::try_from(timestamp.nanos).unwrap_or(0),
+    )
+    .single()
+    .ok_or_else(|| anyhow!("evidence bundle timestamp is invalid"))
 }
 
 fn validate_kernel_id(kernel_id: &str) -> Result<()> {

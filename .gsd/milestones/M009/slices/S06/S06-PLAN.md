@@ -54,7 +54,7 @@
 
 ## Tasks
 
-- [ ] **T01: Proto max_len=0, timestamp safe cast, PEM ASN.1 validation** `est:30m`
+- [x] **T01: Proto max_len=0, timestamp safe cast, PEM ASN.1 validation** `est:30m`
   - Why: Three surgical safety fixes — proto deprecated field rejection, timestamp overflow prevention, key format validation. Unblocks `buf lint` and `cargo clippy` gates.
   - Files: `proto/interdict/evidence/v1/evidence.proto`, `crates/evidence-collector/src/grpc/service.rs`, `crates/kernel/src/evidence/bundle.rs`, `crates/evidence-collector/src/signing/local.rs`
   - Do: Change `max_len = 1048576` to `max_len = 0` on fields 10 and 11 in evidence.proto. Replace `timestamp.nanos as u32` with `u32::try_from(timestamp.nanos).unwrap_or(0)` in service.rs:302. Replace `ts.timestamp_subsec_nanos() as i32` with `i32::try_from(ts.timestamp_subsec_nanos()).expect("subsec_nanos fits i32")` in bundle.rs:57. In local.rs `decode_pem()`, after base64 decode, check if payload is 48 bytes (PKCS8 Ed25519 envelope) — validate OID bytes at positions 7-11 match `[0x06, 0x03, 0x2b, 0x65, 0x70]` (OID 1.3.101.112) before extracting key. Reject with `SigningError` if OID doesn't match. Fall through to existing raw-key handling for 32/64-byte payloads. Add unit test for valid PKCS8, invalid OID, and raw key passthrough.

@@ -66,3 +66,10 @@ Three surgical safety fixes that retire assessment findings and milestone proof-
 - `crates/evidence-collector/src/grpc/service.rs` — safe `u32::try_from` for nanos
 - `crates/kernel/src/evidence/bundle.rs` — safe `i32::try_from` for nanos
 - `crates/evidence-collector/src/signing/local.rs` — ASN.1 OID validation in `decode_pem()` with 3+ unit tests
+
+## Observability Impact
+
+- **tracing::warn on PEM OID mismatch:** `decode_pem()` logs a warning when a 48-byte PKCS8 payload has an unrecognized OID, visible in structured logs (grep `unrecognized PKCS8`).
+- **tracing::warn on negative timestamp nanos:** `bundle_timestamp()` in service.rs now returns 0 for negative nanos instead of wrapping; the `unwrap_or(0)` is a silent fail-safe (negative nanos is malformed proto input, rare).
+- **Proto validation rejection:** `max_len = 0` causes buf.validate to reject non-empty deprecated fields at the gRPC layer — visible as validation errors in gRPC response status.
+- **Inspection:** No new endpoints. Changes surface through existing gRPC error responses and structured log output.
