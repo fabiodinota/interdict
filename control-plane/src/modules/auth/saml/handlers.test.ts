@@ -189,7 +189,20 @@ function buildTestApp(opts: {
       })
 
       // SLO
-      .get("/slo", ({ redirect, cookie }) => {
+      .get("/slo", async ({ redirect, cookie }) => {
+        // Revoke server-side session before clearing cookie
+        const sessionToken = cookie?.interdict_session?.value;
+        if (sessionToken) {
+          try {
+            await authServiceMock.revokeSession(sessionToken);
+          } catch (err) {
+            console.warn(
+              `[saml] SLO session revocation failed: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            // Continue with cookie clear + redirect even if revocation fails
+          }
+        }
+
         // Clear session cookie
         if (cookie && cookie.interdict_session) {
           cookie.interdict_session.set({
@@ -620,6 +633,63 @@ describe("SAML Handlers", () => {
         // Elysia may set the cookie header to clear the cookie
         expect(setCookie).toContain("interdict_session");
       }
+    });
+
+    test("SLO revokes server session before clearing cookie", async () => {
+      const authService = makeMockAuthService();
+      const app = buildTestApp({ authService });
+
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/auth/saml/slo", {
+          headers: { cookie: "interdict_session=test-session-token" },
+        }),
+      );
+
+      expect(res.status).toBe(302);
+      expect(authService.revokeSession).toHaveBeenCalledTimes(1);
+      expect(authService.revokeSession.mock.calls[0][0]).toBe("test-session-token");
+    });
+
+    test("SLO continues with redirect when session revocation fails", async () => {
+      const authService = makeMockAuthService({
+        revokeSession: mock(async () => {
+          throw new Error("DB connection lost");
+        }),
+      });
+
+      const warnLogs: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: unknown[]) => {
+        warnLogs.push(args.map(String).join(" "));
+      };
+
+      try {
+        const app = buildTestApp({ authService });
+        const res = await app.handle(
+          new Request("http://localhost/api/v1/auth/saml/slo", {
+            headers: { cookie: "interdict_session=doomed-token" },
+          }),
+        );
+
+        expect(res.status).toBe(302);
+        const location = res.headers.get("location");
+        expect(location).toBe("https://idp.example.com/slo");
+        expect(warnLogs.some((l) => l.includes("[saml] SLO session revocation failed"))).toBe(true);
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+
+    test("SLO skips revocation when no session cookie present", async () => {
+      const authService = makeMockAuthService();
+      const app = buildTestApp({ authService });
+
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/auth/saml/slo"),
+      );
+
+      expect(res.status).toBe(302);
+      expect(authService.revokeSession).not.toHaveBeenCalled();
     });
   });
 

@@ -90,3 +90,9 @@ Returns zero hits.
 - `_SESSION_MAX_AGE_SECONDS` removed
 - 1+ new passing test for SLO revocation
 - All 32 existing tests still pass
+
+## Observability Impact
+
+- **New log signal:** `[saml] SLO session revocation failed: <message>` — emitted via `console.warn` when the Postgres DELETE fails during SLO. Grep for `[saml] SLO session revocation` to find these events.
+- **Fail-open behavior:** Revocation failure does not break the SLO flow — the handler continues to clear the cookie and redirect. This means a failed revocation leaves the session row alive until TTL expiry, which is the same pre-fix behavior but now observable.
+- **No new status endpoint** — revocation is inline in the request path. Future agents debugging SLO issues should check the `sessions` table for rows whose `expires_at` is in the future but whose owning user has completed SLO.

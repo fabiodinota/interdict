@@ -58,7 +58,7 @@
   - Verify: `cd control-plane && bun test src/modules/auth/rate-limiter.test.ts` passes with all new + existing tests
   - Done when: all 5 new tests pass, 14 existing tests still pass, `apiRateLimiter` is wired to 4 POST endpoints
 
-- [ ] **T02: Fix SAML SLO to revoke server session before cookie clear** `est:20m`
+- [x] **T02: Fix SAML SLO to revoke server session before cookie clear** `est:20m`
   - Why: SLO handler clears the cookie but leaves the session row in Postgres — a leaked token could still authenticate until TTL expiry. Also removes dead `_SESSION_MAX_AGE_SECONDS` constant.
   - Files: `control-plane/src/modules/auth/saml/handlers.ts`, `control-plane/src/modules/auth/saml/handlers.test.ts`
   - Do:
