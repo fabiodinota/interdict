@@ -71,15 +71,15 @@ kernel_proxy_status() {
   local exit_code=0
 
   output=$(${COMPOSE_CMD} -p "${PROJECT_NAME}" exec -T control-plane \
-    sh -c "https_proxy=https://kernel:8443 \
-      wget --spider -S -q --no-check-certificate \
+    sh -c "wget --spider -S --no-check-certificate \
       --timeout=10 \
+      -e 'https_proxy=https://kernel:8443' \
       '${target_url}' 2>&1" \
   ) || exit_code=$?
 
   # Extract HTTP status from wget -S output
   local status
-  status=$(echo "$output" | grep -oE 'HTTP/[0-9.]+ [0-9]+' | tail -1 | awk '{print $2}')
+  status=$(echo "$output" | grep -oE 'HTTP/[0-9.]+ [0-9]+' | tail -1 | awk '{print $2}') || true
   if [ -n "$status" ]; then
     echo "$status"
   elif [ "$exit_code" -eq 0 ]; then

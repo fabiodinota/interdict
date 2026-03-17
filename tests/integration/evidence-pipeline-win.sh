@@ -181,12 +181,12 @@ for attempt in 1 2 3; do
   # wget --spider -S prints HTTP response headers; we extract the status code.
   # The kernel proxy blocks the request (no real API key), generating evidence.
   WGET_OUT=$(${COMPOSE_CMD} -p "${PROJECT_NAME}" exec -T control-plane \
-    sh -c "https_proxy=https://kernel:8443 \
-      wget --spider -S -q --no-check-certificate \
+    sh -c "wget --spider -S --no-check-certificate \
       --timeout=10 \
+      -e 'https_proxy=https://kernel:8443' \
       'https://${TARGET_VENDOR}/v1/chat/completions' 2>&1" \
   ) || true
-  HTTP_CODE=$(echo "$WGET_OUT" | grep -oE 'HTTP/[0-9.]+ [0-9]+' | tail -1 | awk '{print $2}')
+  HTTP_CODE=$(echo "$WGET_OUT" | grep -oE 'HTTP/[0-9.]+ [0-9]+' | tail -1 | awk '{print $2}') || true
   HTTP_CODE=${HTTP_CODE:-000}
 
   info "Request ${attempt}: HTTP ${HTTP_CODE} from kernel proxy"
