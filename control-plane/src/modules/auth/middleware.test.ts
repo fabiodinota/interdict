@@ -9,9 +9,7 @@
  * exercising it via a lightweight Elysia test app.
  */
 
-import { beforeEach, describe, expect, it, mock } from "bun:test";
-
-import { afterAll, mock } from "bun:test";
+import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 
 // ---------------------------------------------------------------------------
 // We mock the DB and auth service to test middleware logic in isolation.
@@ -26,11 +24,11 @@ const mockAuthenticateBySessionToken = mock(
   async (_token: string) => null as { id: string; role: string; orgId: string } | null,
 );
 
-const dbMod = mock.module("../../db/postgres", () => ({
+const _dbMod = mock.module("../../db/postgres", () => ({
   db: {},
 }));
 
-const serviceMod = mock.module("./service", () => ({
+const _serviceMod = mock.module("./service", () => ({
   createAuthService: () => ({
     authenticateByApiKey: mockAuthenticateByApiKey,
     authenticateBySessionToken: mockAuthenticateBySessionToken,
@@ -38,7 +36,13 @@ const serviceMod = mock.module("./service", () => ({
     createSession: mock(() => "mock-session"),
     revokeSession: mock(() => {}),
     whoAmI: mock(() => null),
-    createApiKey: mock(() => ({ plaintext: "", keyId: "", prefix: "", label: null, createdAt: new Date() })),
+    createApiKey: mock(() => ({
+      plaintext: "",
+      keyId: "",
+      prefix: "",
+      label: null,
+      createdAt: new Date(),
+    })),
     revokeApiKey: mock(() => {}),
     listApiKeys: mock(() => ({ items: [], nextCursor: null })),
     findOrCreateSamlUser: mock(() => null),
