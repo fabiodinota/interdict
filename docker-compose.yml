@@ -125,8 +125,6 @@ services:
 
   cert-init:
     image: alpine:3.21
-    user: "1000:1000"
-    read_only: true
     security_opt:
       - no-new-privileges:true
     tmpfs:
@@ -140,8 +138,8 @@ services:
     command:
       - -c
       - |
-        apk --root /tmp/apkroot --initdb add --no-cache openssl &&
-        PATH=/tmp/apkroot/usr/bin:$$PATH sh /scripts/generate-internal-ca.sh
+        apk add --no-cache openssl &&
+        sh /scripts/generate-internal-ca.sh
     volumes:
       - ./docker/certs/generate-internal-ca.sh:/scripts/generate-internal-ca.sh:ro
       - certs:/certs

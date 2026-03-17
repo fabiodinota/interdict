@@ -37,10 +37,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget \
 # Copy OPA from the download stage
 COPY --from=opa-fetch /tmp/opa /usr/local/bin/opa
 
-# Create non-root user (UID 1000 to match Helm securityContext)
-# Bun base image may already have GID/UID 1000 — use -f to allow reuse
-RUN groupadd -f -g 1000 interdict && \
-    useradd -u 1000 -g interdict -m -s /bin/false interdict 2>/dev/null || true
+# Non-root user: Bun base image ships with user bun at UID/GID 1000.
+# We just use UID 1000 directly — matches Helm securityContext.
 
 WORKDIR /app
 
@@ -65,9 +63,9 @@ COPY docker/control-plane/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Wasm policy storage directory
-RUN mkdir -p /app/data/wasm && chown -R interdict:interdict /app
+RUN mkdir -p /app/data/wasm && chown -R 1000:1000 /app
 
-USER interdict
+USER 1000
 
 EXPOSE 3000 50052
 
