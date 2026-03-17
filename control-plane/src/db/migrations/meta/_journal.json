@@ -22,6 +22,27 @@
       "when": 1772594919107,
       "tag": "0002_deep_radioactive_man",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772700000000,
+      "tag": "0003_saml_handoff_and_session_hash",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1772800000000,
+      "tag": "0004_department_fk_drop_role_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772900000000,
+      "tag": "0005_create_policy_scope_assignments",
+      "breakpoints": true
     }
   ]
 }
