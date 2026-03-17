@@ -103,4 +103,4 @@ For architectural/security-impacting changes, update:
 - `.gsd/PROJECT.md` (if project context changes)
 - `.planning/ROADMAP.md` (historical phase record — read-only, append new phases only)
 
-Keep `education.md` updated with mistakes and corrective actions.
+Keep `docs/education.md` updated with mistakes and corrective actions.
