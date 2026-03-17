@@ -30,7 +30,7 @@ vi.mock("@/components/ui/command", () => ({
   CommandEmpty: ({ children }: any) => <div>{children}</div>,
   CommandGroup: ({ children }: any) => <div>{children}</div>,
   CommandItem: ({ children, onSelect }: any) => (
-    <div role="option" onClick={onSelect}>
+    <div role="option" aria-selected={false} onClick={onSelect}>
       {children}
     </div>
   ),

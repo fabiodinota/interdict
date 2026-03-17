@@ -7,6 +7,7 @@
  * RBAC enforcement deferred to Phase 7; role column for forward compatibility.
  */
 
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { boolean, pgTable, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 
 /** Department hierarchy (self-referencing for parent/child) */
@@ -14,7 +15,7 @@ export const departments = pgTable("departments", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   displayName: varchar("display_name", { length: 255 }).notNull(),
-  parentDepartmentId: uuid("parent_department_id").references(() => departments.id, {
+  parentDepartmentId: uuid("parent_department_id").references((): AnyPgColumn => departments.id, {
     onDelete: "set null",
   }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -20,7 +20,7 @@ import {
 
 function createMockClickhouse(rows: unknown[] = []) {
   const queryFn = mock(
-    async (opts: { query: string; format?: string; query_params?: Record<string, unknown> }) => ({
+    async (_opts: { query: string; format?: string; query_params?: Record<string, unknown> }) => ({
       json: async () => rows,
     }),
   );

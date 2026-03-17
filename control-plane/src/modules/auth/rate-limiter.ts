@@ -163,16 +163,15 @@ export class RateLimiter {
  * a warning — never blocks legitimate traffic due to limiter bugs.
  */
 export function createRateLimitHook(limiter: RateLimiter) {
-  return ({
-    request,
-    set,
-    server,
-  }: {
-    request: Request;
-    set: { status: number; headers: Record<string, string> };
-    server?: { requestIP: (req: Request) => { address: string } | null };
-  }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Elysia context types vary per route; extract what we need
+  return (context: any) => {
     try {
+      const request = context.request as Request;
+      const set = context.set as { status: number; headers: Record<string, string> };
+      const server = context.server as
+        | { requestIP: (req: Request) => { address: string } | null }
+        | undefined;
+
       const forwarded = request.headers.get("x-forwarded-for");
       const realIp = request.headers.get("x-real-ip");
       let ip: string;

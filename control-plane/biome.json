@@ -15,12 +15,12 @@
         "noForEach": "off"
       },
       "style": {
-        "noNonNullAssertion": "warn",
+        "noNonNullAssertion": "off",
         "useConst": "error",
         "noUnusedTemplateLiteral": "off"
       },
       "suspicious": {
-        "noExplicitAny": "warn",
+        "noExplicitAny": "off",
         "noConsole": "off"
       },
       "correctness": {

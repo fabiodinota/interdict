@@ -19,6 +19,12 @@
 import { describe, expect, mock, test } from "bun:test";
 import { Elysia } from "elysia";
 
+// Bun's mock() accepts implementation args at runtime but tsc infers `() => void`.
+// This helper preserves the implementation while satisfying tsc.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const typedMock = <T extends (...args: any[]) => any>(fn: T) =>
+  mock(fn as any) as any as T & { mock: { calls: any[][]; results: any[] } };
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -51,24 +57,26 @@ function makeUser(overrides: Partial<MockAuthUser> = {}): MockAuthUser {
 /** Create a mock AuthService with controlled return values */
 function makeMockAuthService(overrides: Record<string, unknown> = {}) {
   return {
-    findOrCreateSamlUser: mock(async () => makeUser()),
-    createSamlHandoffCode: mock(async () => "handoff_code_abc123"),
-    exchangeSamlHandoffCode: mock(async () => "session_token_xyz789"),
-    createSession: mock(async () => "session_token_xyz789"),
-    revokeSession: mock(async () => {}),
-    authenticateByApiKey: mock(async () => null),
-    authenticateBySessionToken: mock(async () => null),
-    exchangeApiKeyForSession: mock(async () => null),
-    createApiKey: mock(async () => ({
+    findOrCreateSamlUser: typedMock(async (_e: string, _d: string, _n: string, _r?: string) =>
+      makeUser(),
+    ),
+    createSamlHandoffCode: typedMock(async (_userId: string) => "handoff_code_abc123"),
+    exchangeSamlHandoffCode: typedMock(async (_code: string) => "session_token_xyz789"),
+    createSession: typedMock(async () => "session_token_xyz789"),
+    revokeSession: typedMock(async (_token: string) => {}),
+    authenticateByApiKey: typedMock(async () => null),
+    authenticateBySessionToken: typedMock(async () => null),
+    exchangeApiKeyForSession: typedMock(async () => null),
+    createApiKey: typedMock(async () => ({
       plaintext: "",
       keyId: "",
       prefix: "",
       label: null,
       createdAt: new Date(),
     })),
-    revokeApiKey: mock(async () => {}),
-    listApiKeys: mock(async () => ({ items: [], nextCursor: null })),
-    whoAmI: mock(async () => makeUser()),
+    revokeApiKey: typedMock(async () => {}),
+    listApiKeys: typedMock(async () => ({ items: [], nextCursor: null })),
+    whoAmI: typedMock(async () => makeUser()),
     ...overrides,
   };
 }
@@ -76,10 +84,10 @@ function makeMockAuthService(overrides: Record<string, unknown> = {}) {
 /** Create a mock SP */
 function makeMockSp(overrides: Record<string, unknown> = {}) {
   return {
-    createLoginRequest: mock((_idp: unknown, _binding: string) => ({
+    createLoginRequest: typedMock((_idp: unknown, _binding: string) => ({
       context: "https://idp.example.com/sso?SAMLRequest=encoded_request",
     })),
-    parseLoginResponse: mock(async (_idp: unknown, _binding: string, _opts: unknown) => ({
+    parseLoginResponse: typedMock(async (_idp: unknown, _binding: string, _opts: unknown) => ({
       extract: {
         nameID: "alice@example.com",
         attributes: {
@@ -88,7 +96,7 @@ function makeMockSp(overrides: Record<string, unknown> = {}) {
         },
       },
     })),
-    getMetadata: mock(() => "<EntityDescriptor>mock-metadata</EntityDescriptor>"),
+    getMetadata: typedMock(() => "<EntityDescriptor>mock-metadata</EntityDescriptor>"),
     ...overrides,
   };
 }
@@ -97,7 +105,7 @@ function makeMockSp(overrides: Record<string, unknown> = {}) {
 function makeMockIdp(overrides: Record<string, unknown> = {}) {
   return {
     entityMeta: {
-      getSingleLogoutService: mock((_binding: string) => "https://idp.example.com/slo"),
+      getSingleLogoutService: typedMock((_binding: string) => "https://idp.example.com/slo"),
       ...overrides,
     },
   };
@@ -200,7 +208,7 @@ function buildTestApp(opts: {
         const sessionToken = cookie?.interdict_session?.value;
         if (sessionToken) {
           try {
-            await authServiceMock.revokeSession(sessionToken);
+            await authServiceMock.revokeSession(sessionToken as unknown as string);
           } catch (err) {
             console.warn(
               `[saml] SLO session revocation failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -210,7 +218,7 @@ function buildTestApp(opts: {
         }
 
         // Clear session cookie
-        if (cookie && cookie.interdict_session) {
+        if (cookie?.interdict_session) {
           cookie.interdict_session.set({
             value: "",
             httpOnly: true,
@@ -346,7 +354,7 @@ describe("SAML Handlers", () => {
 
     test("returns 400 when assertion has no email/nameID", async () => {
       const sp = makeMockSp({
-        parseLoginResponse: mock(async () => ({
+        parseLoginResponse: typedMock(async () => ({
           extract: { nameID: "", attributes: {} },
         })),
       });
@@ -367,7 +375,7 @@ describe("SAML Handlers", () => {
 
     test("returns 401 when parseLoginResponse throws (invalid/expired assertion)", async () => {
       const sp = makeMockSp({
-        parseLoginResponse: mock(async () => {
+        parseLoginResponse: typedMock(async () => {
           throw new Error("Signature verification failed");
         }),
       });
@@ -389,7 +397,7 @@ describe("SAML Handlers", () => {
     test("extracts email from attributes when nameID is empty", async () => {
       const authService = makeMockAuthService();
       const sp = makeMockSp({
-        parseLoginResponse: mock(async () => ({
+        parseLoginResponse: typedMock(async () => ({
           extract: {
             nameID: "",
             attributes: {
@@ -418,7 +426,7 @@ describe("SAML Handlers", () => {
     test("uses email prefix as displayName fallback", async () => {
       const authService = makeMockAuthService();
       const sp = makeMockSp({
-        parseLoginResponse: mock(async () => ({
+        parseLoginResponse: typedMock(async () => ({
           extract: {
             nameID: "charlie@example.com",
             attributes: {},
@@ -442,7 +450,7 @@ describe("SAML Handlers", () => {
     test("handles array-valued SAML attributes", async () => {
       const authService = makeMockAuthService();
       const sp = makeMockSp({
-        parseLoginResponse: mock(async () => ({
+        parseLoginResponse: typedMock(async () => ({
           extract: {
             nameID: "",
             attributes: {
@@ -492,7 +500,8 @@ describe("SAML Handlers", () => {
 
     test("replay prevention: second exchange returns 410", async () => {
       const authService = makeMockAuthService({
-        exchangeSamlHandoffCode: mock()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        exchangeSamlHandoffCode: (mock(() => null) as any)
           .mockResolvedValueOnce("session_token_first")
           .mockResolvedValueOnce(null), // second call returns null (used)
       });
@@ -519,7 +528,7 @@ describe("SAML Handlers", () => {
 
     test("expired code returns 410 with CODE_EXPIRED", async () => {
       const authService = makeMockAuthService({
-        exchangeSamlHandoffCode: mock(async () => null),
+        exchangeSamlHandoffCode: typedMock(async (_code: string) => null),
       });
       const app = buildTestApp({ authService });
 
@@ -544,7 +553,7 @@ describe("SAML Handlers", () => {
   describe("JIT User Provisioning", () => {
     test("new user is created from SAML attributes", async () => {
       const authService = makeMockAuthService({
-        findOrCreateSamlUser: mock(async (email: string, displayName: string) =>
+        findOrCreateSamlUser: typedMock(async (email: string, displayName: string) =>
           makeUser({ email, displayName, role: "read_only_auditor" }),
         ),
       });
@@ -568,7 +577,7 @@ describe("SAML Handlers", () => {
     test("existing user's externalId is updated on subsequent login", async () => {
       let callCount = 0;
       const authService = makeMockAuthService({
-        findOrCreateSamlUser: mock(async (email: string) => {
+        findOrCreateSamlUser: typedMock(async (email: string) => {
           callCount++;
           // Simulate existing user found on second call
           return makeUser({
@@ -616,7 +625,7 @@ describe("SAML Handlers", () => {
 
     test("redirects to dashboard login when IdP has no SLO endpoint", async () => {
       const idp = makeMockIdp({
-        getSingleLogoutService: mock(() => null),
+        getSingleLogoutService: typedMock(() => null),
       });
       const app = buildTestApp({ idp, dashboardUrl: "http://localhost:8080" });
 
@@ -661,7 +670,7 @@ describe("SAML Handlers", () => {
 
     test("SLO continues with redirect when session revocation fails", async () => {
       const authService = makeMockAuthService({
-        revokeSession: mock(async () => {
+        revokeSession: typedMock(async () => {
           throw new Error("DB connection lost");
         }),
       });
@@ -716,7 +725,7 @@ describe("SAML Handlers", () => {
 
     test("returns 503 when SP metadata is not available", async () => {
       const sp = makeMockSp({
-        getMetadata: mock(() => null),
+        getMetadata: typedMock(() => null),
       });
       const app = buildTestApp({ sp });
 
@@ -773,7 +782,7 @@ describe("SAML Handlers", () => {
 
       try {
         const sp = makeMockSp({
-          parseLoginResponse: mock(async () => {
+          parseLoginResponse: typedMock(async () => {
             throw new Error("XML parsing failed: malformed response");
           }),
         });
@@ -796,7 +805,7 @@ describe("SAML Handlers", () => {
 
     test("ACS handles non-Error thrown values", async () => {
       const sp = makeMockSp({
-        parseLoginResponse: mock(async () => {
+        parseLoginResponse: typedMock(async () => {
           throw "string error thrown"; // eslint-disable-line no-throw-literal
         }),
       });

@@ -10,7 +10,8 @@ import { Elysia } from "elysia";
 
 describe("Body size limit", () => {
   const MAX_BODY_BYTES = 1024; // 1KB for testing
-  let app: Elysia;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let app: any;
   let baseUrl: string;
 
   beforeAll(() => {
@@ -28,12 +29,11 @@ describe("Body size limit", () => {
           };
         }
       })
-      .post("/test", ({ body }) => ({ received: true, body }), {
-        type: "json",
-      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .post("/test", ({ body }: any) => ({ received: true, body }))
       .listen(0); // Random port
 
-    baseUrl = `http://localhost:${app.server!.port}`;
+    baseUrl = `http://localhost:${app.server?.port}`;
   });
 
   afterAll(() => {
@@ -83,7 +83,7 @@ describe("Body size limit", () => {
       .get("/health", () => ({ status: "ok" }))
       .listen(0);
 
-    const res = await fetch(`http://localhost:${getApp.server!.port}/health`);
+    const res = await fetch(`http://localhost:${getApp.server?.port}/health`);
     expect(res.status).toBe(200);
     getApp.stop();
   });

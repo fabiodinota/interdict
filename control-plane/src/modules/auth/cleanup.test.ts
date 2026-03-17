@@ -157,7 +157,7 @@ describe("startAuthCleanup", () => {
 
   test("stop() clears the interval and prevents further ticks", async () => {
     let tickCount = 0;
-    const fakeDb = new CleanupFakeDb([]);
+    const _fakeDb = new CleanupFakeDb([]);
 
     // Override delete to count invocations
     const countingDb = {

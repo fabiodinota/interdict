@@ -44,12 +44,19 @@ const { authPlugin } = await import("./middleware");
 // ---------------------------------------------------------------------------
 
 function createTestApp(authOption: boolean | string[] = true) {
-  return new Elysia()
-    .use(authPlugin)
-    .get("/protected", ({ user }: { user: unknown }) => ({ user }), {
-      auth: authOption as unknown as boolean,
-    } as Record<string, unknown>)
-    .get("/public", () => ({ ok: true }));
+  return (
+    new Elysia()
+      .use(authPlugin)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .get(
+        "/protected",
+        (({ user }: { user: unknown }) => ({ user })) as any,
+        {
+          auth: authOption as unknown as boolean,
+        } as Record<string, unknown>,
+      )
+      .get("/public", () => ({ ok: true }))
+  );
 }
 
 describe("authPlugin", () => {
