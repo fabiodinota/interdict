@@ -187,7 +187,7 @@ for attempt in 1 2 3; do
     --proxy "https://localhost:18443" \
     --proxy-insecure \
     --max-time 10 \
-    "https://${TARGET_VENDOR}/v1/chat/completions" 2>/dev/null || echo "000")
+    "https://${TARGET_VENDOR}/v1/chat/completions" 2>/dev/null) || HTTP_CODE="000"
 
   info "Request ${attempt}: HTTP ${HTTP_CODE} from kernel proxy"
   REQUESTS_SENT=$((REQUESTS_SENT + 1))

@@ -296,7 +296,7 @@ BLOCKED_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
   --proxy "https://localhost:18443" \
   --proxy-insecure \
   --max-time 10 \
-  "https://not-on-allowlist.example.com/test" 2>/dev/null || echo "000")
+  "https://not-on-allowlist.example.com/test" 2>/dev/null) || BLOCKED_RESPONSE="000"
 
 info "Response from unlisted vendor: HTTP ${BLOCKED_RESPONSE}"
 
