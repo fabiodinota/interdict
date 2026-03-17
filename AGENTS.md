@@ -1,6 +1,6 @@
 # AGENTS.md: Interdict Agent Contract
 
-This file is the cross-agent operating contract loaded by GSD (pi), Claude Code, Codex, and OpenCode.
+This file is the cross-agent operating contract loaded by GSD (pi), Claude Code, and Codex.
 
 ## Non-Negotiable Invariants
 
@@ -17,19 +17,19 @@ This file is the cross-agent operating contract loaded by GSD (pi), Claude Code,
 
 ### Single Canonical Directory: `.gsd/`
 
-All shared project intelligence lives in `.gsd/`. Other tool directories are Windows junction
-points that transparently serve the same files — edit only in `.gsd/`.
+All shared project intelligence lives in `.gsd/`. Other tool directories (`.claude/`, `.pi/`)
+are Windows junction points that transparently serve the same files — edit only in `.gsd/`.
 
 | Path | Purpose |
 |------|---------|
-| `.gsd/agents/` | Subagent profiles (canonical) |
-| `.gsd/skills/` | Project skills (canonical) |
-| `.gsd/rules/` | Architecture/workflow/security rules (canonical) |
-| `.gsd/hooks/` | Pre-commit and CI hooks (canonical) |
-| `.gsd/mcp/` | MCP server templates (canonical) |
+| `.gsd/agents/` | Subagent profiles (8 agents) |
+| `.gsd/skills/` | Project skills (7 skills) |
+| `.gsd/rules/` | Architecture/workflow/security rules |
+| `.gsd/hooks/` | Pre-commit and CI hooks |
+| `.gsd/mcp/` | MCP server templates |
 | `.gsd/PROJECT.md` | Living project document |
 | `.gsd/STATE.md` | Milestone/slice progress |
-| `.gsd/DECISIONS.md` | Append-only decision register |
+| `.gsd/DECISIONS.md` | Append-only decision register (77 decisions, D001–D077) |
 | `.gsd/settings.json` | GSD settings |
 
 ### Junctions (read-only aliases — never edit here)
@@ -52,6 +52,8 @@ After a fresh clone run: `bash scripts/setup-junctions.sh`
 3. `k8s-specialist` validates deployability where infra is touched.
 4. `multi-agent-coordinator` produces final synthesis and readiness call.
 
+Additional specialized agents: `docker-expert`, `nextjs-developer`, `refactoring-specialist`, `test-automator`.
+
 ## Skills Catalog
 
 Project skills (invoke with `/skill:name`):
@@ -71,12 +73,15 @@ Project skills (invoke with `/skill:name`):
 - `cargo test --workspace --all-targets`
 - `cargo test -p kernel --test content_inspection_test`
 - `cargo audit` (when installed)
+- `npm run lint:infra` (hadolint, shellcheck, helm lint, buf lint)
 
 ## CI and Dependency Baseline
 
-- CI workflow: `.github/workflows/ci-quality-security.yml`
+- CI workflow: `.github/workflows/ci-quality-security.yml` (10 jobs)
+- Release pipeline: `.github/workflows/release.yml` (multi-platform builds, SBOM, cosign signing)
+- Release automation: `.github/workflows/release-please.yml`
 - Dependency automation: `renovate.json`
-- Local hooks: `.husky/` (canonical), `.claude/hooks/` (helper mirrors)
+- Local hooks: `.husky/` (canonical) — commitlint, lint-staged, infra-check
 
 ## Known GSD Patches
 

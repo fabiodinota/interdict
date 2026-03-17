@@ -1,6 +1,6 @@
 # CLAUDE.md: Interdict AI Operating Contract
 
-Purpose: enforce consistent, high-assurance behavior across Claude Code, OpenCode, and Codex.
+Purpose: enforce consistent, high-assurance behavior across Claude Code, GSD (pi), and Codex.
 
 ## Non-Negotiable Invariants
 
@@ -15,27 +15,32 @@ Purpose: enforce consistent, high-assurance behavior across Claude Code, OpenCod
 
 ## Project Rules Index
 
-- Core architecture invariants: `.claude/rules/architecture-invariants.md`
-- Agent execution workflow: `.claude/rules/agent-workflow.md`
-- Security and evidence rules: `.claude/rules/security-evidence.md`
+- Core architecture invariants: `.gsd/rules/architecture-invariants.md`
+- Agent execution workflow: `.gsd/rules/agent-workflow.md`
+- Security and evidence rules: `.gsd/rules/security-evidence.md`
 
 Use these rules before implementing code, tests, infra, or docs changes.
 
 ## Resource Paths
 
-### GSD / pi (V2 canonical)
+### Single Canonical Directory: `.gsd/`
 
-- Project context: `AGENTS.md` (root)
-- Skills: `.gsd/skills/*/SKILL.md`
-- Subagents: `.pi/agents/*.md`
-- Project settings: `.gsd/settings.json`
+All shared project intelligence lives in `.gsd/`. Other tool directories (`.claude/`, `.pi/`)
+are Windows junction points that transparently serve the same files — edit only in `.gsd/`.
 
-### Claude Code
+| Path | Purpose |
+|------|---------|
+| `.gsd/agents/` | Subagent profiles (canonical) |
+| `.gsd/skills/` | Project skills (canonical) |
+| `.gsd/rules/` | Architecture/workflow/security rules (canonical) |
+| `.gsd/hooks/` | Pre-commit and CI hooks (canonical) |
+| `.gsd/mcp/` | MCP server templates (canonical) |
+| `.gsd/PROJECT.md` | Living project document |
+| `.gsd/STATE.md` | Milestone/slice progress |
+| `.gsd/DECISIONS.md` | Append-only decision register (77 decisions, D001–D077) |
+| `.gsd/settings.json` | GSD settings |
 
-- Rules: `.claude/rules/*.md`
-- Skills: `.claude/skills/*/SKILL.md`
-- Subagents: `.claude/agents/*.md`
-- MCP templates: `.claude/mcp/servers.example.json`
+After a fresh clone run: `bash scripts/setup-junctions.sh`
 
 ## Agent-First Workflow
 
@@ -46,7 +51,9 @@ For non-trivial work, default sequence:
 3. `k8s-specialist` validates deployability (sidecar, network policy, manifests/Helm where applicable).
 4. `multi-agent-coordinator` synthesizes findings and final acceptance criteria.
 
-Local subagent profiles live in `.pi/agents/` (GSD) and `.claude/agents/` (Claude Code).
+Additional specialized agents: `docker-expert`, `nextjs-developer`, `refactoring-specialist`, `test-automator`.
+
+Local subagent profiles live in `.gsd/agents/` (canonical, served to both GSD and Claude Code via junctions).
 
 ## Skills Catalog
 
@@ -62,8 +69,8 @@ Project skills (invoke with `/skill:name`):
 
 ## MCP Usage
 
-- MCP server templates: `.claude/mcp/servers.example.json`
-- Setup and hardening guidance: `.claude/mcp/README.md`
+- MCP server templates: `.gsd/mcp/servers.example.json`
+- Setup and hardening guidance: `.gsd/mcp/README.md`
 
 Recommended baseline servers: Git, Docker, Kubernetes, Wasmtime helper, crypto helper.
 
@@ -76,14 +83,17 @@ Before merge or milestone handoff:
 - `cargo test --workspace --all-targets`
 - `cargo test -p kernel --test content_inspection_test`
 - `cargo audit` (when installed)
+- `npm run lint:infra` (hadolint, shellcheck, helm lint, buf lint)
 
 If touched paths include policy enforcement or evidence logic, run additional targeted checks from relevant skill files.
 
 ## CI/CD Baseline
 
-- Workflow file: `.github/workflows/ci-quality-security.yml`
+- CI workflow: `.github/workflows/ci-quality-security.yml` (10 jobs)
+- Release pipeline: `.github/workflows/release.yml` (multi-platform builds, SBOM, cosign signing)
+- Release automation: `.github/workflows/release-please.yml`
 - Dependency automation: `renovate.json`
-- Local hooks: `.husky/` (canonical), `.claude/hooks/` (helper mirrors)
+- Local hooks: `.husky/` (canonical) — commitlint, lint-staged, infra-check
 
 Do not bypass failing hooks/checks; fix root causes.
 
@@ -104,3 +114,5 @@ For architectural/security-impacting changes, update:
 - `.planning/ROADMAP.md` (historical phase record — read-only, append new phases only)
 
 Keep `docs/education.md` updated with mistakes and corrective actions.
+
+If `AGENTS.md` and `CLAUDE.md` diverge, update both in the same change.
