@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, anyhow};
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{DateTime, Utc};
 use clickhouse::{Client, Compression, Row, inserter::Inserter};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -13,7 +13,8 @@ const EVIDENCE_TABLE: &str = "evidence_bundles";
 
 #[derive(Debug, Clone, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EvidenceRow {
-    pub event_date: String,
+    /// Days since 1970-01-01 (ClickHouse Date type).
+    pub event_date: u16,
     pub timestamp: i64,
     pub bundle_id: String,
     pub kernel_id: String,
@@ -43,8 +44,11 @@ pub struct EvidenceRow {
 }
 
 impl EvidenceRow {
-    pub fn from_timestamp(ts: DateTime<Utc>) -> String {
-        format!("{:04}-{:02}-{:02}", ts.year(), ts.month(), ts.day())
+    /// Convert a UTC timestamp to ClickHouse Date (u16 days since 1970-01-01).
+    pub fn from_timestamp(ts: DateTime<Utc>) -> u16 {
+        let epoch = chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
+        let days = ts.date_naive().signed_duration_since(epoch).num_days();
+        days.clamp(0, u16::MAX as i64) as u16
     }
 }
 
@@ -620,7 +624,11 @@ mod tests {
             .with_ymd_and_hms(2026, 1, 5, 12, 30, 0)
             .single()
             .expect("timestamp");
-        assert_eq!(EvidenceRow::from_timestamp(ts), "2026-01-05");
+        // 2026-01-05 is 20,458 days since 1970-01-01
+        let days = EvidenceRow::from_timestamp(ts);
+        let epoch = chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
+        let actual_date = epoch + chrono::Duration::days(days as i64);
+        assert_eq!(actual_date.to_string(), "2026-01-05");
     }
 
     #[test]
@@ -629,7 +637,10 @@ mod tests {
             .with_ymd_and_hms(2028, 2, 29, 0, 0, 0)
             .single()
             .expect("leap day");
-        assert_eq!(EvidenceRow::from_timestamp(ts), "2028-02-29");
+        let days = EvidenceRow::from_timestamp(ts);
+        let epoch = chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
+        let actual_date = epoch + chrono::Duration::days(days as i64);
+        assert_eq!(actual_date.to_string(), "2028-02-29");
     }
 
     #[test]
