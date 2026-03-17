@@ -80,7 +80,7 @@ pg_exec() {
 # Query ClickHouse via HTTP interface
 ch_query() {
   curl -sf \
-    --data-urlencode "query=$1" \
+    -d "$1" \
     "${CLICKHOUSE_URL}/?database=${CLICKHOUSE_DATABASE}&user=${CLICKHOUSE_USER}&password=${CLICKHOUSE_PASSWORD}" \
     2>/dev/null
 }
