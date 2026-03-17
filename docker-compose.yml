@@ -235,6 +235,8 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp:size=64M
+      - /data/dead-letter:size=64M
+      - /data/anchors:size=64M
     environment:
       COLLECTOR_GRPC_LISTEN_ADDR: ${COLLECTOR_GRPC_LISTEN_ADDR:-[::]:50051}
       CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}

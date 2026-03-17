@@ -121,7 +121,9 @@ fi
 # ---------------------------------------------------------------------------
 # Certificates are world-readable; private keys are owner-only
 chmod 644 "${CERT_DIR}"/*.pem
-chmod 600 "${CERT_DIR}"/*-key.pem
+chmod 640 "${CERT_DIR}"/*-key.pem
+# Ensure UID 1000 (service user) can read private keys
+chown -R 0:1000 "${CERT_DIR}" 2>/dev/null || true
 
 echo "[cert-init] All certificates generated successfully."
 
