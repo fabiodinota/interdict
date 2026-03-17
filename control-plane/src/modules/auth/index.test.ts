@@ -1,6 +1,12 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { Elysia } from "elysia";
-import { authModule } from "./index";
+
+// Mock db/postgres to prevent loadConfig() from requiring DATABASE_URL at import time
+mock.module("../../db/postgres", () => ({
+  db: {},
+}));
+
+const { authModule } = await import("./index");
 
 function createSelectBuilder(db: FakeDb) {
   const result = db.nextSelect();

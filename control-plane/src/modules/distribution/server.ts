@@ -33,6 +33,8 @@ import {
 // Proto Loading
 // ---------------------------------------------------------------------------
 
+const PROTO_ROOT = resolve(join(__dirname, "../../../../proto"));
+
 const PROTO_PATH = resolve(
   join(__dirname, "../../../../proto/interdict/policy/v1/policy_distribution.proto"),
 );
@@ -42,6 +44,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   longs: Number,
   defaults: true,
   oneofs: true,
+  includeDirs: [PROTO_ROOT, resolve(join(PROTO_ROOT, "third_party"))],
 });
 
 interface PolicyDistributionProtoDescriptor {
