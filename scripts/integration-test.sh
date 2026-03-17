@@ -208,10 +208,41 @@ run_test() {
 
 # Discover and run all integration test scripts
 if [ -d "$TEST_DIR" ]; then
+  # On Windows (MSYS/Git Bash/Cygwin), use *-win.sh variants which send proxy
+  # traffic via docker exec instead of host curl --proxy (broken on Windows).
+  # On Linux/macOS, use the standard scripts.
+  if [[ "$OSTYPE" == msys* ]] || [[ "$OSTYPE" == cygwin* ]] || [[ "$(uname -s)" == MINGW* ]]; then
+    WIN_SUFFIX="-win"
+    log_info "Windows detected — using docker-exec proxy variants (*-win.sh)"
+  else
+    WIN_SUFFIX=""
+  fi
+
   # Find executable .sh files in the integration test directory
   test_scripts=()
   while IFS= read -r -d '' script; do
-    test_scripts+=("$script")
+    base="$(basename "$script" .sh)"
+    # Skip *-win.sh scripts on Linux, skip non-win scripts on Windows when win variant exists
+    if [ -n "$WIN_SUFFIX" ]; then
+      # Windows: prefer -win variant, skip the original if -win exists
+      case "$base" in
+        *-win) test_scripts+=("$script") ;;
+        *)
+          win_variant="${TEST_DIR}/${base}-win.sh"
+          if [ ! -f "$win_variant" ]; then
+            test_scripts+=("$script")
+          else
+            log_info "Skipping ${base}.sh (using ${base}-win.sh on Windows)"
+          fi
+          ;;
+      esac
+    else
+      # Linux/macOS: skip -win variants
+      case "$base" in
+        *-win) ;; # skip
+        *) test_scripts+=("$script") ;;
+      esac
+    fi
   done < <(find "$TEST_DIR" -maxdepth 1 -name "*.sh" -type f -print0 | sort -z)
 
   if [ ${#test_scripts[@]} -eq 0 ]; then
