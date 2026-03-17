@@ -6,7 +6,9 @@
 
 import { describe, expect, test } from "bun:test";
 import { sessions } from "../../db/schema/auth";
-import { createAuthService, generateApiKey, hashApiKey, hashSessionToken } from "./service";
+
+// Dynamic import to bypass mock.module pollution from middleware.test.ts
+const { createAuthService, generateApiKey, hashApiKey, hashSessionToken } = await import("./service");
 
 function createSelectBuilder(db: FakeDb) {
   const result = db.nextSelect();

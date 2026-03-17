@@ -11,6 +11,8 @@
 
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
+import { afterAll, mock } from "bun:test";
+
 // ---------------------------------------------------------------------------
 // We mock the DB and auth service to test middleware logic in isolation.
 // The middleware imports db from ../../db/postgres and creates an authService,
@@ -24,16 +26,31 @@ const mockAuthenticateBySessionToken = mock(
   async (_token: string) => null as { id: string; role: string; orgId: string } | null,
 );
 
-mock.module("../../db/postgres", () => ({
+const dbMod = mock.module("../../db/postgres", () => ({
   db: {},
 }));
 
-mock.module("./service", () => ({
+const serviceMod = mock.module("./service", () => ({
   createAuthService: () => ({
     authenticateByApiKey: mockAuthenticateByApiKey,
     authenticateBySessionToken: mockAuthenticateBySessionToken,
+    exchangeApiKeyForSession: mock(() => null),
+    createSession: mock(() => "mock-session"),
+    revokeSession: mock(() => {}),
+    whoAmI: mock(() => null),
+    createApiKey: mock(() => ({ plaintext: "", keyId: "", prefix: "", label: null, createdAt: new Date() })),
+    revokeApiKey: mock(() => {}),
+    listApiKeys: mock(() => ({ items: [], nextCursor: null })),
+    findOrCreateSamlUser: mock(() => null),
+    createSamlHandoffCode: mock(() => ""),
+    exchangeSamlHandoffCode: mock(() => null),
   }),
 }));
+
+// Restore module mocks after all tests in this file
+afterAll(() => {
+  mock.restore();
+});
 
 // Import Elysia and middleware after mocking
 const { Elysia } = await import("elysia");

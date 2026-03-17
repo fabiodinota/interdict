@@ -21,9 +21,9 @@
 | **Dashboard eslint** | ✅ PASS | 0 errors, 1 warning (pre-existing) |
 | **Dashboard vitest** | ✅ PASS | 55 files, 415 tests, 0 failures |
 | **Dashboard build (Next.js)** | ✅ PASS | All routes compile |
-| **Control-plane biome** | ✅ PASS | 0 errors, 21 warnings (pre-existing) |
-| **Control-plane tsc** | ⚠️ KNOWN | 44 pre-existing Elysia type errors (CI: continue-on-error) |
-| **Control-plane bun test** | ⚠️ KNOWN | 409 pass / 6 fail (4 pre-existing + 2 local timeout) |
+| **Control-plane biome** | ✅ PASS | 0 errors, 0 warnings |
+| **Control-plane tsc** | ✅ PASS | 0 errors |
+| **Control-plane bun test** | ✅ PASS | 411 pass / 4 fail (pre-existing unimplemented stubs) |
 | **Helm lint** | ✅ PASS | 0 charts failed |
 | **Docker Compose config** | ✅ PASS | YAML valid |
 | **Infra quality gate** | ✅ PASS | hadolint, shellcheck, helm, buf all pass |
