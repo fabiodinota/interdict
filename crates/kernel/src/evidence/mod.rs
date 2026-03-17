@@ -94,10 +94,17 @@ pub struct EvidenceBuffer {
     health: Arc<DeliveryHealth>,
 }
 
-#[derive(Clone, PartialEq, Message)]
-struct EvidenceBundleBatch {
-    #[prost(message, repeated, tag = "1")]
-    bundles: Vec<proto::EvidenceBundle>,
+// Encode bundles as concatenated length-delimited protobuf messages.
+// This matches the collector's decode_bundles_payload() which calls
+// EvidenceBundle::decode_length_delimited() in a loop.
+fn encode_bundles_payload(bundles: &[proto::EvidenceBundle]) -> Vec<u8> {
+    let mut payload = Vec::new();
+    for bundle in bundles {
+        bundle
+            .encode_length_delimited(&mut payload)
+            .expect("protobuf encode_length_delimited should not fail for valid message");
+    }
+    payload
 }
 
 /// Optional mTLS certificate material for evidence gRPC client.
@@ -318,13 +325,11 @@ async fn flush_batch(
     }
 
     let event_count = batch.len();
-    let proto_batch = EvidenceBundleBatch {
-        bundles: batch
-            .iter()
-            .map(|event| to_proto_bundle(event, kernel_id))
-            .collect(),
-    };
-    let serialized = proto_batch.encode_to_vec();
+    let proto_bundles: Vec<proto::EvidenceBundle> = batch
+        .iter()
+        .map(|event| to_proto_bundle(event, kernel_id))
+        .collect();
+    let serialized = encode_bundles_payload(&proto_bundles);
 
     let compressed = match zstd::stream::encode_all(Cursor::new(serialized), 3) {
         Ok(payload) => payload,
@@ -546,17 +551,16 @@ mod tests {
     #[test]
     fn test_batch_compression_roundtrip() {
         use prost::Message;
+        use prost::bytes::Buf;
         use std::io::Cursor;
 
         let events: Vec<RawEvidenceEvent> = (0..10).map(|_| sample_event()).collect();
-        let proto_batch = EvidenceBundleBatch {
-            bundles: events
-                .iter()
-                .map(|e| bundle::to_proto_bundle(e, "test-kernel"))
-                .collect(),
-        };
+        let proto_bundles: Vec<proto::EvidenceBundle> = events
+            .iter()
+            .map(|e| bundle::to_proto_bundle(e, "test-kernel"))
+            .collect();
 
-        let serialized = proto_batch.encode_to_vec();
+        let serialized = encode_bundles_payload(&proto_bundles);
         let compressed = zstd::stream::encode_all(Cursor::new(&serialized), 3).unwrap();
         let decompressed = zstd::stream::decode_all(Cursor::new(&compressed)).unwrap();
 
@@ -565,7 +569,12 @@ mod tests {
             "compression roundtrip should preserve data"
         );
 
-        let decoded = EvidenceBundleBatch::decode(&decompressed[..]).unwrap();
-        assert_eq!(decoded.bundles.len(), 10);
+        // Decode the same way the evidence-collector does: length-delimited per bundle
+        let mut input = prost::bytes::Bytes::from(decompressed);
+        let mut decoded = Vec::new();
+        while input.has_remaining() {
+            decoded.push(proto::EvidenceBundle::decode_length_delimited(&mut input).unwrap());
+        }
+        assert_eq!(decoded.len(), 10);
     }
 }
