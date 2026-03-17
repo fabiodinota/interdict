@@ -4,7 +4,7 @@
 # Build context: repository root (.)
 # Usage: docker build -f docker/control-plane/Dockerfile .
 
-FROM oven/bun:1.1-slim@sha256:98d461b362506de2b89f9f9d03106ad9b3597e94971d8bb358395ce02d9c4f2b AS base
+FROM oven/bun:1.2-slim AS base
 
 # ---------------------------------------------------------------------------
 # Stage 1: Download OPA binary with SHA256 verification
@@ -31,15 +31,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl=7.* ca-cer
 FROM base
 
 # Install wget for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends wget=1.21.* \
+RUN apt-get update && apt-get install -y --no-install-recommends wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy OPA from the download stage
 COPY --from=opa-fetch /tmp/opa /usr/local/bin/opa
 
 # Create non-root user (UID 1000 to match Helm securityContext)
-RUN groupadd -g 1000 interdict && \
-    useradd -u 1000 -g interdict -m -s /bin/false interdict
+# Bun base image may already have GID/UID 1000 — use -f to allow reuse
+RUN groupadd -f -g 1000 interdict && \
+    useradd -u 1000 -g interdict -m -s /bin/false interdict 2>/dev/null || true
 
 WORKDIR /app
 

@@ -97,7 +97,7 @@ services:
 
   # One-shot init container to create the evidence bucket in MinIO
   minio-init:
-    image: minio/mc:RELEASE.2025-02-21T16-00-34Z
+    image: minio/mc:RELEASE.2025-03-12T17-29-24Z
     logging:
       driver: json-file
       options:
