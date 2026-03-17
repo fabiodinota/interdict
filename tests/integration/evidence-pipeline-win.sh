@@ -173,46 +173,40 @@ pass "ClickHouse reachable, baseline count recorded"
 
 assert_step "Sending requests to ${TARGET_VENDOR} via kernel proxy (docker exec)"
 
-# Use docker exec to run curl INSIDE a container on the Docker network.
-# This avoids Windows HTTPS-proxy issues entirely.
+# Use docker exec to run wget INSIDE the control-plane container on the Docker
+# network. The control-plane image (Bun/Debian) has wget but not curl.
 REQUESTS_SENT=0
+KERNEL_RESPONDED=false
 for attempt in 1 2 3; do
-  # Run curl inside the control-plane container targeting the kernel as proxy
-  HTTP_CODE=$(${COMPOSE_CMD} -p "${PROJECT_NAME}" exec -T control-plane \
-    sh -c "curl -s -o /dev/null -w '%{http_code}' \
-      --proxy 'https://kernel:8443' \
-      --proxy-insecure \
-      --max-time 10 \
-      'https://${TARGET_VENDOR}/v1/chat/completions' 2>/dev/null" \
-  ) || HTTP_CODE="000"
-  # Trim whitespace/carriage returns from docker exec output
-  HTTP_CODE=$(echo "$HTTP_CODE" | tr -d '[:space:]')
+  # wget --spider -S prints HTTP response headers; we extract the status code.
+  # The kernel proxy blocks the request (no real API key), generating evidence.
+  WGET_OUT=$(${COMPOSE_CMD} -p "${PROJECT_NAME}" exec -T control-plane \
+    sh -c "https_proxy=https://kernel:8443 \
+      wget --spider -S -q --no-check-certificate \
+      --timeout=10 \
+      'https://${TARGET_VENDOR}/v1/chat/completions' 2>&1" \
+  ) || true
+  HTTP_CODE=$(echo "$WGET_OUT" | grep -oE 'HTTP/[0-9.]+ [0-9]+' | tail -1 | awk '{print $2}')
+  HTTP_CODE=${HTTP_CODE:-000}
 
   info "Request ${attempt}: HTTP ${HTTP_CODE} from kernel proxy"
   REQUESTS_SENT=$((REQUESTS_SENT + 1))
 
   if [ "$HTTP_CODE" != "000" ]; then
+    KERNEL_RESPONDED=true
     info "Kernel responded with HTTP ${HTTP_CODE} — evidence should have been emitted"
   else
-    # Fallback: try wget instead of curl (Bun image might not have curl)
-    info "curl unavailable or failed — trying wget..."
-    WGET_OUT=$(${COMPOSE_CMD} -p "${PROJECT_NAME}" exec -T control-plane \
-      sh -c "wget --spider -S -q --no-check-certificate \
-        -e 'https_proxy=https://kernel:8443' \
-        --timeout=10 \
-        'https://${TARGET_VENDOR}/v1/chat/completions' 2>&1" \
-    ) || true
-    WGET_STATUS=$(echo "$WGET_OUT" | grep -oE 'HTTP/[0-9.]+ [0-9]+' | tail -1 | awk '{print $2}')
-    if [ -n "$WGET_STATUS" ]; then
-      info "  wget got HTTP ${WGET_STATUS}"
-    else
-      info "  Connection failed — kernel may not have processed the request"
-    fi
+    info "Connection failed — kernel may not have processed the request"
   fi
 done
 
 info "Sent ${REQUESTS_SENT} requests through kernel proxy (via docker exec)"
-pass "Requests sent through kernel proxy"
+if [ "$KERNEL_RESPONDED" = "true" ]; then
+  pass "Requests sent and kernel responded"
+else
+  info "Kernel did not respond to any request — evidence may still have been generated"
+  pass "Requests sent through kernel proxy"
+fi
 
 # ---------------------------------------------------------------------------
 # Step 4: Wait for evidence in ClickHouse

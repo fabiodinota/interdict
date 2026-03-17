@@ -63,39 +63,30 @@ api_post() {
     "${CONTROL_PLANE_URL}$1" 2>/dev/null
 }
 
-# Send a proxy request through the kernel from inside the Docker network.
-# Returns the HTTP status code. Uses docker exec to bypass Windows curl issues.
+# Get HTTP status code for a proxy request via the kernel (inside Docker network).
+# Uses wget (available in Bun/Debian image; curl is not installed).
 kernel_proxy_status() {
   local target_url="$1"
-  local http_code=""
+  local output=""
+  local exit_code=0
 
-  # Try curl first (may be available in the Bun/Debian image)
-  http_code=$(${COMPOSE_CMD} -p "${PROJECT_NAME}" exec -T control-plane \
-    sh -c "curl -s -o /dev/null -w '%{http_code}' \
-      --proxy 'https://kernel:8443' \
-      --proxy-insecure \
-      --max-time 10 \
-      '${target_url}' 2>/dev/null" \
-  ) || http_code=""
-  http_code=$(echo "$http_code" | tr -d '[:space:]')
+  output=$(${COMPOSE_CMD} -p "${PROJECT_NAME}" exec -T control-plane \
+    sh -c "https_proxy=https://kernel:8443 \
+      wget --spider -S -q --no-check-certificate \
+      --timeout=10 \
+      '${target_url}' 2>&1" \
+  ) || exit_code=$?
 
-  # If curl not available or returned empty, try wget
-  if [ -z "$http_code" ] || [ "$http_code" = "000" ]; then
-    local wget_out=""
-    wget_out=$(${COMPOSE_CMD} -p "${PROJECT_NAME}" exec -T control-plane \
-      sh -c "wget --spider -S -q --no-check-certificate \
-        -e 'https_proxy=https://kernel:8443' \
-        --timeout=10 \
-        '${target_url}' 2>&1" \
-    ) || true
-    local wget_status
-    wget_status=$(echo "$wget_out" | grep -oE 'HTTP/[0-9.]+ [0-9]+' | tail -1 | awk '{print $2}')
-    if [ -n "$wget_status" ]; then
-      http_code="$wget_status"
-    fi
+  # Extract HTTP status from wget -S output
+  local status
+  status=$(echo "$output" | grep -oE 'HTTP/[0-9.]+ [0-9]+' | tail -1 | awk '{print $2}')
+  if [ -n "$status" ]; then
+    echo "$status"
+  elif [ "$exit_code" -eq 0 ]; then
+    echo "200"
+  else
+    echo "000"
   fi
-
-  echo "${http_code:-000}"
 }
 
 # ---------------------------------------------------------------------------
